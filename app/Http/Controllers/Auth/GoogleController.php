@@ -72,7 +72,11 @@ class GoogleController extends Controller
                 return route('seller.dashboard');
             
             case 'both':
-                return route('buyer.dashboard');
+                // Users with both roles - check if they have seller activity
+                $hasSellerActivity = $user->valuations()->exists() || $user->properties()->exists();
+                return $hasSellerActivity 
+                    ? route('seller.dashboard') 
+                    : route('buyer.dashboard');
             
             case 'pva':
                 return route('pva.dashboard');

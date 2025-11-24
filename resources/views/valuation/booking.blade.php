@@ -236,6 +236,17 @@
             <h2>Book Your Property Valuation</h2>
             <p class="subtext">Fill in the form below and we'll get in touch to schedule your property valuation.</p>
             
+            <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin-bottom: 25px; border-radius: 6px;">
+                <p style="margin: 0; font-size: 14px; color: #856404; font-weight: 600;">📋 Important: Please bring your Photo ID to the valuation appointment</p>
+                <p style="margin: 8px 0 0 0; font-size: 13px; color: #856404;">
+                    Our agent will visually check your ID document (Passport, Driving License, or National ID) during the valuation. 
+                    This is required for HMRC and Estate Agents Act compliance.
+                </p>
+                <p style="margin: 8px 0 0 0; font-size: 13px; color: #856404;">
+                    <em>Note: AML documents (ID + Proof of Address) will be collected via your dashboard after signing the Terms & Conditions.</em>
+                </p>
+            </div>
+            
             @if ($errors->any())
                 <div class="alert-error">
                     <strong>Please fix the following errors:</strong>

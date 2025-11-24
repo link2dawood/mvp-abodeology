@@ -206,6 +206,16 @@
     </div>
     @endif
 
+    @if($valuation->id_visual_check)
+    <div class="card" style="background: #d4edda; border-left: 4px solid #28a745;">
+        <h3 style="color: #28a745; margin-top: 0;">✓ ID Visual Check Completed</h3>
+        <p style="margin: 5px 0;"><strong>Status:</strong> ID document visually checked on-site</p>
+        @if($valuation->id_visual_check_notes)
+        <p style="margin: 5px 0;"><strong>Notes:</strong> {{ $valuation->id_visual_check_notes }}</p>
+        @endif
+    </div>
+    @endif
+
     @if($valuation->notes)
     <div class="card">
         <h3>Agent Notes</h3>
@@ -215,16 +225,42 @@
 
     @if($valuation->status !== 'completed')
     <div class="card" style="background: #E8F4F3; border-left: 4px solid var(--abodeology-teal);">
-        <h3 style="color: var(--abodeology-teal); margin-top: 0;">Next Steps</h3>
-        <p>After attending the valuation appointment, complete the seller onboarding form to:</p>
+        <h3 style="color: var(--abodeology-teal); margin-top: 0;">Valuation Form</h3>
+        <p>Complete the Valuation Form during the on-site valuation appointment. The form will be pre-filled with seller and property details.</p>
+        <p><strong>This form captures:</strong></p>
         <ul>
-            <li>Create the property record</li>
-            <li>Add detailed property information</li>
-            <li>Record material information</li>
-            <li>Add access notes and viewing preferences</li>
-            <li>Mark the valuation as completed</li>
+            <li>ID Visual Check confirmation (required by HMRC/EA Act)</li>
+            <li>Detailed property information</li>
+            <li>Material information</li>
+            <li>Access notes and viewing preferences</li>
+            <li>Pricing notes</li>
         </ul>
-        <a href="{{ route('admin.valuations.onboarding', $valuation->id) }}" class="btn btn-main" style="margin-top: 15px;">Complete Seller Onboarding</a>
+        <p style="font-size: 13px; color: #666; margin-top: 10px;">
+            <em>Form will be saved directly to the seller's profile with status "Property Details Captured".</em>
+        </p>
+        <a href="{{ route('admin.valuations.valuation-form', $valuation->id) }}" class="btn btn-main" style="margin-top: 15px;">Start Valuation Form</a>
+        @php
+            // Check if property already exists for this valuation
+            $existingProperty = \App\Models\Property::where('seller_id', $valuation->seller_id)
+                ->where('address', $valuation->property_address)
+                ->first();
+        @endphp
+        @if($existingProperty)
+            <a href="{{ route('admin.properties.show', $existingProperty->id) }}" class="btn" style="background: #6c757d; margin-top: 15px; margin-left: 10px;">View Property</a>
+        @endif
+    </div>
+    @else
+    <div class="card" style="background: #d4edda; border-left: 4px solid #28a745;">
+        <h3 style="color: #28a745; margin-top: 0;">✓ Valuation Completed</h3>
+        <p>This valuation has been completed. The Valuation Form has been submitted and property details have been captured.</p>
+        @php
+            $property = \App\Models\Property::where('seller_id', $valuation->seller_id)
+                ->where('address', $valuation->property_address)
+                ->first();
+        @endphp
+        @if($property)
+            <a href="{{ route('admin.properties.show', $property->id) }}" class="btn btn-main" style="margin-top: 15px;">View Property</a>
+        @endif
     </div>
     @endif
 </div>

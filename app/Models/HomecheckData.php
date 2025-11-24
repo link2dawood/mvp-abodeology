@@ -11,8 +11,10 @@ class HomecheckData extends Model
 
     protected $fillable = [
         'property_id',
+        'homecheck_report_id',
         'room_name',
         'image_path',
+        'is_360',
         'moisture_reading',
         'ai_rating',
         'ai_comments',
@@ -21,8 +23,10 @@ class HomecheckData extends Model
     protected function casts(): array
     {
         return [
+            'is_360' => 'boolean',
             'moisture_reading' => 'decimal:2',
             'created_at' => 'datetime',
+            'updated_at' => 'datetime',
         ];
     }
 
@@ -32,5 +36,13 @@ class HomecheckData extends Model
     public function property(): BelongsTo
     {
         return $this->belongsTo(Property::class);
+    }
+
+    /**
+     * Get the homecheck report this data belongs to.
+     */
+    public function homecheckReport(): BelongsTo
+    {
+        return $this->belongsTo(HomecheckReport::class);
     }
 }

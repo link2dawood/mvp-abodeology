@@ -33,15 +33,21 @@ class SellerController extends Controller
         
         // Fetch seller's properties
         $properties = \App\Models\Property::where('seller_id', $user->id)
-            ->with('seller')
+            ->with(['seller', 'instruction'])
             ->orderBy('created_at', 'desc')
             ->get();
+
+        // Get AML check for the seller
+        $amlCheck = \App\Models\AmlCheck::where('user_id', $user->id)->first();
         
         // Status map
         $statusMap = [
             'draft' => 'Draft',
-            'property_details_completed' => 'Property Details Completed',
+            'property_details_captured' => 'Property Details Captured',
+            'property_details_completed' => 'Property Details Completed', // Legacy support
             'pre_marketing' => 'Pre-Marketing',
+            'awaiting_aml' => 'Awaiting AML',
+            'signed' => 'Signed',
             'live' => 'Live',
             'sstc' => 'Sold Subject to Contract',
             'withdrawn' => 'Withdrawn',
@@ -88,7 +94,8 @@ class SellerController extends Controller
             'properties',
             'property',
             'upcomingViewings',
-            'offers'
+            'offers',
+            'amlCheck'
         ));
     }
 
@@ -108,7 +115,8 @@ class SellerController extends Controller
         
         $statusMap = [
             'draft' => 'Draft',
-            'property_details_completed' => 'Property Details Completed',
+            'property_details_captured' => 'Property Details Captured',
+            'property_details_completed' => 'Property Details Completed', // Legacy support
             'pre_marketing' => 'Pre-Marketing',
             'live' => 'Live',
             'sstc' => 'Sold Subject to Contract',
@@ -193,12 +201,16 @@ class SellerController extends Controller
         
         $property = \App\Models\Property::where('seller_id', $user->id)
             ->where('id', $id)
-            ->with(['seller', 'offers.buyer', 'viewings.buyer', 'materialInformation', 'instruction'])
+            ->with(['seller', 'offers.buyer', 'viewings.buyer', 'materialInformation', 'instruction', 'homecheckReports'])
             ->firstOrFail();
+
+        // Get AML check for the seller
+        $amlCheck = \App\Models\AmlCheck::where('user_id', $user->id)->first();
         
         $statusMap = [
             'draft' => 'Draft',
-            'property_details_completed' => 'Property Details Completed',
+            'property_details_captured' => 'Property Details Captured',
+            'property_details_completed' => 'Property Details Completed', // Legacy support
             'pre_marketing' => 'Pre-Marketing',
             'signed' => 'Signed',
             'live' => 'Live',
@@ -209,7 +221,7 @@ class SellerController extends Controller
         
         $property->status_text = $statusMap[$property->status] ?? ucfirst($property->status);
         
-        return view('seller.properties.show', compact('property'));
+        return view('seller.properties.show', compact('property', 'amlCheck'));
     }
 
     /**
@@ -348,6 +360,18 @@ class SellerController extends Controller
                 ->firstOrFail();
             
             $instruction = \App\Models\PropertyInstruction::where('property_id', $property->id)->first();
+
+            // If instruction doesn't exist but property exists, create a pending instruction
+            // This handles the case when seller clicks from post-valuation email
+            if (!$instruction && $property) {
+                $instruction = \App\Models\PropertyInstruction::create([
+                    'property_id' => $property->id,
+                    'seller_id' => $user->id,
+                    'status' => 'pending',
+                    'requested_at' => now(), // Mark as requested when seller clicks the link
+                    'fee_percentage' => 1.5,
+                ]);
+            }
         }
 
         // If no property-specific instruction exists, create default data
@@ -438,10 +462,18 @@ class SellerController extends Controller
                 ]
             );
 
-            // Update property status to "signed"
+            // Update property status to "awaiting_aml" (seller must upload AML documents)
             $property->update([
-                'status' => 'signed',
+                'status' => 'awaiting_aml',
             ]);
+
+            // Create AML check record if it doesn't exist (for document upload)
+            \App\Models\AmlCheck::firstOrCreate(
+                ['user_id' => $user->id],
+                [
+                    'verification_status' => 'pending',
+                ]
+            );
 
             \DB::commit();
 
@@ -455,7 +487,7 @@ class SellerController extends Controller
             }
 
             return redirect()->route('seller.properties.show', $property->id)
-                ->with('success', 'Congratulations! Your instruction has been signed successfully. A Welcome Pack has been sent to your email address.');
+                ->with('success', 'Congratulations! Your instruction has been signed successfully. A Welcome Pack has been sent to your email address. Please provide your AML documents (ID + Proof of Address) and solicitor details to proceed.');
 
         } catch (\Exception $e) {
             \DB::rollBack();
@@ -475,30 +507,21 @@ class SellerController extends Controller
      */
     public function showOfferDecision($id)
     {
-        // In a real application, you would fetch the offer from database
-        // For now, we'll use sample data
-        $offer = (object) [
-            'id' => $id,
-            'buyer_name' => 'John Doe',
-            'amount' => 450000,
-            'offer_date' => date('d M Y'),
-            'buyer_position_text' => 'First-time buyer',
-            'funding_type' => 'Mortgage',
-            'deposit_amount' => 45000,
-            'conditions' => 'Subject to survey and mortgage approval',
-            'aml_badge_class' => 'good',
-            'aml_status_text' => 'Verified',
-            'pof_badge_class' => 'good',
-            'pof_status_text' => 'Verified',
-            'photo_id_status' => 'Verified',
-            'address_proof_status' => 'Verified',
-            'pof_documents_status' => 'Verified',
-            'aip_status' => 'Provided',
-            'solicitor_name' => 'Jane Smith',
-            'solicitor_firm' => 'Smith & Partners Solicitors',
-            'solicitor_email' => 'jane.smith@smithpartners.co.uk',
-            'solicitor_phone' => '020 1234 5678',
-        ];
+        $user = auth()->user();
+        
+        $offer = \App\Models\Offer::with(['buyer', 'property'])->findOrFail($id);
+
+        // Check if user owns the property
+        if ($offer->property->seller_id !== $user->id && !in_array($user->role, ['admin', 'agent'])) {
+            return redirect()->route('seller.dashboard')
+                ->with('error', 'You do not have permission to view this offer.');
+        }
+
+        // Only show pending offers for decision
+        if ($offer->status !== 'pending') {
+            return redirect()->route('seller.properties.show', $offer->property_id)
+                ->with('info', 'This offer has already been responded to.');
+        }
 
         return view('seller.offer-decision', compact('offer'));
     }
@@ -512,31 +535,126 @@ class SellerController extends Controller
      */
     public function handleOfferDecision(Request $request, $id)
     {
+        $user = auth()->user();
+        
+        $offer = \App\Models\Offer::with(['buyer', 'property'])->findOrFail($id);
+
+        // Check if user owns the property
+        if ($offer->property->seller_id !== $user->id && !in_array($user->role, ['admin', 'agent'])) {
+            return redirect()->route('seller.dashboard')
+                ->with('error', 'You do not have permission to respond to this offer.');
+        }
+
+        // Only allow responding to pending offers
+        if ($offer->status !== 'pending') {
+            return back()->with('error', 'This offer has already been responded to.');
+        }
+
         $validated = $request->validate([
             'decision' => ['required', 'string', 'in:accepted,declined,counter'],
             'notes' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        // In a real application, you would update the offer in database
-        // Example:
-        // $offer = Offer::findOrFail($id);
-        // $offer->update([
-        //     'decision' => $validated['decision'],
-        //     'seller_notes' => $validated['notes'] ?? null,
-        //     'decision_date' => now(),
-        //     'status' => $validated['decision'] === 'accepted' ? 'accepted' : ($validated['decision'] === 'declined' ? 'declined' : 'counter_offered'),
-        // ]);
-        //
-        // Send notification to buyer
-        // Notification::send($offer->buyer, new OfferDecisionNotification($offer));
+        try {
+            \DB::beginTransaction();
 
-        $decisionMessages = [
-            'accepted' => 'You have accepted the offer. The buyer has been notified.',
-            'declined' => 'You have declined the offer. The buyer has been notified.',
-            'counter' => 'You have requested a counter-offer discussion. The buyer has been notified.',
-        ];
+            // Map decision to status
+            $statusMap = [
+                'accepted' => 'accepted',
+                'declined' => 'declined',
+                'counter' => 'countered',
+            ];
 
-        return redirect()->route('seller.offer.decision', $id)->with('success', $decisionMessages[$validated['decision']] ?? 'Your decision has been recorded.');
+            $newStatus = $statusMap[$validated['decision']];
+
+            // Update offer status
+            $offer->update([
+                'status' => $newStatus,
+            ]);
+
+            // Create offer decision record
+            \App\Models\OfferDecision::create([
+                'offer_id' => $offer->id,
+                'seller_id' => $user->id,
+                'decision' => $validated['decision'],
+                'comments' => $validated['notes'] ?? null,
+                'decided_at' => now(),
+            ]);
+
+            // If accepted, update property status and create sales progression
+            if ($validated['decision'] === 'accepted') {
+                // Update property status to SSTC
+                $offer->property->update([
+                    'status' => 'sstc',
+                ]);
+
+                // Create sales progression record
+                $salesProgression = \App\Models\SalesProgression::create([
+                    'property_id' => $offer->property_id,
+                    'buyer_id' => $offer->buyer_id,
+                    'offer_id' => $offer->id,
+                    'solicitor_seller' => $offer->property->solicitor_email ?? null,
+                    // Buyer solicitor would be stored separately or in offer details
+                ]);
+
+                // Generate and send Memorandum of Sale
+                try {
+                    $memorandumService = new \App\Services\MemorandumOfSaleService();
+                    $memorandumPath = $memorandumService->generateAndSave($offer, $offer->property, $salesProgression);
+
+                    // Update sales progression with memorandum path
+                    $salesProgression->update([
+                        'memorandum_of_sale_issued' => true,
+                        'memorandum_path' => $memorandumPath,
+                    ]);
+
+                    // Send Memorandum of Sale to both solicitors
+                    if ($offer->property->solicitor_email) {
+                        \Mail::to($offer->property->solicitor_email)->send(
+                            new \App\Mail\MemorandumOfSale($offer, $offer->property, $memorandumPath, 'seller')
+                        );
+                    }
+
+                    // Send to buyer solicitor (if available in offer or buyer profile)
+                    // For now, we'll send to buyer email as placeholder
+                    \Mail::to($offer->buyer->email)->send(
+                        new \App\Mail\MemorandumOfSale($offer, $offer->property, $memorandumPath, 'buyer')
+                    );
+
+                } catch (\Exception $e) {
+                    \Log::error('Memorandum of Sale generation error: ' . $e->getMessage());
+                    // Don't fail the transaction if memorandum generation fails
+                }
+            }
+
+            \DB::commit();
+
+            // Send notification to buyer
+            try {
+                \Mail::to($offer->buyer->email)->send(
+                    new \App\Mail\OfferDecisionNotification($offer, $offer->property, $offer->buyer, $validated['decision'])
+                );
+            } catch (\Exception $e) {
+                \Log::error('Failed to send offer decision notification to buyer: ' . $e->getMessage());
+            }
+
+            $decisionMessages = [
+                'accepted' => 'You have accepted the offer! A Memorandum of Sale has been generated and sent to both solicitors.',
+                'declined' => 'You have declined the offer. The buyer has been notified.',
+                'counter' => 'You have requested a counter-offer discussion. The buyer has been notified.',
+            ];
+
+            return redirect()->route('seller.properties.show', $offer->property_id)
+                ->with('success', $decisionMessages[$validated['decision']] ?? 'Your decision has been recorded.');
+
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            \Log::error('Offer decision error: ' . $e->getMessage());
+
+            return back()
+                ->withInput()
+                ->with('error', 'An error occurred while processing your decision. Please try again.');
+        }
     }
 
     /**
@@ -605,6 +723,166 @@ class SellerController extends Controller
         // }
 
         return redirect()->route('seller.homecheck.upload', $id)->with('success', 'HomeCheck submitted successfully! Your room images have been uploaded.');
+    }
+
+    /**
+     * Show AML document upload form.
+     *
+     * @param  int  $id  Property ID
+     * @return \Illuminate\Contracts\Support\Renderable
+     */
+    public function showAmlUpload($id)
+    {
+        $user = auth()->user();
+        $property = \App\Models\Property::where('seller_id', $user->id)->findOrFail($id);
+
+        // Only allow AML upload for properties awaiting AML
+        if (!in_array($property->status, ['awaiting_aml', 'signed'])) {
+            return redirect()->route('seller.properties.show', $property->id)
+                ->with('error', 'You can only upload AML documents after signing the instruction.');
+        }
+
+        $amlCheck = \App\Models\AmlCheck::where('user_id', $user->id)->first();
+
+        return view('seller.aml-upload', compact('property', 'amlCheck'));
+    }
+
+    /**
+     * Store AML documents.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  int  $id  Property ID
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function storeAmlUpload(Request $request, $id)
+    {
+        $user = auth()->user();
+        $property = \App\Models\Property::where('seller_id', $user->id)->findOrFail($id);
+
+        // Only allow AML upload for properties awaiting AML
+        if (!in_array($property->status, ['awaiting_aml', 'signed'])) {
+            return redirect()->route('seller.properties.show', $property->id)
+                ->with('error', 'You can only upload AML documents after signing the instruction.');
+        }
+
+        $validated = $request->validate([
+            'id_document' => ['required', 'file', 'mimes:jpeg,png,jpg,pdf', 'max:5120'],
+            'proof_of_address' => ['required', 'file', 'mimes:jpeg,png,jpg,pdf', 'max:5120'],
+        ], [
+            'id_document.required' => 'Please upload a valid ID document (Photo ID, Passport, or Driving License).',
+            'id_document.file' => 'The ID document must be a valid file.',
+            'id_document.mimes' => 'The ID document must be a JPEG, PNG, JPG, or PDF file.',
+            'id_document.max' => 'The ID document must not be larger than 5MB.',
+            'proof_of_address.required' => 'Please upload a valid Proof of Address document (Utility bill, Bank statement, or Council tax bill).',
+            'proof_of_address.file' => 'The Proof of Address must be a valid file.',
+            'proof_of_address.mimes' => 'The Proof of Address must be a JPEG, PNG, JPG, or PDF file.',
+            'proof_of_address.max' => 'The Proof of Address must not be larger than 5MB.',
+        ]);
+
+        try {
+            // Store uploaded files
+            $idDocumentPath = $request->file('id_document')->store('aml-documents/' . $user->id, 'public');
+            $proofOfAddressPath = $request->file('proof_of_address')->store('aml-documents/' . $user->id, 'public');
+
+            // Update or create AML check
+            $amlCheck = \App\Models\AmlCheck::updateOrCreate(
+                ['user_id' => $user->id],
+                [
+                    'id_document' => $idDocumentPath,
+                    'proof_of_address' => $proofOfAddressPath,
+                    'verification_status' => 'pending', // Will be verified by admin/agent
+                ]
+            );
+
+            // Update property status from "awaiting_aml" to "signed" after AML documents are uploaded
+            if ($property->status === 'awaiting_aml') {
+                $property->update([
+                    'status' => 'signed',
+                ]);
+            }
+
+            return redirect()->route('seller.properties.show', $property->id)
+                ->with('success', 'AML documents uploaded successfully! Your documents are being reviewed and you will be notified once verification is complete.');
+
+        } catch (\Exception $e) {
+            \Log::error('AML document upload error: ' . $e->getMessage());
+
+            return back()
+                ->withInput()
+                ->with('error', 'An error occurred while uploading your documents. Please try again.');
+        }
+    }
+
+    /**
+     * Show solicitor details form.
+     *
+     * @param  int  $id  Property ID
+     * @return \Illuminate\Contracts\Support\Renderable
+     */
+    public function showSolicitorDetails($id)
+    {
+        $user = auth()->user();
+        $property = \App\Models\Property::where('seller_id', $user->id)->findOrFail($id);
+
+        // Only allow solicitor details for signed properties
+        if ($property->status !== 'signed') {
+            return redirect()->route('seller.properties.show', $property->id)
+                ->with('error', 'You can only provide solicitor details after signing the instruction.');
+        }
+
+        return view('seller.solicitor-details', compact('property'));
+    }
+
+    /**
+     * Store solicitor details.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  int  $id  Property ID
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function storeSolicitorDetails(Request $request, $id)
+    {
+        $user = auth()->user();
+        $property = \App\Models\Property::where('seller_id', $user->id)->findOrFail($id);
+
+        // Only allow solicitor details for signed properties
+        if ($property->status !== 'signed') {
+            return redirect()->route('seller.properties.show', $property->id)
+                ->with('error', 'You can only provide solicitor details after signing the instruction.');
+        }
+
+        $validated = $request->validate([
+            'solicitor_name' => ['required', 'string', 'max:255'],
+            'solicitor_firm' => ['required', 'string', 'max:255'],
+            'solicitor_email' => ['required', 'email', 'max:255'],
+            'solicitor_phone' => ['required', 'string', 'max:20'],
+        ], [
+            'solicitor_name.required' => 'Please provide the solicitor\'s name.',
+            'solicitor_firm.required' => 'Please provide the solicitor\'s firm name.',
+            'solicitor_email.required' => 'Please provide the solicitor\'s email address.',
+            'solicitor_email.email' => 'Please provide a valid email address.',
+            'solicitor_phone.required' => 'Please provide the solicitor\'s phone number.',
+        ]);
+
+        try {
+            $property->update([
+                'solicitor_name' => $validated['solicitor_name'],
+                'solicitor_firm' => $validated['solicitor_firm'],
+                'solicitor_email' => $validated['solicitor_email'],
+                'solicitor_phone' => $validated['solicitor_phone'],
+                'solicitor_details_completed' => true,
+            ]);
+
+            return redirect()->route('seller.properties.show', $property->id)
+                ->with('success', 'Solicitor details saved successfully!');
+
+        } catch (\Exception $e) {
+            \Log::error('Solicitor details save error: ' . $e->getMessage());
+
+            return back()
+                ->withInput()
+                ->with('error', 'An error occurred while saving your solicitor details. Please try again.');
+        }
     }
 
     /**

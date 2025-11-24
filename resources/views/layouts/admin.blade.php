@@ -110,7 +110,8 @@
             <a href="{{ route('admin.dashboard') }}">Dashboard</a>
             <a href="{{ route('admin.valuations.index') }}">Valuations</a>
             <a href="#">Users</a>
-            <a href="#">Properties</a>
+            <a href="{{ route('admin.properties.index') }}">Properties</a>
+            <a href="{{ route('profile.show') }}">Profile</a>
             <a href="#">Settings</a>
             <form action="{{ route('logout') }}" method="POST" style="display: inline; margin-left: 28px;">
                 @csrf

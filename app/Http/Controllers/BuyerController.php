@@ -198,39 +198,168 @@ class BuyerController extends Controller
             'buying_position.required' => 'Please select your buying position.',
         ]);
 
-        // In a real application, you would save the offer to database
-        // Example:
-        // $offer = Offer::create([
-        //     'property_id' => $id,
-        //     'buyer_id' => auth()->id(),
-        //     'offer_amount' => $validated['offer_amount'],
-        //     'funding_type' => $validated['funding_type'],
-        //     'deposit_amount' => $validated['deposit_amount'] ?? null,
-        //     'buying_position' => $validated['buying_position'],
-        //     'conditions' => $validated['conditions'] ?? null,
-        //     'solicitor_name' => $validated['solicitor_name'] ?? null,
-        //     'solicitor_firm' => $validated['solicitor_firm'] ?? null,
-        //     'solicitor_email' => $validated['solicitor_email'] ?? null,
-        //     'solicitor_phone' => $validated['solicitor_phone'] ?? null,
-        //     'status' => 'pending',
-        //     'submitted_at' => now(),
-        // ]);
-        //
-        // Handle file uploads
-        // if ($request->hasFile('proof_of_funds')) {
-        //     $proofOfFundsPath = $request->file('proof_of_funds')->store('offers/documents', 'public');
-        //     $offer->update(['proof_of_funds_path' => $proofOfFundsPath]);
-        // }
-        //
-        // if ($request->hasFile('agreement_in_principle')) {
-        //     $aipPath = $request->file('agreement_in_principle')->store('offers/documents', 'public');
-        //     $offer->update(['agreement_in_principle_path' => $aipPath]);
-        // }
-        //
-        // Send notification to seller
-        // Notification::send($property->seller, new NewOfferNotification($offer));
+        $user = auth()->user();
+        $property = \App\Models\Property::where('status', 'live')->findOrFail($id);
 
-        return redirect()->route('buyer.make-offer', $id)->with('success', 'Your offer has been submitted successfully. The seller has been notified and will respond shortly.');
+        // Prevent buyers from making offers on their own properties
+        if ($property->seller_id === $user->id) {
+            return back()->with('error', 'You cannot make an offer on your own property.');
+        }
+
+        try {
+            \DB::beginTransaction();
+
+            // Map funding type
+            $fundingTypeMap = [
+                'cash' => 'cash',
+                'mortgage' => 'mortgage',
+                'combination' => 'part_mortgage',
+            ];
+
+            // Create offer
+            $offer = \App\Models\Offer::create([
+                'property_id' => $property->id,
+                'buyer_id' => $user->id,
+                'offer_amount' => $validated['offer_amount'],
+                'funding_type' => $fundingTypeMap[$validated['funding_type']] ?? $validated['funding_type'],
+                'deposit_amount' => $validated['deposit_amount'] ?? null,
+                'chain_position' => $validated['buying_position'] ?? null,
+                'conditions' => $validated['conditions'] ?? null,
+                'status' => 'pending',
+            ]);
+
+            // Handle file uploads if needed (can be stored in a separate offers_documents table)
+            // For now, we'll skip file handling as it's not in the Offer model fillable
+
+            \DB::commit();
+
+            // Send notification to seller
+            try {
+                \Mail::to($property->seller->email)->send(
+                    new \App\Mail\NewOfferNotification($offer, $property, $property->seller)
+                );
+            } catch (\Exception $e) {
+                \Log::error('Failed to send new offer notification to seller: ' . $e->getMessage());
+            }
+
+            // Notify all agents/admins
+            $agents = \App\Models\User::whereIn('role', ['admin', 'agent'])->get();
+            foreach ($agents as $agent) {
+                try {
+                    \Mail::to($agent->email)->send(
+                        new \App\Mail\NewOfferNotification($offer, $property, $agent)
+                    );
+                } catch (\Exception $e) {
+                    \Log::error('Failed to send new offer notification to agent: ' . $e->getMessage());
+                }
+            }
+
+            return redirect()->route('buyer.dashboard')
+                ->with('success', 'Your offer has been submitted successfully! The seller and agent have been notified and will respond shortly.');
+
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            \Log::error('Offer submission error: ' . $e->getMessage());
+
+            return back()
+                ->withInput()
+                ->with('error', 'An error occurred while submitting your offer. Please try again.');
+        }
+    }
+
+    /**
+     * Show viewing request form for a property.
+     *
+     * @param  int  $id  Property ID
+     * @return \Illuminate\Contracts\Support\Renderable
+     */
+    public function showViewingRequest($id)
+    {
+        $user = auth()->user();
+        
+        if (!in_array($user->role, ['buyer', 'both'])) {
+            return redirect()->route($this->getRoleDashboard($user->role))
+                ->with('error', 'You do not have permission to access this page.');
+        }
+
+        $property = \App\Models\Property::where('status', 'live')->findOrFail($id);
+
+        return view('buyer.viewing-request', compact('property'));
+    }
+
+    /**
+     * Store viewing request and notify viewing partner.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  int  $id  Property ID
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function storeViewingRequest(Request $request, $id)
+    {
+        $user = auth()->user();
+        
+        if (!in_array($user->role, ['buyer', 'both'])) {
+            return redirect()->route($this->getRoleDashboard($user->role))
+                ->with('error', 'You do not have permission to perform this action.');
+        }
+
+        $property = \App\Models\Property::where('status', 'live')->findOrFail($id);
+
+        $validated = $request->validate([
+            'viewing_date' => ['required', 'date', 'after:today'],
+            'viewing_time' => ['required', 'date_format:H:i'],
+            'preferred_contact_method' => ['nullable', 'string', 'in:phone,email'],
+            'notes' => ['nullable', 'string', 'max:1000'],
+        ], [
+            'viewing_date.required' => 'Please select a viewing date.',
+            'viewing_date.date' => 'Please provide a valid date.',
+            'viewing_date.after' => 'Viewing date must be in the future.',
+            'viewing_time.required' => 'Please select a viewing time.',
+            'viewing_time.date_format' => 'Please provide a valid time format.',
+        ]);
+
+        try {
+            \DB::beginTransaction();
+
+            // Combine date and time
+            $viewingDateTime = \Carbon\Carbon::parse($validated['viewing_date'] . ' ' . $validated['viewing_time']);
+
+            // Create viewing request
+            $viewing = \App\Models\Viewing::create([
+                'property_id' => $property->id,
+                'buyer_id' => $user->id,
+                'viewing_date' => $viewingDateTime,
+                'status' => 'scheduled',
+            ]);
+
+            // Notify viewing partner (PVA)
+            // In production, this would:
+            // 1. Assign a PVA to the viewing
+            // 2. Send notification email to the PVA
+            // For now, we'll just log it
+            \Log::info('Viewing request created', [
+                'viewing_id' => $viewing->id,
+                'property_id' => $property->id,
+                'buyer_id' => $user->id,
+                'viewing_date' => $viewingDateTime,
+            ]);
+
+            // TODO: Send notification email to viewing partner/PVA
+            // \Mail::to($pva->email)->send(new \App\Mail\ViewingRequestNotification($viewing, $property, $user));
+
+            \DB::commit();
+
+            return redirect()->route('buyer.dashboard')
+                ->with('success', 'Viewing request submitted successfully! A viewing partner will contact you to confirm the appointment.');
+
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            \Log::error('Viewing request error: ' . $e->getMessage());
+
+            return back()
+                ->withInput()
+                ->with('error', 'An error occurred while submitting your viewing request. Please try again.');
+        }
     }
 
     /**

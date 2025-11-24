@@ -16,6 +16,7 @@ class SalesProgression extends Model
         'solicitor_buyer',
         'solicitor_seller',
         'memorandum_of_sale_issued',
+        'memorandum_path',
         'enquiries_raised',
         'enquiries_answered',
         'searches_ordered',

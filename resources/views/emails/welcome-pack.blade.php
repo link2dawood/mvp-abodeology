@@ -34,16 +34,29 @@
         <p><strong>Status:</strong> Signed</p>
     </div>
 
+    <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 20px; border-radius: 8px; margin: 20px 0;">
+        <h3 style="margin-top: 0; color: #856404;">⚠️ Action Required: Upload AML Documents</h3>
+        <p style="color: #856404; margin: 10px 0;">To proceed with your property sale, please upload your AML documents:</p>
+        <ul style="color: #856404; margin: 10px 0; padding-left: 20px;">
+            <li><strong>Photo ID:</strong> Passport, Driving License, or National ID</li>
+            <li><strong>Proof of Address:</strong> Utility bill, Bank statement, or Council tax bill (dated within last 3 months)</li>
+        </ul>
+        <p style="color: #856404; margin: 10px 0; font-size: 14px;">
+            <em>Note: Your agent has already visually checked your ID at the valuation appointment as required by HMRC/EA Act. Please upload these documents via your dashboard to complete the AML verification process.</em>
+        </p>
+    </div>
+
     <h3 style="color: #2CB8B4;">What's Next?</h3>
-    <ul>
-        <li>Our team will review your property listing</li>
-        <li>We'll prepare marketing materials for your property</li>
-        <li>Your property will be prepared for listing on the market</li>
-        <li>You can track the progress through your seller dashboard</li>
-    </ul>
+    <ol>
+        <li><strong>Upload AML Documents:</strong> Please upload your ID and Proof of Address via your dashboard</li>
+        <li><strong>Provide Solicitor Details:</strong> Share your solicitor's contact information</li>
+        <li><strong>HomeCheck:</strong> Our team will schedule and complete an Abodeology HomeCheck</li>
+        <li><strong>Property Listing:</strong> We'll prepare marketing materials and list your property</li>
+        <li><strong>Track Progress:</strong> Monitor everything through your seller dashboard</li>
+    </ol>
 
     <div style="text-align: center; margin: 30px 0;">
-        <a href="{{ $sellerDashboardUrl }}" style="background: #2CB8B4; color: #FFFFFF; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600;">View Your Dashboard</a>
+        <a href="{{ $sellerDashboardUrl }}" style="background: #2CB8B4; color: #FFFFFF; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600;">View Your Dashboard & Upload AML Documents</a>
     </div>
 
     <p>If you have any questions or need assistance, please don't hesitate to contact us.</p>

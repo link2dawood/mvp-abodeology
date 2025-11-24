@@ -1,0 +1,28 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::table('sales_progression', function (Blueprint $table) {
+            $table->string('memorandum_path', 255)->nullable()->after('memorandum_of_sale_issued');
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::table('sales_progression', function (Blueprint $table) {
+            $table->dropColumn('memorandum_path');
+        });
+    }
+};

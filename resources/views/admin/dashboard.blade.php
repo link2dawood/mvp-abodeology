@@ -205,6 +205,37 @@
 
     <!-- MAIN DATA GRID -->
     <div class="grid">
+        <!-- TODAY'S APPOINTMENTS -->
+        @if(isset($todaysAppointments) && $todaysAppointments->count() > 0)
+        <div class="card">
+            <h3>Today's Appointments</h3>
+            <table class="table">
+                <tr>
+                    <th>Time</th>
+                    <th>Property</th>
+                    <th>Seller</th>
+                    <th>Action</th>
+                </tr>
+                @foreach($todaysAppointments as $appointment)
+                    <tr>
+                        <td>
+                            @if($appointment->valuation_time)
+                                {{ \Carbon\Carbon::parse($appointment->valuation_time)->format('g:i A') }}
+                            @else
+                                N/A
+                            @endif
+                        </td>
+                        <td>{{ Str::limit($appointment->property_address, 30) }}</td>
+                        <td>{{ $appointment->seller->name ?? 'N/A' }}</td>
+                        <td>
+                            <a href="{{ route('admin.valuations.show', $appointment->id) }}" class="btn" style="padding: 6px 12px; font-size: 13px;">View</a>
+                        </td>
+                    </tr>
+                @endforeach
+            </table>
+        </div>
+        @endif
+
         <!-- NEW VALUATIONS -->
         <div class="card">
             <h3>Recent Valuation Requests</h3>
@@ -233,6 +264,40 @@
                 @endforelse
             </table>
             <a href="{{ route('admin.valuations.index') }}" class="btn btn-main">View All Valuations</a>
+        </div>
+
+        <!-- PROPERTIES -->
+        <div class="card">
+            <h3>All Properties</h3>
+            <table class="table">
+                <tr>
+                    <th>Address</th>
+                    <th>Seller</th>
+                    <th>Status</th>
+                </tr>
+                @php
+                    $recentProperties = \App\Models\Property::with('seller')
+                        ->orderBy('created_at', 'desc')
+                        ->limit(5)
+                        ->get();
+                @endphp
+                @forelse($recentProperties as $property)
+                    <tr>
+                        <td>{{ Str::limit($property->address, 30) }}</td>
+                        <td>{{ $property->seller->name ?? 'N/A' }}</td>
+                        <td>
+                            <span class="status status-{{ $property->status === 'draft' ? 'pending' : ($property->status === 'live' ? 'active' : 'active') }}">
+                                {{ ucfirst(str_replace('_', ' ', $property->status)) }}
+                            </span>
+                        </td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="3" style="text-align: center; color: #999;">No properties yet</td>
+                    </tr>
+                @endforelse
+            </table>
+            <a href="{{ route('admin.properties.index') }}" class="btn btn-main">View All Properties</a>
         </div>
 
         <!-- NEW SELLERS -->

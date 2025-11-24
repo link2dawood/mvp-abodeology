@@ -11,9 +11,14 @@ class ViewingFeedback extends Model
 
     protected $fillable = [
         'viewing_id',
-        'buyer_interest',
-        'offer_intent',
-        'feedback_text',
+        'buyer_interested',
+        'buyer_feedback',
+        'property_condition',
+        'buyer_notes',
+        'pva_notes',
+        'buyer_interest', // Legacy field
+        'offer_intent', // Legacy field
+        'feedback_text', // Legacy field
     ];
 
     protected function casts(): array

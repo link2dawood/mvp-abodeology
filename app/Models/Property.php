@@ -24,6 +24,11 @@ class Property extends Model
         'ground_rent',
         'service_charge',
         'managing_agent',
+        'solicitor_name',
+        'solicitor_firm',
+        'solicitor_email',
+        'solicitor_phone',
+        'solicitor_details_completed',
         'asking_price',
         'status',
     ];
@@ -85,6 +90,22 @@ class Property extends Model
     public function documents()
     {
         return $this->hasMany(PropertyDocument::class);
+    }
+
+    /**
+     * Get photos for this property.
+     */
+    public function photos()
+    {
+        return $this->hasMany(PropertyPhoto::class)->orderBy('sort_order');
+    }
+
+    /**
+     * Get primary photo for this property.
+     */
+    public function primaryPhoto()
+    {
+        return $this->hasOne(PropertyPhoto::class)->where('is_primary', true);
     }
 
     /**

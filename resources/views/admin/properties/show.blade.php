@@ -58,9 +58,18 @@
         color: #FFF; 
     }
 
+    .status-property_details_captured { 
+        background: #2CB8B4; 
+        color: #FFF; 
+    }
     .status-property_details_completed { 
         background: #2CB8B4; 
         color: #FFF; 
+    }
+
+    .status-awaiting_aml { 
+        background: #ffc107; 
+        color: #000; 
     }
 
     .status-signed { 
@@ -225,20 +234,31 @@
     </div>
     @endif
 
-    @if($property->status === 'property_details_completed' && (!$property->instruction || $property->instruction->status !== 'signed'))
+    @if(in_array($property->status, ['property_details_captured', 'property_details_completed']) && (!$property->instruction || $property->instruction->status !== 'signed'))
     <div class="card" style="background: #E8F4F3; border-left: 4px solid var(--abodeology-teal);">
         <h3 style="color: var(--abodeology-teal); margin-top: 0;">Next Steps</h3>
         <p><strong>Ask the seller if they want to instruct now or later.</strong></p>
-        <p>If they choose to "Sign Up Now", you can request instruction and they will receive a link to sign the Terms & Conditions digitally.</p>
         
         @if(!$property->instruction || $property->instruction->status !== 'pending')
-        <form action="{{ route('admin.properties.request-instruction', $property->id) }}" method="POST" style="margin-top: 20px;">
-            @csrf
-            <button type="submit" class="btn btn-main">Request Instruction from Seller</button>
-            <p style="font-size: 13px; color: #666; margin-top: 10px;">
-                This will send a notification to the seller with a link to sign the Terms & Conditions.
-            </p>
-        </form>
+        <div style="margin-top: 20px;">
+            <div style="margin-bottom: 20px;">
+                <h4 style="color: var(--abodeology-teal); margin-bottom: 10px;">Sign Up Now</h4>
+                <p style="font-size: 14px; color: #666; margin-bottom: 10px;">If the seller chooses to sign up immediately, send them an instruction request with a direct link to sign the Terms & Conditions.</p>
+                <form action="{{ route('admin.properties.request-instruction', $property->id) }}" method="POST" style="display: inline-block;">
+                    @csrf
+                    <button type="submit" class="btn btn-main">Sign Up Now - Request Instruction</button>
+                </form>
+            </div>
+            
+            <div style="border-top: 1px solid #ccc; padding-top: 20px; margin-top: 20px;">
+                <h4 style="color: var(--abodeology-teal); margin-bottom: 10px;">Sign Up Later</h4>
+                <p style="font-size: 14px; color: #666; margin-bottom: 10px;">If the seller prefers to sign up later, send them a post-valuation follow-up email with an "Instruct Abodeology" button. They can click the button when they're ready.</p>
+                <form action="{{ route('admin.properties.send-post-valuation-email', $property->id) }}" method="POST" style="display: inline-block;">
+                    @csrf
+                    <button type="submit" class="btn" style="background: #6c757d;">Sign Up Later - Send Post-Valuation Email</button>
+                </form>
+            </div>
+        </div>
         @else
         <p style="color: #2CB8B4; font-weight: 600; margin-top: 15px;">
             ✓ Instruction request has been sent. Waiting for seller to sign.
@@ -255,7 +275,115 @@
         <h3 style="color: #28a745; margin-top: 0;">✓ Instruction Signed</h3>
         <p>Congratulations! The seller has signed the Terms & Conditions. The Welcome Pack has been sent to the seller.</p>
         <p><strong>Signed Date:</strong> {{ \Carbon\Carbon::parse($property->instruction->signed_at)->format('l, F j, Y g:i A') }}</p>
+        
+        @php
+            $activeHomeCheck = $property->homecheckReports->whereIn('status', ['scheduled', 'in_progress'])->first();
+            $completedHomeCheck = $property->homecheckReports->where('status', 'completed')->first();
+        @endphp
+
+        <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #c3e6cb;">
+            <h4 style="color: #28a745; margin-bottom: 15px;">HomeCheck Status</h4>
+            @if($completedHomeCheck)
+                <p style="color: #28a745; font-weight: 600;">
+                    ✓ HomeCheck Completed
+                </p>
+                <p style="font-size: 13px; color: #666; margin-top: 5px;">
+                    <strong>Completed:</strong> {{ \Carbon\Carbon::parse($completedHomeCheck->completed_at)->format('l, F j, Y g:i A') }}
+                    @if($completedHomeCheck->completed_by)
+                        <br><strong>By:</strong> {{ $completedHomeCheck->completer->name ?? 'Agent' }}
+                    @endif
+                </p>
+            @elseif($activeHomeCheck)
+                <p style="color: #ffc107; font-weight: 600;">
+                    ⏳ HomeCheck {{ ucfirst(str_replace('_', ' ', $activeHomeCheck->status)) }}
+                </p>
+                <p style="font-size: 13px; color: #666; margin-top: 5px;">
+                    @if($activeHomeCheck->scheduled_date)
+                        <strong>Scheduled:</strong> {{ \Carbon\Carbon::parse($activeHomeCheck->scheduled_date)->format('l, F j, Y') }}
+                    @endif
+                    @if($activeHomeCheck->status === 'scheduled')
+                        <br><a href="{{ route('admin.properties.complete-homecheck', $property->id) }}" class="btn btn-main" style="margin-top: 10px;">Complete HomeCheck</a>
+                    @elseif($activeHomeCheck->status === 'in_progress')
+                        <br><a href="{{ route('admin.properties.complete-homecheck', $property->id) }}" class="btn btn-main" style="margin-top: 10px;">Continue HomeCheck Upload</a>
+                    @endif
+                </p>
+            @else
+                <p style="font-size: 14px; color: #666; margin-bottom: 10px;">
+                    Schedule a HomeCheck appointment to capture 360° images and photos of the property.
+                </p>
+                <a href="{{ route('admin.properties.schedule-homecheck', $property->id) }}" class="btn btn-main">Schedule HomeCheck</a>
+            @endif
+        </div>
     </div>
+    @endif
+
+    @if($property->status === 'signed' || $property->status === 'draft')
+        @php
+            $hasPhotos = $property->photos && $property->photos->count() > 0;
+            $hasFloorplan = $property->documents && $property->documents->where('document_type', 'floorplan')->count() > 0;
+            $hasEPC = $property->documents && $property->documents->where('document_type', 'epc')->count() > 0;
+        @endphp
+
+        <div class="card" style="background: #E8F4F3; border-left: 4px solid var(--abodeology-teal);">
+            <h3 style="color: var(--abodeology-teal); margin-top: 0;">Listing Preparation</h3>
+            
+            @if(!$hasPhotos || !$hasFloorplan || !$hasEPC)
+                <p style="font-size: 14px; color: #666; margin-bottom: 15px;">
+                    Upload photos, floorplan, and EPC to create a listing draft. Once ready, you can publish the listing to portals.
+                </p>
+                
+                @if(!$hasPhotos)
+                    <p style="color: #dc3545; font-size: 13px; margin-bottom: 8px;">✗ Photos required</p>
+                @else
+                    <p style="color: #28a745; font-size: 13px; margin-bottom: 8px;">✓ Photos uploaded ({{ $property->photos->count() }})</p>
+                @endif
+                
+                @if(!$hasFloorplan)
+                    <p style="color: #dc3545; font-size: 13px; margin-bottom: 8px;">✗ Floorplan (optional)</p>
+                @else
+                    <p style="color: #28a745; font-size: 13px; margin-bottom: 8px;">✓ Floorplan uploaded</p>
+                @endif
+                
+                @if(!$hasEPC)
+                    <p style="color: #dc3545; font-size: 13px; margin-bottom: 8px;">✗ EPC (optional)</p>
+                @else
+                    <p style="color: #28a745; font-size: 13px; margin-bottom: 8px;">✓ EPC uploaded</p>
+                @endif
+                
+                <div style="margin-top: 20px;">
+                    <a href="{{ route('admin.properties.listing-upload', $property->id) }}" class="btn btn-main">
+                        {{ $hasPhotos ? 'Update Listing Materials' : 'Upload Listing Materials' }}
+                    </a>
+                </div>
+            @else
+                <p style="color: #28a745; font-weight: 600; margin-bottom: 15px;">
+                    ✓ Listing draft ready! All materials have been uploaded.
+                </p>
+                <p style="font-size: 13px; color: #666; margin-bottom: 15px;">
+                    You can now publish the listing to Rightmove and other portals.
+                </p>
+                <div style="margin-top: 20px;">
+                    <form action="{{ route('admin.properties.publish', $property->id) }}" method="POST" style="display: inline-block;" onsubmit="return confirm('Are you sure you want to publish this listing to all portals? This will set the status to \"Live on Market\".');">
+                        @csrf
+                        <button type="submit" class="btn btn-main">Publish Listing to Portals</button>
+                    </form>
+                    <a href="{{ route('admin.properties.listing-upload', $property->id) }}" class="btn btn-secondary">Update Materials</a>
+                </div>
+            @endif
+        </div>
+    @endif
+
+    @if($property->status === 'live')
+        <div class="card" style="background: #d4edda; border-left: 4px solid #28a745;">
+            <h3 style="color: #28a745; margin-top: 0;">✓ Listing Live on Market</h3>
+            <p style="font-size: 14px; color: #666; margin-bottom: 15px;">
+                This property is live and available for viewing requests.
+            </p>
+            <p style="font-size: 13px; color: #666;">
+                <strong>Status:</strong> Live on Market<br>
+                <strong>Published:</strong> {{ $property->updated_at->format('l, F j, Y g:i A') }}
+            </p>
+        </div>
     @endif
 </div>
 @endsection

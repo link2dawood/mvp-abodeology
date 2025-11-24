@@ -22,8 +22,8 @@ Route::middleware(['auth'])->prefix('profile')->name('profile.')->group(function
 
 // Public Valuation Booking Routes (no auth required)
 Route::prefix('valuation')->name('valuation.')->group(function () {
-    Route::get('/book', [App\Http\Controllers\ValuationController::class, 'showBookingForm'])->name('booking');
-    Route::post('/book', [App\Http\Controllers\ValuationController::class, 'storeBooking'])->name('booking.store');
+    Route::get('/booking', [App\Http\Controllers\ValuationController::class, 'showBookingForm'])->name('booking');
+    Route::post('/booking', [App\Http\Controllers\ValuationController::class, 'storeBooking'])->name('booking.store');
     Route::get('/success', [App\Http\Controllers\ValuationController::class, 'bookingSuccess'])->name('booking.success');
 });
 
@@ -34,12 +34,27 @@ Route::middleware(['auth', 'role.web:admin,agent'])->prefix('admin')->name('admi
     // Valuation Management Routes
     Route::get('/valuations', [App\Http\Controllers\AdminController::class, 'valuations'])->name('valuations.index');
     Route::get('/valuations/{id}', [App\Http\Controllers\AdminController::class, 'showValuation'])->name('valuations.show');
-    Route::get('/valuations/{id}/onboarding', [App\Http\Controllers\AdminController::class, 'showValuationOnboarding'])->name('valuations.onboarding');
-    Route::post('/valuations/{id}/onboarding', [App\Http\Controllers\AdminController::class, 'storeValuationOnboarding'])->name('valuations.onboarding.store');
+    Route::get('/valuations/{id}/valuation-form', [App\Http\Controllers\AdminController::class, 'showValuationForm'])->name('valuations.valuation-form');
+    Route::get('/valuations/{id}/onboarding', [App\Http\Controllers\AdminController::class, 'showValuationForm'])->name('valuations.onboarding');
+    Route::post('/valuations/{id}/valuation-form', [App\Http\Controllers\AdminController::class, 'storeValuationForm'])->name('valuations.valuation-form.store');
+    Route::post('/valuations/{id}/onboarding', [App\Http\Controllers\AdminController::class, 'storeValuationForm'])->name('valuations.onboarding.store');
     
     // Property Management Routes
+    Route::get('/properties', [App\Http\Controllers\AdminController::class, 'properties'])->name('properties.index');
     Route::get('/properties/{id}', [App\Http\Controllers\AdminController::class, 'showProperty'])->name('properties.show');
     Route::post('/properties/{id}/request-instruction', [App\Http\Controllers\AdminController::class, 'requestInstruction'])->name('properties.request-instruction');
+    Route::post('/properties/{id}/send-post-valuation-email', [App\Http\Controllers\AdminController::class, 'sendPostValuationEmail'])->name('properties.send-post-valuation-email');
+    
+    // HomeCheck Management Routes
+    Route::get('/properties/{id}/schedule-homecheck', [App\Http\Controllers\AdminController::class, 'showScheduleHomeCheck'])->name('properties.schedule-homecheck');
+    Route::post('/properties/{id}/schedule-homecheck', [App\Http\Controllers\AdminController::class, 'storeScheduleHomeCheck'])->name('properties.schedule-homecheck.store');
+    Route::get('/properties/{id}/complete-homecheck', [App\Http\Controllers\AdminController::class, 'showCompleteHomeCheck'])->name('properties.complete-homecheck');
+    Route::post('/properties/{id}/complete-homecheck', [App\Http\Controllers\AdminController::class, 'storeCompleteHomeCheck'])->name('properties.complete-homecheck.store');
+    
+    // Listing Management Routes
+    Route::get('/properties/{id}/listing-upload', [App\Http\Controllers\AdminController::class, 'showListingUpload'])->name('properties.listing-upload');
+    Route::post('/properties/{id}/listing-upload', [App\Http\Controllers\AdminController::class, 'storeListingUpload'])->name('properties.listing-upload.store');
+    Route::post('/properties/{id}/publish', [App\Http\Controllers\AdminController::class, 'publishListing'])->name('properties.publish');
 });
 
 // Buyer Routes
@@ -49,6 +64,10 @@ Route::middleware(['auth', 'role.web:buyer,both'])->prefix('buyer')->name('buyer
     Route::put('/profile', [App\Http\Controllers\BuyerController::class, 'updateProfile'])->name('profile.update');
     Route::get('/property/{id}/offer', [App\Http\Controllers\BuyerController::class, 'makeOffer'])->name('make-offer');
     Route::post('/property/{id}/offer', [App\Http\Controllers\BuyerController::class, 'storeOffer'])->name('offer.store');
+    
+    // Viewing Request Routes
+    Route::get('/property/{id}/viewing-request', [App\Http\Controllers\BuyerController::class, 'showViewingRequest'])->name('viewing.request');
+    Route::post('/property/{id}/viewing-request', [App\Http\Controllers\BuyerController::class, 'storeViewingRequest'])->name('viewing.request.store');
 });
 
 // Seller Routes
@@ -71,9 +90,22 @@ Route::middleware(['auth', 'role.web:seller,both'])->prefix('seller')->name('sel
     Route::put('/offer/{id}/decision', [App\Http\Controllers\SellerController::class, 'handleOfferDecision'])->name('offer.decision');
     Route::get('/property/{id}/homecheck', [App\Http\Controllers\SellerController::class, 'showRoomUpload'])->name('homecheck.upload');
     Route::post('/property/{id}/homecheck', [App\Http\Controllers\SellerController::class, 'storeRoomUpload'])->name('homecheck.store');
+    
+    // AML Documents & Solicitor Details Routes
+    Route::get('/property/{id}/aml-upload', [App\Http\Controllers\SellerController::class, 'showAmlUpload'])->name('aml.upload');
+    Route::post('/property/{id}/aml-upload', [App\Http\Controllers\SellerController::class, 'storeAmlUpload'])->name('aml.upload.store');
+    Route::get('/property/{id}/solicitor-details', [App\Http\Controllers\SellerController::class, 'showSolicitorDetails'])->name('solicitor.details');
+    Route::post('/property/{id}/solicitor-details', [App\Http\Controllers\SellerController::class, 'storeSolicitorDetails'])->name('solicitor.details.store');
 });
 
 // PVA Routes
 Route::middleware(['auth', 'role.web:pva'])->prefix('pva')->name('pva.')->group(function () {
     Route::get('/dashboard', [App\Http\Controllers\PVAController::class, 'dashboard'])->name('dashboard');
+    
+    // Viewing Management Routes
+    Route::get('/viewings', [App\Http\Controllers\PVAController::class, 'viewings'])->name('viewings.index');
+    Route::get('/viewings/{id}', [App\Http\Controllers\PVAController::class, 'showViewing'])->name('viewings.show');
+    Route::post('/viewings/{id}/confirm', [App\Http\Controllers\PVAController::class, 'confirmViewing'])->name('viewings.confirm');
+    Route::get('/viewings/{id}/feedback', [App\Http\Controllers\PVAController::class, 'showFeedback'])->name('viewings.feedback');
+    Route::post('/viewings/{id}/feedback', [App\Http\Controllers\PVAController::class, 'storeFeedback'])->name('viewings.feedback.store');
 });

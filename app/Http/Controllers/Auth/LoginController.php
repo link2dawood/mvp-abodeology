@@ -68,9 +68,13 @@ class LoginController extends Controller
                 return route('seller.dashboard');
             
             case 'both':
-                // Users with both roles - default to buyer dashboard
-                // They can navigate to seller dashboard from there
-                return route('buyer.dashboard');
+                // Users with both roles - check if they have seller activity
+                // If they have valuations or properties, redirect to seller dashboard
+                // Otherwise, redirect to buyer dashboard
+                $hasSellerActivity = $user->valuations()->exists() || $user->properties()->exists();
+                return $hasSellerActivity 
+                    ? route('seller.dashboard') 
+                    : route('buyer.dashboard');
             
             case 'pva':
                 return route('pva.dashboard');

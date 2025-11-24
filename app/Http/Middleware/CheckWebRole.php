@@ -31,8 +31,15 @@ class CheckWebRole
             return redirect()->route('login')->with('error', 'Your account does not have a valid role assigned.');
         }
 
+        // Split comma-separated roles (e.g., "seller,both" becomes ["seller", "both"])
+        $parsedRoles = [];
+        foreach ($roles as $role) {
+            $parsedRoles = array_merge($parsedRoles, explode(',', $role));
+        }
+        $parsedRoles = array_map('trim', $parsedRoles);
+
         // Expand role aliases to handle special cases
-        $allowedRoles = $this->expandRoleAliases($roles);
+        $allowedRoles = $this->expandRoleAliases($parsedRoles);
 
         // Check if user has required role
         if (in_array($userRole, $allowedRoles)) {
@@ -88,16 +95,29 @@ class CheckWebRole
      */
     private function redirectToRoleDashboard(string $userRole): Response
     {
+        $user = auth()->user();
+        
         $dashboardRoutes = [
             'admin' => route('admin.dashboard'),
             'agent' => route('admin.dashboard'),
             'buyer' => route('buyer.dashboard'),
             'seller' => route('seller.dashboard'),
-            'both' => route('buyer.dashboard'),
+            'both' => function() use ($user) {
+                // Users with both roles - check if they have seller activity
+                $hasSellerActivity = $user->valuations()->exists() || $user->properties()->exists();
+                return $hasSellerActivity 
+                    ? route('seller.dashboard') 
+                    : route('buyer.dashboard');
+            },
             'pva' => route('pva.dashboard'),
         ];
 
         $dashboardRoute = $dashboardRoutes[$userRole] ?? route('home');
+        
+        // Handle callable routes (for 'both' role)
+        if (is_callable($dashboardRoute)) {
+            $dashboardRoute = $dashboardRoute();
+        }
 
         return redirect($dashboardRoute)->with('error', 'You do not have permission to access this page.');
     }

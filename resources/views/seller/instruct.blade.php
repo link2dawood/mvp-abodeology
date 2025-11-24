@@ -192,13 +192,46 @@
             </div>
         </div>
 
-        <!-- TERMS & LEGAL -->
+        <!-- TERMS & CONDITIONS PDF -->
         <div class="card">
-            <h3>Key Terms of Business</h3>
+            <h3>Terms & Conditions of Business</h3>
             <div class="text-block">
-                By instructing Abodeology, you confirm you have reviewed and accept the full<br>
-                <strong>Estate Agency Terms & Conditions of Business</strong>.
-                <br><br>
+                <p style="margin-bottom: 15px;">
+                    <strong>Please review the full Terms & Conditions document below before signing.</strong>
+                </p>
+                <p style="margin-bottom: 20px; color: #856404; font-weight: 600;">
+                    ⚠️ You must read and understand the Terms & Conditions before proceeding with your signature.
+                </p>
+                
+                <!-- PDF Viewer -->
+                <div style="border: 2px solid var(--line-grey); border-radius: 8px; padding: 15px; background: #f9f9f9; margin-bottom: 20px;">
+                    <iframe 
+                        src="{{ asset('terms-and-conditions.pdf') }}" 
+                        width="100%" 
+                        height="600px" 
+                        style="border: 1px solid #ddd; border-radius: 4px;"
+                        title="Terms and Conditions PDF">
+                        <p style="padding: 20px; text-align: center;">
+                            Your browser does not support PDFs. 
+                            <a href="{{ asset('terms-and-conditions.pdf') }}" target="_blank" style="color: var(--abodeology-teal); text-decoration: underline;">
+                                Click here to download the Terms & Conditions PDF
+                            </a>
+                        </p>
+                    </iframe>
+                </div>
+                
+                <div style="text-align: center; margin-top: 15px;">
+                    <a href="{{ asset('terms-and-conditions.pdf') }}" target="_blank" class="btn" style="background: #6c757d;">
+                        Open PDF in New Window
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- KEY TERMS SUMMARY -->
+        <div class="card" style="background: #E8F4F3; border-left: 4px solid var(--abodeology-teal);">
+            <h3 style="color: var(--abodeology-teal); margin-top: 0;">Key Terms Summary</h3>
+            <div class="text-block">
                 <strong>Important:</strong><br>
                 • You have a <strong>14-day cancellation right</strong> under Consumer Contract Regulations.<br>
                 • If you request immediate marketing, you may still be liable for fees if we introduce a buyer during the cancellation period.<br><br>
@@ -256,7 +289,10 @@
             <div class="checkbox-block">
                 <input type="checkbox" name="declaration_terms" id="declaration_terms" value="1" required
                        class="{{ $errors->has('declaration_terms') ? 'error' : '' }}">
-                <label for="declaration_terms">I accept the Estate Agency Terms & Conditions of Business.</label>
+                <label for="declaration_terms">
+                    I have read and accept the <strong>Estate Agency Terms & Conditions of Business</strong> 
+                    (PDF document displayed above). By checking this box, I confirm I have reviewed the full terms and agree to be bound by them.
+                </label>
             </div>
             @error('declaration_terms')
                 <div class="error-message">{{ $message }}</div>

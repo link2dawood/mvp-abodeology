@@ -19,6 +19,8 @@ class Valuation extends Model
         'status',
         'notes',
         'seller_notes',
+        'id_visual_check',
+        'id_visual_check_notes',
     ];
 
     protected function casts(): array
@@ -27,6 +29,7 @@ class Valuation extends Model
             'valuation_date' => 'date',
             'valuation_time' => 'datetime',
             'estimated_value' => 'decimal:2',
+            'id_visual_check' => 'boolean',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
         ];

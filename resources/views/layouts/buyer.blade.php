@@ -100,7 +100,7 @@
         </a>
         <nav class="nav-links">
             <a href="{{ route('buyer.dashboard') }}">Dashboard</a>
-            <a href="{{ route('buyer.profile') }}">My Profile</a>
+            <a href="{{ route('profile.show') }}">Profile</a>
             <a href="#">Notifications</a>
             <form action="{{ route('logout') }}" method="POST" style="display: inline; margin-left: 28px;">
                 @csrf

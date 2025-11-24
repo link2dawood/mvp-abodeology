@@ -474,6 +474,46 @@
             @enderror
         </div>
 
+        <!-- ID VISUAL CHECK (HMRC/EA Act Requirement) -->
+        <div class="card" style="background: #fff3cd; border-left: 4px solid #ffc107;">
+            <h3>ID Visual Check <span style="font-size: 14px; font-weight: normal; color: #856404;">(Required by HMRC/EA Act)</span></h3>
+            <div style="background: #fff; padding: 15px; border-radius: 4px; margin-bottom: 15px;">
+                <p style="margin: 0 0 10px 0; color: #856404; font-weight: 600;">⚠️ IMPORTANT: Seller should have brought ID to the valuation appointment.</p>
+                <p style="margin: 0; font-size: 13px; color: #666;">
+                    Please visually check the seller's ID document (Photo ID, Passport, or Driving License) during the valuation. 
+                    This is required for HMRC and Estate Agents Act compliance.
+                </p>
+                <p style="margin: 10px 0 0 0; font-size: 13px; color: #666;">
+                    <strong>Note:</strong> AML documents (photo ID + proof of address) should NOT be collected at valuation. 
+                    These will be submitted via the seller dashboard after T&C signing.
+                </p>
+            </div>
+            <div class="form-group">
+                <label style="display: flex; align-items: center; font-weight: 600;">
+                    <input type="checkbox" 
+                           name="id_visual_check" 
+                           value="1" 
+                           {{ old('id_visual_check', $valuation->id_visual_check ?? false) ? 'checked' : '' }} 
+                           style="width: auto; margin-right: 8px; min-width: 20px;"
+                           required>
+                    <span style="color: #856404;">I confirm that I have visually checked the seller's ID document on-site</span>
+                </label>
+                @error('id_visual_check')
+                    <div class="error-message">{{ $message }}</div>
+                @enderror
+            </div>
+            <div class="form-group">
+                <textarea name="id_visual_check_notes" 
+                          rows="3" 
+                          placeholder="ID type checked, expiry date, any observations, etc."
+                          class="{{ $errors->has('id_visual_check_notes') ? 'error' : '' }}">{{ old('id_visual_check_notes', $valuation->id_visual_check_notes ?? '') }}</textarea>
+                <div class="help-text">Record details about the ID document that was visually checked (e.g., "UK Passport, expires 2028")</div>
+                @error('id_visual_check_notes')
+                    <div class="error-message">{{ $message }}</div>
+                @enderror
+            </div>
+        </div>
+
         <!-- SUBMIT -->
         <div style="margin-top: 30px;">
             <button type="submit" class="btn">Complete Onboarding & Create Property</button>
