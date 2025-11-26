@@ -70,6 +70,7 @@ Route::middleware(['auth', 'role.web:admin,agent'])->prefix('admin')->name('admi
     Route::get('/aml-checks', [App\Http\Controllers\AdminController::class, 'amlChecks'])->name('aml-checks.index');
     Route::get('/aml-checks/{id}', [App\Http\Controllers\AdminController::class, 'showAmlCheck'])->name('aml-checks.show');
     Route::post('/aml-checks/{id}/verify', [App\Http\Controllers\AdminController::class, 'verifyAmlCheck'])->name('aml-checks.verify');
+    Route::get('/aml-documents/{documentId}/serve', [App\Http\Controllers\AdminController::class, 'serveAmlDocument'])->name('aml-documents.serve');
     Route::post('/properties/{id}/publish', [App\Http\Controllers\AdminController::class, 'publishListing'])->name('properties.publish');
 });
 

@@ -263,9 +263,14 @@
                     @php
                         $isImage = in_array(strtolower(pathinfo($doc->file_path ?? $doc->file_path, PATHINFO_EXTENSION)), ['jpg', 'jpeg', 'png', 'gif']);
                         $disk = config('filesystems.default');
-                        $url = $disk === 's3' 
-                            ? \Storage::disk('s3')->url($doc->file_path ?? $doc->file_path)
-                            : asset('storage/' . ($doc->file_path ?? $doc->file_path));
+                        // Use secure route if document has an ID (AmlDocument model), otherwise use legacy method
+                        if (isset($doc->id) && is_numeric($doc->id)) {
+                            $url = route('admin.aml-documents.serve', $doc->id);
+                        } elseif ($disk === 's3') {
+                            $url = \Storage::disk('s3')->url($doc->file_path ?? $doc->file_path);
+                        } else {
+                            $url = asset('storage/' . ($doc->file_path ?? $doc->file_path));
+                        }
                     @endphp
                     @if($isImage)
                         <img src="{{ $url }}" alt="Photo ID Document" style="max-width: 100%; height: auto; border-radius: 4px; margin-bottom: 10px;">
@@ -300,9 +305,14 @@
                     @php
                         $isImage = in_array(strtolower(pathinfo($doc->file_path ?? $doc->file_path, PATHINFO_EXTENSION)), ['jpg', 'jpeg', 'png', 'gif']);
                         $disk = config('filesystems.default');
-                        $url = $disk === 's3' 
-                            ? \Storage::disk('s3')->url($doc->file_path ?? $doc->file_path)
-                            : asset('storage/' . ($doc->file_path ?? $doc->file_path));
+                        // Use secure route if document has an ID (AmlDocument model), otherwise use legacy method
+                        if (isset($doc->id) && is_numeric($doc->id)) {
+                            $url = route('admin.aml-documents.serve', $doc->id);
+                        } elseif ($disk === 's3') {
+                            $url = \Storage::disk('s3')->url($doc->file_path ?? $doc->file_path);
+                        } else {
+                            $url = asset('storage/' . ($doc->file_path ?? $doc->file_path));
+                        }
                     @endphp
                     @if($isImage)
                         <img src="{{ $url }}" alt="Proof of Address Document" style="max-width: 100%; height: auto; border-radius: 4px; margin-bottom: 10px;">
@@ -333,9 +343,14 @@
                 @php
                     $isImage = in_array(strtolower(pathinfo($doc->file_path, PATHINFO_EXTENSION)), ['jpg', 'jpeg', 'png', 'gif']);
                     $disk = config('filesystems.default');
-                    $url = $disk === 's3' 
-                        ? \Storage::disk('s3')->url($doc->file_path)
-                        : asset('storage/' . $doc->file_path);
+                    // Use secure route if document has an ID (AmlDocument model), otherwise use legacy method
+                    if (isset($doc->id) && is_numeric($doc->id)) {
+                        $url = route('admin.aml-documents.serve', $doc->id);
+                    } elseif ($disk === 's3') {
+                        $url = \Storage::disk('s3')->url($doc->file_path);
+                    } else {
+                        $url = asset('storage/' . $doc->file_path);
+                    }
                 @endphp
                 @if($isImage)
                     <img src="{{ $url }}" alt="Additional Document" style="max-width: 100%; height: auto; border-radius: 4px; margin-bottom: 10px;">

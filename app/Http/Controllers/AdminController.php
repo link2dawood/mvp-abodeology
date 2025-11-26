@@ -1535,4 +1535,61 @@ class AdminController extends Controller
                 ->with('error', 'An error occurred while verifying the AML check. Please try again.');
         }
     }
+
+    /**
+     * Serve AML document securely with authentication and authorization.
+     *
+     * @param  int  $documentId  AML Document ID
+     * @return \Symfony\Component\HttpFoundation\StreamedResponse|\Illuminate\Http\RedirectResponse
+     */
+    public function serveAmlDocument($documentId)
+    {
+        $user = auth()->user();
+        
+        // Only admin and agent can access AML documents
+        if (!in_array($user->role, ['admin', 'agent'])) {
+            abort(403, 'You do not have permission to access this document.');
+        }
+
+        $document = \App\Models\AmlDocument::with('amlCheck.user')->findOrFail($documentId);
+        $amlCheck = $document->amlCheck;
+
+        // For agents, verify they have access to this AML check's user
+        if ($user->role === 'agent') {
+            $agentPropertyIds = $this->getAgentPropertyIds($user->id);
+            $agentSellerIds = \App\Models\Property::whereIn('id', $agentPropertyIds)
+                ->pluck('seller_id')
+                ->toArray();
+            
+            if (!in_array($amlCheck->user_id, $agentSellerIds)) {
+                abort(403, 'You do not have permission to access this document.');
+            }
+        }
+
+        // Determine storage disk
+        $disk = config('filesystems.default') === 's3' ? 's3' : 'public';
+
+        try {
+            // Check if file exists
+            if (!\Storage::disk($disk)->exists($document->file_path)) {
+                abort(404, 'Document not found.');
+            }
+
+            // Get file contents
+            $fileContents = \Storage::disk($disk)->get($document->file_path);
+            $mimeType = $document->mime_type ?: \Storage::disk($disk)->mimeType($document->file_path) ?: 'application/octet-stream';
+
+            // Return file with appropriate headers
+            return response($fileContents, 200)
+                ->header('Content-Type', $mimeType)
+                ->header('Content-Disposition', 'inline; filename="' . ($document->file_name ?? 'document') . '"')
+                ->header('Cache-Control', 'private, max-age=3600');
+        } catch (\Exception $e) {
+            \Log::error('Error serving AML document: ' . $e->getMessage(), [
+                'document_id' => $documentId,
+                'file_path' => $document->file_path
+            ]);
+            abort(404, 'Error loading document.');
+        }
+    }
 }
