@@ -13,9 +13,26 @@ return [
     | framework. This connection is utilized if another isn't explicitly
     | specified when running a cache operation inside the application.
     |
+    | Note: If CACHE_STORE is set to an invalid value (like 's3'), it will
+    | automatically fall back to 'file' to prevent errors.
+    |
     */
 
-    'default' => env('CACHE_STORE', 'database'),
+    'default' => (function() {
+        $cacheStore = env('CACHE_STORE', 'database');
+        $validStores = ['array', 'database', 'file', 'memcached', 'redis', 'dynamodb', 'octane', 'null'];
+        
+        // Validate cache store - if invalid, fall back to 'file' for production safety
+        if (!in_array($cacheStore, $validStores)) {
+            // Log warning if logging is available
+            if (function_exists('logger')) {
+                logger()->warning("Invalid cache store '{$cacheStore}' specified in CACHE_STORE. Falling back to 'file'.");
+            }
+            return 'file';
+        }
+        
+        return $cacheStore;
+    })(),
 
     /*
     |--------------------------------------------------------------------------
