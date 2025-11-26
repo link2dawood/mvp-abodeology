@@ -173,88 +173,129 @@
         <!-- PROPERTY DETAILS -->
         <div class="card">
             <h3>Property Details</h3>
-            <input type="text" 
-                   name="property_address" 
-                   placeholder="Full property address" 
-                   value="{{ old('property_address', $onboarding->property_address ?? $valuation->property_address) }}"
-                   required
-                   class="{{ $errors->has('property_address') ? 'error' : '' }}">
+
+            <label for="property_address">Property Address</label>
+            <input
+                id="property_address"
+                type="text"
+                name="property_address"
+                placeholder="Full property address"
+                value="{{ old('property_address', $onboarding->property_address ?? $valuation->property_address) }}"
+                required
+                class="{{ $errors->has('property_address') ? 'error' : '' }}"
+            >
             @error('property_address')
                 <div class="error-message">{{ $message }}</div>
             @enderror
 
             <div class="grid-2">
-                <input type="text" 
-                       name="postcode" 
-                       placeholder="Postcode" 
-                       value="{{ old('postcode', $onboarding->postcode ?? $valuation->postcode) }}"
-                       class="{{ $errors->has('postcode') ? 'error' : '' }}">
+                <div>
+                    <label for="postcode">Postcode</label>
+                    <input
+                        id="postcode"
+                        type="text"
+                        name="postcode"
+                        placeholder="Postcode"
+                        value="{{ old('postcode', $onboarding->postcode ?? $valuation->postcode) }}"
+                        class="{{ $errors->has('postcode') ? 'error' : '' }}"
+                    >
+                </div>
                 @error('postcode')
                     <div class="error-message">{{ $message }}</div>
                 @enderror
 
-                <select name="property_type" 
+                <div>
+                    <label for="property_type">Property Type</label>
+                    <select
+                        id="property_type"
+                        name="property_type"
                         required
-                        class="{{ $errors->has('property_type') ? 'error' : '' }}">
-                    <option value="">Property type</option>
-                    <option value="detached" {{ old('property_type', $onboarding->property_type ?? $valuation->property_type) == 'detached' ? 'selected' : '' }}>Detached</option>
-                    <option value="semi" {{ old('property_type', $onboarding->property_type ?? $valuation->property_type) == 'semi' ? 'selected' : '' }}>Semi-Detached</option>
-                    <option value="terraced" {{ old('property_type', $onboarding->property_type ?? $valuation->property_type) == 'terraced' ? 'selected' : '' }}>Terraced</option>
-                    <option value="flat" {{ old('property_type', $onboarding->property_type ?? $valuation->property_type) == 'flat' ? 'selected' : '' }}>Flat</option>
-                    <option value="maisonette" {{ old('property_type', $onboarding->property_type ?? $valuation->property_type) == 'maisonette' ? 'selected' : '' }}>Maisonette</option>
-                    <option value="bungalow" {{ old('property_type', $onboarding->property_type ?? $valuation->property_type) == 'bungalow' ? 'selected' : '' }}>Bungalow</option>
-                    <option value="other" {{ old('property_type', $onboarding->property_type ?? $valuation->property_type) == 'other' ? 'selected' : '' }}>Other</option>
-                </select>
+                        class="{{ $errors->has('property_type') ? 'error' : '' }}"
+                    >
+                        <option value="">Property type</option>
+                        <option value="detached" {{ old('property_type', $onboarding->property_type ?? $valuation->property_type) == 'detached' ? 'selected' : '' }}>Detached</option>
+                        <option value="semi" {{ old('property_type', $onboarding->property_type ?? $valuation->property_type) == 'semi' ? 'selected' : '' }}>Semi-Detached</option>
+                        <option value="terraced" {{ old('property_type', $onboarding->property_type ?? $valuation->property_type) == 'terraced' ? 'selected' : '' }}>Terraced</option>
+                        <option value="flat" {{ old('property_type', $onboarding->property_type ?? $valuation->property_type) == 'flat' ? 'selected' : '' }}>Flat</option>
+                        <option value="maisonette" {{ old('property_type', $onboarding->property_type ?? $valuation->property_type) == 'maisonette' ? 'selected' : '' }}>Maisonette</option>
+                        <option value="bungalow" {{ old('property_type', $onboarding->property_type ?? $valuation->property_type) == 'bungalow' ? 'selected' : '' }}>Bungalow</option>
+                        <option value="other" {{ old('property_type', $onboarding->property_type ?? $valuation->property_type) == 'other' ? 'selected' : '' }}>Other</option>
+                    </select>
+                </div>
                 @error('property_type')
                     <div class="error-message">{{ $message }}</div>
                 @enderror
             </div>
 
             <div class="grid-2">
-                <input type="number" 
-                       name="bedrooms" 
-                       placeholder="Number of bedrooms" 
-                       value="{{ old('bedrooms', $onboarding->bedrooms ?? $valuation->bedrooms) }}"
-                       min="0"
-                       required
-                       class="{{ $errors->has('bedrooms') ? 'error' : '' }}">
+                <div>
+                    <label for="bedrooms">Number of Bedrooms</label>
+                    <input
+                        id="bedrooms"
+                        type="number"
+                        name="bedrooms"
+                        placeholder="Number of bedrooms"
+                        value="{{ old('bedrooms', $onboarding->bedrooms ?? $valuation->bedrooms) }}"
+                        min="0"
+                        required
+                        class="{{ $errors->has('bedrooms') ? 'error' : '' }}"
+                    >
+                </div>
                 @error('bedrooms')
                     <div class="error-message">{{ $message }}</div>
                 @enderror
 
-                <input type="number" 
-                       name="bathrooms" 
-                       placeholder="Number of bathrooms" 
-                       value="{{ old('bathrooms', $onboarding->bathrooms ?? '') }}"
-                       min="0"
-                       step="0.5"
-                       required
-                       class="{{ $errors->has('bathrooms') ? 'error' : '' }}">
+                <div>
+                    <label for="bathrooms">Number of Bathrooms</label>
+                    <input
+                        id="bathrooms"
+                        type="number"
+                        name="bathrooms"
+                        placeholder="Number of bathrooms"
+                        value="{{ old('bathrooms', $onboarding->bathrooms ?? '') }}"
+                        min="0"
+                        step="0.5"
+                        required
+                        class="{{ $errors->has('bathrooms') ? 'error' : '' }}"
+                    >
+                </div>
                 @error('bathrooms')
                     <div class="error-message">{{ $message }}</div>
                 @enderror
 
-                <select name="parking" 
-                        class="{{ $errors->has('parking') ? 'error' : '' }}">
-                    <option value="">Parking</option>
-                    <option value="none" {{ old('parking', $onboarding->parking ?? '') == 'none' ? 'selected' : '' }}>None</option>
-                    <option value="on_street" {{ old('parking', $onboarding->parking ?? '') == 'on_street' ? 'selected' : '' }}>On-street</option>
-                    <option value="driveway" {{ old('parking', $onboarding->parking ?? '') == 'driveway' ? 'selected' : '' }}>Driveway</option>
-                    <option value="garage" {{ old('parking', $onboarding->parking ?? '') == 'garage' ? 'selected' : '' }}>Garage</option>
-                    <option value="allocated" {{ old('parking', $onboarding->parking ?? '') == 'allocated' ? 'selected' : '' }}>Allocated</option>
-                    <option value="permit" {{ old('parking', $onboarding->parking ?? '') == 'permit' ? 'selected' : '' }}>Permit</option>
-                </select>
+                <div>
+                    <label for="parking">Parking</label>
+                    <select
+                        id="parking"
+                        name="parking"
+                        class="{{ $errors->has('parking') ? 'error' : '' }}"
+                    >
+                        <option value="">Parking</option>
+                        <option value="none" {{ old('parking', $onboarding->parking ?? '') == 'none' ? 'selected' : '' }}>None</option>
+                        <option value="on_street" {{ old('parking', $onboarding->parking ?? '') == 'on_street' ? 'selected' : '' }}>On-street</option>
+                        <option value="driveway" {{ old('parking', $onboarding->parking ?? '') == 'driveway' ? 'selected' : '' }}>Driveway</option>
+                        <option value="garage" {{ old('parking', $onboarding->parking ?? '') == 'garage' ? 'selected' : '' }}>Garage</option>
+                        <option value="allocated" {{ old('parking', $onboarding->parking ?? '') == 'allocated' ? 'selected' : '' }}>Allocated</option>
+                        <option value="permit" {{ old('parking', $onboarding->parking ?? '') == 'permit' ? 'selected' : '' }}>Permit</option>
+                    </select>
+                </div>
                 @error('parking')
                     <div class="error-message">{{ $message }}</div>
                 @enderror
 
-                <input type="number" 
-                       name="asking_price" 
-                       placeholder="Asking Price (£)" 
-                       value="{{ old('asking_price', $onboarding->asking_price ?? '') }}"
-                       min="0"
-                       step="0.01"
-                       class="{{ $errors->has('asking_price') ? 'error' : '' }}">
+                <div>
+                    <label for="asking_price">Asking Price (£)</label>
+                    <input
+                        id="asking_price"
+                        type="number"
+                        name="asking_price"
+                        placeholder="Asking Price (£)"
+                        value="{{ old('asking_price', $onboarding->asking_price ?? '') }}"
+                        min="0"
+                        step="0.01"
+                        class="{{ $errors->has('asking_price') ? 'error' : '' }}"
+                    >
+                </div>
                 @error('asking_price')
                     <div class="error-message">{{ $message }}</div>
                 @enderror
@@ -264,9 +305,13 @@
         <!-- TENURE -->
         <div class="card">
             <h3>Tenure</h3>
-            <select name="tenure" 
-                    required
-                    class="{{ $errors->has('tenure') ? 'error' : '' }}">
+            <label for="tenure">Tenure</label>
+            <select
+                id="tenure"
+                name="tenure"
+                required
+                class="{{ $errors->has('tenure') ? 'error' : '' }}"
+            >
                 <option value="">Select tenure</option>
                 <option value="freehold" {{ old('tenure', $onboarding->tenure ?? '') == 'freehold' ? 'selected' : '' }}>Freehold</option>
                 <option value="leasehold" {{ old('tenure', $onboarding->tenure ?? '') == 'leasehold' ? 'selected' : '' }}>Leasehold</option>
@@ -278,43 +323,67 @@
             @enderror
 
             <div class="grid-2">
-                <input type="number" 
-                       name="lease_years_remaining" 
-                       placeholder="Lease years remaining" 
-                       value="{{ old('lease_years_remaining', $onboarding->lease_years_remaining ?? '') }}"
-                       min="0"
-                       class="{{ $errors->has('lease_years_remaining') ? 'error' : '' }}">
+                <div>
+                    <label for="lease_years_remaining">Lease Years Remaining</label>
+                    <input
+                        id="lease_years_remaining"
+                        type="number"
+                        name="lease_years_remaining"
+                        placeholder="Lease years remaining"
+                        value="{{ old('lease_years_remaining', $onboarding->lease_years_remaining ?? '') }}"
+                        min="0"
+                        class="{{ $errors->has('lease_years_remaining') ? 'error' : '' }}"
+                    >
+                </div>
                 @error('lease_years_remaining')
                     <div class="error-message">{{ $message }}</div>
                 @enderror
 
-                <input type="number" 
-                       name="ground_rent" 
-                       placeholder="Ground rent (£)" 
-                       value="{{ old('ground_rent', $onboarding->ground_rent ?? '') }}"
-                       min="0"
-                       step="0.01"
-                       class="{{ $errors->has('ground_rent') ? 'error' : '' }}">
+                <div>
+                    <label for="ground_rent">Ground Rent (£)</label>
+                    <input
+                        id="ground_rent"
+                        type="number"
+                        name="ground_rent"
+                        placeholder="Ground rent (£)"
+                        value="{{ old('ground_rent', $onboarding->ground_rent ?? '') }}"
+                        min="0"
+                        step="0.01"
+                        class="{{ $errors->has('ground_rent') ? 'error' : '' }}"
+                    >
+                </div>
                 @error('ground_rent')
                     <div class="error-message">{{ $message }}</div>
                 @enderror
 
-                <input type="number" 
-                       name="service_charge" 
-                       placeholder="Service charge (£)" 
-                       value="{{ old('service_charge', $onboarding->service_charge ?? '') }}"
-                       min="0"
-                       step="0.01"
-                       class="{{ $errors->has('service_charge') ? 'error' : '' }}">
+                <div>
+                    <label for="service_charge">Service Charge (£)</label>
+                    <input
+                        id="service_charge"
+                        type="number"
+                        name="service_charge"
+                        placeholder="Service charge (£)"
+                        value="{{ old('service_charge', $onboarding->service_charge ?? '') }}"
+                        min="0"
+                        step="0.01"
+                        class="{{ $errors->has('service_charge') ? 'error' : '' }}"
+                    >
+                </div>
                 @error('service_charge')
                     <div class="error-message">{{ $message }}</div>
                 @enderror
 
-                <input type="text" 
-                       name="managing_agent" 
-                       placeholder="Managing agent" 
-                       value="{{ old('managing_agent', $onboarding->managing_agent ?? '') }}"
-                       class="{{ $errors->has('managing_agent') ? 'error' : '' }}">
+                <div>
+                    <label for="managing_agent">Managing Agent</label>
+                    <input
+                        id="managing_agent"
+                        type="text"
+                        name="managing_agent"
+                        placeholder="Managing agent"
+                        value="{{ old('managing_agent', $onboarding->managing_agent ?? '') }}"
+                        class="{{ $errors->has('managing_agent') ? 'error' : '' }}"
+                    >
+                </div>
                 @error('managing_agent')
                     <div class="error-message">{{ $message }}</div>
                 @enderror
@@ -324,8 +393,13 @@
         <!-- MATERIAL INFORMATION -->
         <div class="card">
             <h3>Material Information</h3>
-            <select name="heating_type" 
-                    class="{{ $errors->has('heating_type') ? 'error' : '' }}">
+
+            <label for="heating_type">Heating Type</label>
+            <select
+                id="heating_type"
+                name="heating_type"
+                class="{{ $errors->has('heating_type') ? 'error' : '' }}"
+            >
                 <option value="">Heating Type</option>
                 <option value="gas" {{ old('heating_type', $onboarding->heating_type ?? '') == 'gas' ? 'selected' : '' }}>Gas</option>
                 <option value="electric" {{ old('heating_type', $onboarding->heating_type ?? '') == 'electric' ? 'selected' : '' }}>Electric</option>
@@ -338,36 +412,54 @@
             @enderror
 
             <div class="grid-2">
-                <input type="number" 
-                       name="boiler_age_years" 
-                       placeholder="Boiler age (years)" 
-                       value="{{ old('boiler_age_years', $onboarding->boiler_age_years ?? '') }}"
-                       min="0"
-                       class="{{ $errors->has('boiler_age_years') ? 'error' : '' }}">
+                <div>
+                    <label for="boiler_age_years">Boiler Age (years)</label>
+                    <input
+                        id="boiler_age_years"
+                        type="number"
+                        name="boiler_age_years"
+                        placeholder="Boiler age (years)"
+                        value="{{ old('boiler_age_years', $onboarding->boiler_age_years ?? '') }}"
+                        min="0"
+                        class="{{ $errors->has('boiler_age_years') ? 'error' : '' }}"
+                    >
+                </div>
                 @error('boiler_age_years')
                     <div class="error-message">{{ $message }}</div>
                 @enderror
 
-                <input type="date" 
-                       name="boiler_last_serviced" 
-                       placeholder="Last boiler service" 
-                       value="{{ old('boiler_last_serviced', $onboarding->boiler_last_serviced ?? '') }}"
-                       class="{{ $errors->has('boiler_last_serviced') ? 'error' : '' }}">
+                <div>
+                    <label for="boiler_last_serviced">Last Boiler Service</label>
+                    <input
+                        id="boiler_last_serviced"
+                        type="date"
+                        name="boiler_last_serviced"
+                        placeholder="Last boiler service"
+                        value="{{ old('boiler_last_serviced', $onboarding->boiler_last_serviced ?? '') }}"
+                        class="{{ $errors->has('boiler_last_serviced') ? 'error' : '' }}"
+                    >
+                </div>
                 @error('boiler_last_serviced')
                     <div class="error-message">{{ $message }}</div>
                 @enderror
 
-                <select name="epc_rating" 
-                        class="{{ $errors->has('epc_rating') ? 'error' : '' }}">
-                    <option value="">EPC Rating</option>
-                    <option value="A" {{ old('epc_rating', $onboarding->epc_rating ?? '') == 'A' ? 'selected' : '' }}>A</option>
-                    <option value="B" {{ old('epc_rating', $onboarding->epc_rating ?? '') == 'B' ? 'selected' : '' }}>B</option>
-                    <option value="C" {{ old('epc_rating', $onboarding->epc_rating ?? '') == 'C' ? 'selected' : '' }}>C</option>
-                    <option value="D" {{ old('epc_rating', $onboarding->epc_rating ?? '') == 'D' ? 'selected' : '' }}>D</option>
-                    <option value="E" {{ old('epc_rating', $onboarding->epc_rating ?? '') == 'E' ? 'selected' : '' }}>E</option>
-                    <option value="F" {{ old('epc_rating', $onboarding->epc_rating ?? '') == 'F' ? 'selected' : '' }}>F</option>
-                    <option value="G" {{ old('epc_rating', $onboarding->epc_rating ?? '') == 'G' ? 'selected' : '' }}>G</option>
-                </select>
+                <div>
+                    <label for="epc_rating">EPC Rating</label>
+                    <select
+                        id="epc_rating"
+                        name="epc_rating"
+                        class="{{ $errors->has('epc_rating') ? 'error' : '' }}"
+                    >
+                        <option value="">EPC Rating</option>
+                        <option value="A" {{ old('epc_rating', $onboarding->epc_rating ?? '') == 'A' ? 'selected' : '' }}>A</option>
+                        <option value="B" {{ old('epc_rating', $onboarding->epc_rating ?? '') == 'B' ? 'selected' : '' }}>B</option>
+                        <option value="C" {{ old('epc_rating', $onboarding->epc_rating ?? '') == 'C' ? 'selected' : '' }}>C</option>
+                        <option value="D" {{ old('epc_rating', $onboarding->epc_rating ?? '') == 'D' ? 'selected' : '' }}>D</option>
+                        <option value="E" {{ old('epc_rating', $onboarding->epc_rating ?? '') == 'E' ? 'selected' : '' }}>E</option>
+                        <option value="F" {{ old('epc_rating', $onboarding->epc_rating ?? '') == 'F' ? 'selected' : '' }}>F</option>
+                        <option value="G" {{ old('epc_rating', $onboarding->epc_rating ?? '') == 'G' ? 'selected' : '' }}>G</option>
+                    </select>
+                </div>
                 @error('epc_rating')
                     <div class="error-message">{{ $message }}</div>
                 @enderror
@@ -398,28 +490,42 @@
                            style="width: auto; margin-right: 8px; margin-bottom: 0;">
                     Mains Water
                 </label>
-                <select name="drainage" 
-                        class="{{ $errors->has('drainage') ? 'error' : '' }}">
-                    <option value="">Drainage</option>
-                    <option value="mains" {{ old('drainage', $onboarding->drainage ?? '') == 'mains' ? 'selected' : '' }}>Mains</option>
-                    <option value="septic_tank" {{ old('drainage', $onboarding->drainage ?? '') == 'septic_tank' ? 'selected' : '' }}>Septic Tank</option>
-                    <option value="private_system" {{ old('drainage', $onboarding->drainage ?? '') == 'private_system' ? 'selected' : '' }}>Private System</option>
-                </select>
+                <div>
+                    <label for="drainage">Drainage</label>
+                    <select
+                        id="drainage"
+                        name="drainage"
+                        class="{{ $errors->has('drainage') ? 'error' : '' }}"
+                    >
+                        <option value="">Drainage</option>
+                        <option value="mains" {{ old('drainage', $onboarding->drainage ?? '') == 'mains' ? 'selected' : '' }}>Mains</option>
+                        <option value="septic_tank" {{ old('drainage', $onboarding->drainage ?? '') == 'septic_tank' ? 'selected' : '' }}>Septic Tank</option>
+                        <option value="private_system" {{ old('drainage', $onboarding->drainage ?? '') == 'private_system' ? 'selected' : '' }}>Private System</option>
+                    </select>
+                </div>
                 @error('drainage')
                     <div class="error-message">{{ $message }}</div>
                 @enderror
             </div>
 
-            <textarea name="known_issues" 
-                      placeholder="Known issues (damp, subsidence, Japanese knotweed, neighbours, disputes, etc.)"
-                      class="{{ $errors->has('known_issues') ? 'error' : '' }}">{{ old('known_issues', $onboarding->known_issues ?? '') }}</textarea>
+            <label for="known_issues">Known Issues</label>
+            <textarea
+                id="known_issues"
+                name="known_issues"
+                placeholder="Known issues (damp, subsidence, Japanese knotweed, neighbours, disputes, etc.)"
+                class="{{ $errors->has('known_issues') ? 'error' : '' }}"
+            >{{ old('known_issues', $onboarding->known_issues ?? '') }}</textarea>
             @error('known_issues')
                 <div class="error-message">{{ $message }}</div>
             @enderror
 
-            <textarea name="planning_alterations" 
-                      placeholder="Planning alterations or building control changes"
-                      class="{{ $errors->has('planning_alterations') ? 'error' : '' }}">{{ old('planning_alterations', $onboarding->planning_alterations ?? '') }}</textarea>
+            <label for="planning_alterations">Planning Alterations / Building Control Changes</label>
+            <textarea
+                id="planning_alterations"
+                name="planning_alterations"
+                placeholder="Planning alterations or building control changes"
+                class="{{ $errors->has('planning_alterations') ? 'error' : '' }}"
+            >{{ old('planning_alterations', $onboarding->planning_alterations ?? '') }}</textarea>
             @error('planning_alterations')
                 <div class="error-message">{{ $message }}</div>
             @enderror
@@ -428,25 +534,37 @@
         <!-- ACCESS & NOTES -->
         <div class="card">
             <h3>Access & Viewing Information</h3>
-            <input type="text" 
-                   name="viewing_contact" 
-                   placeholder="Viewing contact person" 
-                   value="{{ old('viewing_contact', $onboarding->viewing_contact ?? '') }}"
-                   class="{{ $errors->has('viewing_contact') ? 'error' : '' }}">
+            <label for="viewing_contact">Viewing Contact Person</label>
+            <input
+                id="viewing_contact"
+                type="text"
+                name="viewing_contact"
+                placeholder="Viewing contact person"
+                value="{{ old('viewing_contact', $onboarding->viewing_contact ?? '') }}"
+                class="{{ $errors->has('viewing_contact') ? 'error' : '' }}"
+            >
             @error('viewing_contact')
                 <div class="error-message">{{ $message }}</div>
             @enderror
 
-            <textarea name="preferred_viewing_times" 
-                      placeholder="Preferred viewing times"
-                      class="{{ $errors->has('preferred_viewing_times') ? 'error' : '' }}">{{ old('preferred_viewing_times', $onboarding->preferred_viewing_times ?? '') }}</textarea>
+            <label for="preferred_viewing_times">Preferred Viewing Times</label>
+            <textarea
+                id="preferred_viewing_times"
+                name="preferred_viewing_times"
+                placeholder="Preferred viewing times"
+                class="{{ $errors->has('preferred_viewing_times') ? 'error' : '' }}"
+            >{{ old('preferred_viewing_times', $onboarding->preferred_viewing_times ?? '') }}</textarea>
             @error('preferred_viewing_times')
                 <div class="error-message">{{ $message }}</div>
             @enderror
 
-            <textarea name="access_notes" 
-                      placeholder="Access notes (alarm codes, keys location, access instructions, etc.)"
-                      class="{{ $errors->has('access_notes') ? 'error' : '' }}">{{ old('access_notes', $onboarding->access_notes ?? '') }}</textarea>
+            <label for="access_notes">Access Notes</label>
+            <textarea
+                id="access_notes"
+                name="access_notes"
+                placeholder="Access notes (alarm codes, keys location, access instructions, etc.)"
+                class="{{ $errors->has('access_notes') ? 'error' : '' }}"
+            >{{ old('access_notes', $onboarding->access_notes ?? '') }}</textarea>
             @error('access_notes')
                 <div class="error-message">{{ $message }}</div>
             @enderror
@@ -455,20 +573,28 @@
         <!-- VALUATION & AGENT NOTES -->
         <div class="card">
             <h3>Valuation & Notes</h3>
-            <input type="number" 
-                   name="estimated_value" 
-                   placeholder="Estimated Value (£)" 
-                   value="{{ old('estimated_value', $valuation->estimated_value ?? '') }}"
-                   min="0"
-                   step="0.01"
-                   class="{{ $errors->has('estimated_value') ? 'error' : '' }}">
+            <label for="estimated_value">Estimated Value (£)</label>
+            <input
+                id="estimated_value"
+                type="number"
+                name="estimated_value"
+                placeholder="Estimated Value (£)"
+                value="{{ old('estimated_value', $valuation->estimated_value ?? '') }}"
+                min="0"
+                step="0.01"
+                class="{{ $errors->has('estimated_value') ? 'error' : '' }}"
+            >
             @error('estimated_value')
                 <div class="error-message">{{ $message }}</div>
             @enderror
 
-            <textarea name="agent_notes" 
-                      placeholder="Agent notes (valuation observations, condition notes, recommendations, etc.)"
-                      class="{{ $errors->has('agent_notes') ? 'error' : '' }}">{{ old('agent_notes', $valuation->notes ?? '') }}</textarea>
+            <label for="agent_notes">Agent Notes</label>
+            <textarea
+                id="agent_notes"
+                name="agent_notes"
+                placeholder="Agent notes (valuation observations, condition notes, recommendations, etc.)"
+                class="{{ $errors->has('agent_notes') ? 'error' : '' }}"
+            >{{ old('agent_notes', $valuation->notes ?? '') }}</textarea>
             @error('agent_notes')
                 <div class="error-message">{{ $message }}</div>
             @enderror

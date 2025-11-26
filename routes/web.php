@@ -44,6 +44,7 @@ Route::middleware(['auth', 'role.web:admin,agent'])->prefix('admin')->name('admi
     // Valuation Management Routes
     Route::get('/valuations', [App\Http\Controllers\AdminController::class, 'valuations'])->name('valuations.index');
     Route::get('/valuations/{id}', [App\Http\Controllers\AdminController::class, 'showValuation'])->name('valuations.show');
+    Route::post('/valuations/{id}/schedule', [App\Http\Controllers\AdminController::class, 'updateValuationSchedule'])->name('valuations.schedule');
     Route::get('/valuations/{id}/valuation-form', [App\Http\Controllers\AdminController::class, 'showValuationForm'])->name('valuations.valuation-form');
     Route::get('/valuations/{id}/onboarding', [App\Http\Controllers\AdminController::class, 'showValuationForm'])->name('valuations.onboarding');
     Route::post('/valuations/{id}/valuation-form', [App\Http\Controllers\AdminController::class, 'storeValuationForm'])->name('valuations.valuation-form.store');

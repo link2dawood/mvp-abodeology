@@ -196,6 +196,23 @@
             </div>
         </div>
 
+        <div class="upload-section">
+            <h3>Additional Documents (Optional)</h3>
+            <p class="help-text">Upload additional documents such as planning permissions, building control certificates, FENSA certificates, or any other relevant documents (PDF, DOC, DOCX, or images).</p>
+            @error('additional_documents')
+                <div style="color: #dc3545; font-size: 14px; margin-top: 5px;">{{ $message }}</div>
+            @enderror
+            @error('additional_documents.*')
+                <div style="color: #dc3545; font-size: 14px; margin-top: 5px;">{{ $message }}</div>
+            @enderror
+            
+            <div class="file-upload-area">
+                <label for="additional_documents" class="file-upload-label">Choose Additional Documents</label>
+                <input type="file" id="additional_documents" name="additional_documents[]" multiple accept=".pdf,.doc,.docx,image/*" onchange="previewMultipleFiles(this, 'additional-documents-preview')">
+                <div id="additional-documents-preview" class="file-list"></div>
+            </div>
+        </div>
+
         <input type="hidden" id="primary_photo_index" name="primary_photo_index" value="0">
 
         <div style="margin-top: 30px;">
@@ -266,6 +283,23 @@ function previewFile(input, previewId) {
             <span>${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)</span>
         `;
         preview.appendChild(fileItem);
+    }
+}
+
+function previewMultipleFiles(input, previewId) {
+    const preview = document.getElementById(previewId);
+    preview.innerHTML = '';
+
+    if (input.files && input.files.length > 0) {
+        for (let i = 0; i < input.files.length; i++) {
+            const file = input.files[i];
+            const fileItem = document.createElement('div');
+            fileItem.className = 'file-item';
+            fileItem.innerHTML = `
+                <span>${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)</span>
+            `;
+            preview.appendChild(fileItem);
+        }
     }
 }
 </script>

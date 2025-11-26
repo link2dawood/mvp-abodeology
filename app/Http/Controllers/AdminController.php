@@ -376,6 +376,40 @@ class AdminController extends Controller
     }
 
     /**
+     * Update valuation schedule (date, time, and status) by admin/agent.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  int  $id  Valuation ID
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function updateValuationSchedule(Request $request, $id)
+    {
+        $user = auth()->user();
+
+        if (!in_array($user->role, ['admin', 'agent'])) {
+            return redirect()->route($this->getRoleDashboard($user->role))
+                ->with('error', 'You do not have permission to update valuation schedules.');
+        }
+
+        $valuation = Valuation::with('seller')->findOrFail($id);
+
+        $validated = $request->validate([
+            'valuation_date' => ['required', 'date'],
+            'valuation_time' => ['nullable', 'date_format:H:i'],
+            'status' => ['required', 'in:pending,scheduled,completed'],
+        ]);
+
+        $valuation->valuation_date = $validated['valuation_date'];
+        $valuation->valuation_time = $validated['valuation_time'] ?? null;
+        $valuation->status = $validated['status'];
+        $valuation->save();
+
+        return redirect()
+            ->route('admin.valuations.show', $valuation->id)
+            ->with('success', 'Valuation schedule updated successfully.');
+    }
+
+    /**
      * Show the Valuation Form (Onboarding Form) for completing seller onboarding during valuation.
      * This is called "Valuation Form" in the UI for agents, but "Onboarding Form" internally.
      *
@@ -587,9 +621,31 @@ class AdminController extends Controller
                     ->with('error', 'Property was created but could not be found. Please check the properties list.');
             }
 
-            // Redirect directly to property page where agent can request instruction
+            // Immediately send Terms & Conditions (instruction request) to seller after valuation
+            try {
+                // Create or update instruction record
+                $instruction = \App\Models\PropertyInstruction::updateOrCreate(
+                    ['property_id' => $property->id],
+                    [
+                        'seller_id' => $property->seller_id,
+                        'status' => 'pending',
+                        'requested_by' => $user->id,
+                        'requested_at' => now(),
+                        'fee_percentage' => 1.5, // Default fee
+                    ]
+                );
+
+                // Email seller with link to sign Terms & Conditions
+                \Mail::to($property->seller->email)->send(
+                    new \App\Mail\InstructionRequestNotification($property->seller, $property, $instruction)
+                );
+            } catch (\Exception $e) {
+                \Log::error('Failed to send automatic instruction request after valuation: ' . $e->getMessage());
+            }
+
+            // Redirect directly to property page
             return redirect()->route('admin.properties.show', $property->id)
-                ->with('success', 'Valuation Form completed successfully! Property details have been captured and saved to the seller\'s profile. Status: Property Details Captured. You can now request instruction from the seller.');
+                ->with('success', 'Valuation Form completed successfully! Property details have been captured and saved to the seller\'s profile (status: Property Details Captured). Terms & Conditions have been emailed to the seller as the next step.');
 
         } catch (\Exception $e) {
             \DB::rollBack();
@@ -1116,6 +1172,8 @@ class AdminController extends Controller
             'primary_photo_index' => ['nullable', 'integer', 'min:0'],
             'floorplan' => ['nullable', 'file', 'mimes:pdf,doc,docx,jpeg,png,jpg', 'max:10240'], // 10MB max
             'epc' => ['nullable', 'file', 'mimes:pdf,doc,docx,jpeg,png,jpg', 'max:10240'], // 10MB max
+            'additional_documents' => ['nullable', 'array'],
+            'additional_documents.*' => ['file', 'mimes:pdf,doc,docx,jpeg,png,jpg', 'max:10240'], // 10MB max
         ], [
             'photos.required' => 'Please upload at least one property photo.',
             'photos.min' => 'Please upload at least one property photo.',
@@ -1123,6 +1181,8 @@ class AdminController extends Controller
             'photos.*.max' => 'Photo size must not exceed 10MB.',
             'floorplan.mimes' => 'Floorplan must be a PDF, DOC, DOCX, or image file.',
             'epc.mimes' => 'EPC must be a PDF, DOC, DOCX, or image file.',
+            'additional_documents.*.mimes' => 'Additional documents must be PDF, DOC, DOCX, or image files.',
+            'additional_documents.*.max' => 'Each additional document must not exceed 10MB.',
         ]);
 
         try {
@@ -1175,6 +1235,20 @@ class AdminController extends Controller
                         'uploaded_at' => now(),
                     ]
                 );
+            }
+
+            // Upload additional documents if provided
+            if ($request->hasFile('additional_documents')) {
+                foreach ($request->file('additional_documents') as $document) {
+                    $documentPath = $document->store('properties/' . $property->id . '/documents', $disk);
+                    
+                    \App\Models\PropertyDocument::create([
+                        'property_id' => $property->id,
+                        'document_type' => 'other',
+                        'file_path' => $documentPath,
+                        'uploaded_at' => now(),
+                    ]);
+                }
             }
 
             // Update property status to 'draft' (listing draft ready)

@@ -178,6 +178,61 @@
     </div>
 
     <div class="card">
+        <h3>Schedule Valuation (Admin/Agent)</h3>
+        <form action="{{ route('admin.valuations.schedule', $valuation->id) }}" method="POST">
+            @csrf
+            <div class="info-row">
+                <div class="info-label">
+                    <label for="valuation_date">Valuation Date</label>
+                </div>
+                <div class="info-value">
+                    <input
+                        type="date"
+                        id="valuation_date"
+                        name="valuation_date"
+                        value="{{ old('valuation_date', $valuation->valuation_date ? \Carbon\Carbon::parse($valuation->valuation_date)->format('Y-m-d') : '') }}"
+                        required
+                        style="padding: 8px 10px; border-radius: 4px; border: 1px solid #D9D9D9; max-width: 220px;"
+                    >
+                </div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">
+                    <label for="valuation_time">Valuation Time (optional)</label>
+                </div>
+                <div class="info-value">
+                    <input
+                        type="time"
+                        id="valuation_time"
+                        name="valuation_time"
+                        value="{{ old('valuation_time', $valuation->valuation_time ? \Carbon\Carbon::parse($valuation->valuation_time)->format('H:i') : '') }}"
+                        style="padding: 8px 10px; border-radius: 4px; border: 1px solid #D9D9D9; max-width: 180px;"
+                    >
+                </div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">
+                    <label for="status">Status</label>
+                </div>
+                <div class="info-value">
+                    <select
+                        id="status"
+                        name="status"
+                        style="padding: 8px 10px; border-radius: 4px; border: 1px solid #D9D9D9; max-width: 200px;"
+                    >
+                        <option value="pending" {{ $valuation->status === 'pending' ? 'selected' : '' }}>Pending</option>
+                        <option value="scheduled" {{ $valuation->status === 'scheduled' ? 'selected' : '' }}>Scheduled</option>
+                        <option value="completed" {{ $valuation->status === 'completed' ? 'selected' : '' }}>Completed</option>
+                    </select>
+                </div>
+            </div>
+            <div style="margin-top: 10px;">
+                <button type="submit" class="btn btn-main">Save Schedule</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="card">
         <h3>Client Information</h3>
         <div class="info-row">
             <div class="info-label">Name:</div>

@@ -119,7 +119,7 @@ class ValuationController extends Controller
                 $user->save();
             }
 
-            // Create valuation record
+            // Create valuation record (always start as 'pending' - admin/agent will confirm schedule)
             $valuation = Valuation::create([
                 'seller_id' => $user->id,
                 'property_address' => $validated['property_address'],
@@ -128,7 +128,8 @@ class ValuationController extends Controller
                 'bedrooms' => $validated['bedrooms'] ?? null,
                 'valuation_date' => $validated['valuation_date'] ?? null,
                 'valuation_time' => $validated['valuation_time'] ? date('H:i:s', strtotime($validated['valuation_time'])) : null,
-                'status' => $validated['valuation_date'] ? 'scheduled' : 'pending',
+                // Status is 'pending' until an admin/agent explicitly schedules the appointment
+                'status' => 'pending',
                 'seller_notes' => $validated['seller_notes'] ?? null,
             ]);
 

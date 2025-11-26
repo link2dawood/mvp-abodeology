@@ -19,7 +19,7 @@ class DatabaseSeeder extends Seeder
         // Admin user - Full system access
         User::create([
             'name' => 'Admin User',
-            'email' => 'admin@abodeology.com',
+            'email' => 'admin@abodeology.co.uk',
             'phone' => '+44 20 1234 5678',
             'role' => 'admin',
             'password' => $password,
@@ -29,7 +29,7 @@ class DatabaseSeeder extends Seeder
         // Agent user - Internal staff
         User::create([
             'name' => 'Agent User',
-            'email' => 'agent@abodeology.com',
+            'email' => 'agent@abodeology.co.uk',
             'phone' => '+44 20 1234 5679',
             'role' => 'agent',
             'password' => $password,
@@ -39,7 +39,7 @@ class DatabaseSeeder extends Seeder
         // Buyer user - Searches & buys
         User::create([
             'name' => 'Buyer User',
-            'email' => 'buyer@abodeology.com',
+            'email' => 'buyer@abodeology.co.uk',
             'phone' => '+44 20 1234 5680',
             'role' => 'buyer',
             'password' => $password,
@@ -49,7 +49,7 @@ class DatabaseSeeder extends Seeder
         // Seller user - Lists properties
         User::create([
             'name' => 'Seller User',
-            'email' => 'seller@abodeology.com',
+            'email' => 'seller@abodeology.co.uk',
             'phone' => '+44 20 1234 5681',
             'role' => 'seller',
             'password' => $password,
@@ -59,7 +59,7 @@ class DatabaseSeeder extends Seeder
         // Both (Buyer & Seller) user
         User::create([
             'name' => 'Buyer Seller User',
-            'email' => 'both@abodeology.com',
+            'email' => 'both@abodeology.co.uk',
             'phone' => '+44 20 1234 5682',
             'role' => 'both',
             'password' => $password,
@@ -69,7 +69,7 @@ class DatabaseSeeder extends Seeder
         // PVA (Property Viewing Assistant) user
         User::create([
             'name' => 'PVA User',
-            'email' => 'pva@abodeology.com',
+            'email' => 'pva@abodeology.co.uk',
             'phone' => '+44 20 1234 5683',
             'role' => 'pva',
             'password' => $password,
@@ -77,11 +77,11 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $this->command->info('✅ Created users for all roles:');
-        $this->command->info('   Admin:  admin@abodeology.com / password');
-        $this->command->info('   Agent:  agent@abodeology.com / password');
-        $this->command->info('   Buyer:  buyer@abodeology.com / password');
-        $this->command->info('   Seller: seller@abodeology.com / password');
-        $this->command->info('   Both:   both@abodeology.com / password');
-        $this->command->info('   PVA:    pva@abodeology.com / password');
+        $this->command->info('   Admin:  admin@abodeology.co.uk / password');
+        $this->command->info('   Agent:  agent@abodeology.co.uk / password');
+        $this->command->info('   Buyer:  buyer@abodeology.co.uk / password');
+        $this->command->info('   Seller: seller@abodeology.co.uk / password');
+        $this->command->info('   Both:   both@abodeology.co.uk / password');
+        $this->command->info('   PVA:    pva@abodeology.co.uk / password');
     }
 }

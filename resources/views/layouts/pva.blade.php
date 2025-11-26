@@ -183,7 +183,7 @@
     <!-- NAVIGATION HEADER -->
     <header class="navbar">
         <a href="{{ route('pva.dashboard') ?? route('home') }}">
-            <img src="{{ asset('media/abodeology-logo.svg') }}" alt="Abodeology Logo" height="40" style="max-height: 40px;" onerror="this.onerror=null; this.src='{{ asset('media/abodeology-logo.svg') }}'; this.onerror=function(){this.style.display='none'; this.nextElementSibling.style.display='inline-block';};">
+            <img src="{{ asset('media/abodeology-logo.png') }}" alt="Abodeology Logo" height="40" style="max-height: 40px;" onerror="this.onerror=null; this.src='{{ asset('media/abodeology-logo.png') }}'; this.onerror=function(){this.style.display='none'; this.nextElementSibling.style.display='inline-block';};">
             <span style="display: none; color: #2CB8B4; font-weight: 600; font-size: 20px; line-height: 40px;">Abodeology®</span>
         </a>
         <button class="mobile-menu-toggle" onclick="document.querySelector('.nav-links').classList.toggle('active')" aria-label="Toggle menu">☰</button>

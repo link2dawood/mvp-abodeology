@@ -24,7 +24,7 @@
         <header class="w-full lg:max-w-4xl max-w-[335px] text-sm mb-6">
             <div style="text-align: center; margin-bottom: 20px;">
                 <a href="{{ url('/') }}" style="display: inline-block;">
-                    <img src="{{ asset('media/abodeology-logo.svg') }}" alt="Abodeology Logo" height="40" style="max-height: 40px;" onerror="this.onerror=null; this.src='{{ asset('media/abodeology-logo.svg') }}'; this.onerror=function(){this.style.display='none'; this.nextElementSibling.style.display='inline-block';};">
+                    <img src="{{ asset('media/abodeology-logo.png') }}" alt="Abodeology Logo" height="40" style="max-height: 40px;" onerror="this.onerror=null; this.src='{{ asset('media/abodeology-logo.png') }}'; this.onerror=function(){this.style.display='none'; this.nextElementSibling.style.display='inline-block';};">
                     <span style="display: none; color: #2CB8B4; font-weight: 600; font-size: 24px; line-height: 40px;">Abodeology®</span>
                 </a>
             </div>

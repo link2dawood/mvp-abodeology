@@ -171,7 +171,7 @@
         <h2>Need Help?</h2>
         <p>If you have any questions or need assistance, please don't hesitate to contact our support team:</p>
         <p>
-            Email: <a href="mailto:support@abodeology.com">support@abodeology.com</a><br>
+            Email: <a href="mailto:support@abodeology.co.uk">support@abodeology.co.uk</a><br>
             We're here to help!
         </p>
 
@@ -179,7 +179,7 @@
             <p>This email was sent to {{ $user->email }} because you booked a property valuation on Abodeology.</p>
             <p>
                 <a href="{{ route('login') }}">Log In</a> | 
-                <a href="mailto:support@abodeology.com">Contact Support</a>
+                <a href="mailto:support@abodeology.co.uk">Contact Support</a>
             </p>
             <p>&copy; {{ date('Y') }} Abodeology. All rights reserved.</p>
         </div>
