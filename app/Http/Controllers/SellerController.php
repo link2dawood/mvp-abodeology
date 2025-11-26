@@ -40,6 +40,27 @@ class SellerController extends Controller
         // Get AML check for the seller
         $amlCheck = \App\Models\AmlCheck::where('user_id', $user->id)->first();
         
+        // Fetch valuations for the seller
+        $valuations = \App\Models\Valuation::where('seller_id', $user->id)
+            ->orderBy('valuation_date', 'desc')
+            ->orderBy('valuation_time', 'desc')
+            ->get();
+        
+        // Create a map of valuations by property address for easy lookup
+        $valuationsByAddress = [];
+        foreach ($valuations as $valuation) {
+            $key = strtolower(trim($valuation->property_address ?? ''));
+            if ($key) {
+                $valuationsByAddress[$key] = $valuation;
+            }
+        }
+        
+        // Attach valuations to properties
+        foreach ($properties as $prop) {
+            $propKey = strtolower(trim($prop->address ?? ''));
+            $prop->valuation = $valuationsByAddress[$propKey] ?? null;
+        }
+        
         // Status map
         $statusMap = [
             'draft' => 'Draft',
@@ -95,7 +116,8 @@ class SellerController extends Controller
             'property',
             'upcomingViewings',
             'offers',
-            'amlCheck'
+            'amlCheck',
+            'valuations'
         ));
     }
 
@@ -234,18 +256,27 @@ class SellerController extends Controller
     {
         // In a real application, you would fetch onboarding data from database
         // For now, we'll use sample data
+        $user = auth()->user();
+        $property = \App\Models\Property::where('seller_id', $user->id)->findOrFail($id);
+        
         $propertyId = $id;
         $onboarding = (object) [
-            'property_address' => null,
-            'property_type' => null,
-            'bedrooms' => null,
-            'bathrooms' => null,
-            'parking' => null,
-            'tenure' => null,
-            'lease_years' => null,
-            'ground_rent' => null,
-            'service_charge' => null,
-            'managing_agent' => null,
+            'property_address' => $property->address,
+            'property_type' => $property->property_type,
+            'bedrooms' => $property->bedrooms,
+            'bathrooms' => $property->bathrooms,
+            'parking' => $property->parking,
+            'tenure' => $property->tenure,
+            'lease_years' => $property->lease_years_remaining,
+            'ground_rent' => $property->ground_rent,
+            'service_charge' => $property->service_charge,
+            'managing_agent' => $property->managing_agent,
+            'seller2_name' => $property->seller2_name,
+            'seller2_email' => $property->seller2_email,
+            'seller2_phone' => $property->seller2_phone,
+            'reception_rooms' => $property->reception_rooms,
+            'outbuildings' => $property->outbuildings,
+            'garden_details' => $property->garden_details,
             'legal_owner' => null,
             'mortgaged' => null,
             'mortgage_lender' => null,
@@ -266,6 +297,20 @@ class SellerController extends Controller
             'photography_homecheck' => null,
             'publish_marketing' => null,
         ];
+        
+        // Load material information if exists
+        if ($property->materialInformation) {
+            $materialInfo = $property->materialInformation;
+            $onboarding->gas_supply = $materialInfo->gas_supply ? 'yes' : 'no';
+            $onboarding->electricity_supply = $materialInfo->electricity_supply ? 'yes' : 'no';
+            $onboarding->mains_water = $materialInfo->mains_water ? 'yes' : 'no';
+            $onboarding->drainage = $materialInfo->drainage;
+            $onboarding->boiler_age = $materialInfo->boiler_age_years;
+            $onboarding->last_boiler_service = $materialInfo->boiler_last_serviced;
+            $onboarding->epc_rating = $materialInfo->epc_rating;
+            $onboarding->known_issues = $materialInfo->known_issues;
+            $onboarding->alterations = $materialInfo->planning_alterations;
+        }
 
         return view('seller.onboarding', compact('propertyId', 'onboarding'));
     }
@@ -280,10 +325,19 @@ class SellerController extends Controller
     public function storeOnboarding(Request $request, $id)
     {
         $validated = $request->validate([
+            'seller1_name' => ['nullable', 'string', 'max:255'],
+            'seller1_email' => ['nullable', 'email', 'max:255'],
+            'seller1_phone' => ['nullable', 'string', 'max:20'],
+            'seller2_name' => ['nullable', 'string', 'max:255'],
+            'seller2_email' => ['nullable', 'email', 'max:255'],
+            'seller2_phone' => ['nullable', 'string', 'max:20'],
             'property_address' => ['required', 'string', 'max:500'],
             'property_type' => ['required', 'string', 'in:detached,semi-detached,terraced,flat-maisonette,bungalow,other'],
             'bedrooms' => ['required', 'integer', 'min:0'],
             'bathrooms' => ['required', 'numeric', 'min:0'],
+            'reception_rooms' => ['nullable', 'integer', 'min:0'],
+            'outbuildings' => ['nullable', 'string', 'max:500'],
+            'garden_details' => ['nullable', 'string', 'max:2000'],
             'parking' => ['nullable', 'string', 'in:none,on-street,driveway,garage,allocated,permit'],
             'tenure' => ['required', 'string', 'in:freehold,leasehold,share-of-freehold,unknown'],
             'lease_years' => ['nullable', 'integer', 'min:0'],
@@ -317,28 +371,97 @@ class SellerController extends Controller
             'bedrooms.required' => 'Number of bedrooms is required.',
             'bathrooms.required' => 'Number of bathrooms is required.',
             'tenure.required' => 'Tenure is required.',
+            'seller1_email.email' => 'Seller 1 email must be a valid email address.',
+            'seller2_email.email' => 'Second seller email must be a valid email address.',
         ]);
 
-        // In a real application, you would save this to database
-        // Example:
-        // $onboarding = SellerOnboarding::updateOrCreate(
-        //     ['property_id' => $id, 'user_id' => auth()->id()],
-        //     $validated
-        // );
-        //
-        // Handle certificate uploads
-        // if ($request->hasFile('certificates')) {
-        //     foreach ($request->file('certificates') as $certificate) {
-        //         $certPath = $certificate->store('onboarding/certificates/' . $onboarding->id, 'public');
-        //         Certificate::create([
-        //             'onboarding_id' => $onboarding->id,
-        //             'file_path' => $certPath,
-        //             'file_name' => $certificate->getClientOriginalName(),
-        //         ]);
-        //     }
-        // }
+        $user = auth()->user();
+        $property = \App\Models\Property::where('seller_id', $user->id)->findOrFail($id);
 
-        return redirect()->route('seller.onboarding', $id)->with('success', 'Onboarding information saved successfully. Please continue to the next step.');
+        try {
+            \DB::beginTransaction();
+
+            // Update seller 1 information in user account if changed
+            $userUpdates = [];
+            if (isset($validated['seller1_name']) && $validated['seller1_name'] !== $user->name) {
+                $userUpdates['name'] = $validated['seller1_name'];
+            }
+            if (isset($validated['seller1_email']) && $validated['seller1_email'] !== $user->email) {
+                $userUpdates['email'] = $validated['seller1_email'];
+            }
+            if (isset($validated['seller1_phone']) && $validated['seller1_phone'] !== $user->phone) {
+                $userUpdates['phone'] = $validated['seller1_phone'];
+            }
+            if (!empty($userUpdates)) {
+                $user->update($userUpdates);
+            }
+
+            // Update property with onboarding data including second seller information
+            $property->update([
+                'address' => $validated['property_address'],
+                'property_type' => $validated['property_type'],
+                'bedrooms' => $validated['bedrooms'],
+                'bathrooms' => $validated['bathrooms'],
+                'reception_rooms' => $validated['reception_rooms'] ?? null,
+                'outbuildings' => $validated['outbuildings'] ?? null,
+                'garden_details' => $validated['garden_details'] ?? null,
+                'parking' => $validated['parking'] ?? null,
+                'tenure' => $validated['tenure'],
+                'lease_years_remaining' => $validated['lease_years'] ?? null,
+                'ground_rent' => $validated['ground_rent'] ?? null,
+                'service_charge' => $validated['service_charge'] ?? null,
+                'managing_agent' => $validated['managing_agent'] ?? null,
+                'seller2_name' => $validated['seller2_name'] ?? null,
+                'seller2_email' => $validated['seller2_email'] ?? null,
+                'seller2_phone' => $validated['seller2_phone'] ?? null,
+                'status' => 'property_details_captured',
+            ]);
+
+            // Save material information
+            \App\Models\PropertyMaterialInformation::updateOrCreate(
+                ['property_id' => $property->id],
+                [
+                    'heating_type' => null,
+                    'boiler_age_years' => $validated['boiler_age'] ?? null,
+                    'boiler_last_serviced' => $validated['last_boiler_service'] ?? null,
+                    'epc_rating' => $validated['epc_rating'] ?? null,
+                    'gas_supply' => isset($validated['gas_supply']) && $validated['gas_supply'] === 'yes',
+                    'electricity_supply' => isset($validated['electricity_supply']) && $validated['electricity_supply'] === 'yes',
+                    'mains_water' => isset($validated['mains_water']) && $validated['mains_water'] === 'yes',
+                    'drainage' => $validated['drainage'] ?? null,
+                    'known_issues' => $validated['known_issues'] ?? null,
+                    'planning_alterations' => $validated['alterations'] ?? null,
+                ]
+            );
+
+            // Handle certificate uploads if provided
+            if ($request->hasFile('certificates')) {
+                foreach ($request->file('certificates') as $certificate) {
+                    // Determine storage disk (S3 if configured, otherwise public)
+                    $disk = config('filesystems.default') === 's3' ? 's3' : 'public';
+                    $certPath = $certificate->store('properties/' . $property->id . '/certificates', $disk);
+                    \App\Models\PropertyDocument::create([
+                        'property_id' => $property->id,
+                        'document_type' => 'certificate',
+                        'file_path' => $certPath,
+                        'uploaded_at' => now(),
+                    ]);
+                }
+            }
+
+            \DB::commit();
+
+            return redirect()->route('seller.properties.show', $property->id)
+                ->with('success', 'Onboarding information saved successfully! You can now proceed with instruction signing.');
+
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            \Log::error('Onboarding save error: ' . $e->getMessage());
+
+            return back()
+                ->withInput()
+                ->with('error', 'An error occurred while saving your information. Please try again.');
+        }
     }
 
     /**
@@ -766,33 +889,100 @@ class SellerController extends Controller
         }
 
         $validated = $request->validate([
-            'id_document' => ['required', 'file', 'mimes:jpeg,png,jpg,pdf', 'max:5120'],
-            'proof_of_address' => ['required', 'file', 'mimes:jpeg,png,jpg,pdf', 'max:5120'],
+            'id_documents' => ['required', 'array', 'min:1'],
+            'id_documents.*' => ['file', 'mimes:jpeg,png,jpg,pdf', 'max:5120'],
+            'proof_of_address_documents' => ['required', 'array', 'min:1'],
+            'proof_of_address_documents.*' => ['file', 'mimes:jpeg,png,jpg,pdf', 'max:5120'],
+            'additional_documents' => ['nullable', 'array'],
+            'additional_documents.*' => ['file', 'mimes:jpeg,png,jpg,pdf', 'max:5120'],
         ], [
-            'id_document.required' => 'Please upload a valid ID document (Photo ID, Passport, or Driving License).',
-            'id_document.file' => 'The ID document must be a valid file.',
-            'id_document.mimes' => 'The ID document must be a JPEG, PNG, JPG, or PDF file.',
-            'id_document.max' => 'The ID document must not be larger than 5MB.',
-            'proof_of_address.required' => 'Please upload a valid Proof of Address document (Utility bill, Bank statement, or Council tax bill).',
-            'proof_of_address.file' => 'The Proof of Address must be a valid file.',
-            'proof_of_address.mimes' => 'The Proof of Address must be a JPEG, PNG, JPG, or PDF file.',
-            'proof_of_address.max' => 'The Proof of Address must not be larger than 5MB.',
+            'id_documents.required' => 'Please upload at least one ID document (Photo ID, Passport, or Driving License).',
+            'id_documents.min' => 'Please upload at least one ID document.',
+            'id_documents.*.file' => 'Each ID document must be a valid file.',
+            'id_documents.*.mimes' => 'ID documents must be JPEG, PNG, JPG, or PDF files.',
+            'id_documents.*.max' => 'Each ID document must not be larger than 5MB.',
+            'proof_of_address_documents.required' => 'Please upload at least one Proof of Address document (Utility bill, Bank statement, or Council tax bill).',
+            'proof_of_address_documents.min' => 'Please upload at least one Proof of Address document.',
+            'proof_of_address_documents.*.file' => 'Each Proof of Address must be a valid file.',
+            'proof_of_address_documents.*.mimes' => 'Proof of Address documents must be JPEG, PNG, JPG, or PDF files.',
+            'proof_of_address_documents.*.max' => 'Each Proof of Address must not be larger than 5MB.',
+            'additional_documents.*.file' => 'Each additional document must be a valid file.',
+            'additional_documents.*.mimes' => 'Additional documents must be JPEG, PNG, JPG, or PDF files.',
+            'additional_documents.*.max' => 'Each additional document must not be larger than 5MB.',
         ]);
 
         try {
-            // Store uploaded files
-            $idDocumentPath = $request->file('id_document')->store('aml-documents/' . $user->id, 'public');
-            $proofOfAddressPath = $request->file('proof_of_address')->store('aml-documents/' . $user->id, 'public');
+            \DB::beginTransaction();
+
+            // Determine storage disk (S3 if configured, otherwise public)
+            $disk = config('filesystems.default') === 's3' ? 's3' : 'public';
 
             // Update or create AML check
-            $amlCheck = \App\Models\AmlCheck::updateOrCreate(
+            $amlCheck = \App\Models\AmlCheck::firstOrCreate(
                 ['user_id' => $user->id],
-                [
-                    'id_document' => $idDocumentPath,
-                    'proof_of_address' => $proofOfAddressPath,
-                    'verification_status' => 'pending', // Will be verified by admin/agent
-                ]
+                ['verification_status' => 'pending']
             );
+
+            // Store ID documents
+            if ($request->hasFile('id_documents')) {
+                foreach ($request->file('id_documents') as $file) {
+                    $filePath = $file->store('aml-documents/' . $user->id . '/id-documents', $disk);
+                    \App\Models\AmlDocument::create([
+                        'aml_check_id' => $amlCheck->id,
+                        'document_type' => 'id_document',
+                        'file_path' => $filePath,
+                        'file_name' => $file->getClientOriginalName(),
+                        'mime_type' => $file->getMimeType(),
+                        'file_size' => $file->getSize(),
+                    ]);
+                }
+            }
+
+            // Store proof of address documents
+            if ($request->hasFile('proof_of_address_documents')) {
+                foreach ($request->file('proof_of_address_documents') as $file) {
+                    $filePath = $file->store('aml-documents/' . $user->id . '/proof-of-address', $disk);
+                    \App\Models\AmlDocument::create([
+                        'aml_check_id' => $amlCheck->id,
+                        'document_type' => 'proof_of_address',
+                        'file_path' => $filePath,
+                        'file_name' => $file->getClientOriginalName(),
+                        'mime_type' => $file->getMimeType(),
+                        'file_size' => $file->getSize(),
+                    ]);
+                }
+            }
+
+            // Store additional documents
+            if ($request->hasFile('additional_documents')) {
+                foreach ($request->file('additional_documents') as $file) {
+                    $filePath = $file->store('aml-documents/' . $user->id . '/additional', $disk);
+                    \App\Models\AmlDocument::create([
+                        'aml_check_id' => $amlCheck->id,
+                        'document_type' => 'additional',
+                        'file_path' => $filePath,
+                        'file_name' => $file->getClientOriginalName(),
+                        'mime_type' => $file->getMimeType(),
+                        'file_size' => $file->getSize(),
+                    ]);
+                }
+            }
+
+            // Update legacy fields for backward compatibility (store first document paths)
+            $firstIdDoc = \App\Models\AmlDocument::where('aml_check_id', $amlCheck->id)
+                ->where('document_type', 'id_document')
+                ->first();
+            $firstProofDoc = \App\Models\AmlDocument::where('aml_check_id', $amlCheck->id)
+                ->where('document_type', 'proof_of_address')
+                ->first();
+
+            $amlCheck->update([
+                'id_document' => $firstIdDoc ? $firstIdDoc->file_path : null,
+                'proof_of_address' => $firstProofDoc ? $firstProofDoc->file_path : null,
+                'verification_status' => 'pending',
+            ]);
+
+            \DB::commit();
 
             // Update property status from "awaiting_aml" to "signed" after AML documents are uploaded
             if ($property->status === 'awaiting_aml') {
@@ -895,7 +1085,7 @@ class SellerController extends Controller
     {
         $dashboards = [
             'admin' => 'admin.dashboard',
-            'agent' => 'admin.dashboard',
+            'agent' => 'admin.agent.dashboard',
             'buyer' => 'buyer.dashboard',
             'seller' => 'seller.dashboard',
             'both' => 'buyer.dashboard',

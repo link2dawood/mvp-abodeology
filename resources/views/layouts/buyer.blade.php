@@ -88,6 +88,98 @@
         .footer a:hover {
             text-decoration: underline;
         }
+
+        /* RESPONSIVE DESIGN */
+        @media (max-width: 768px) {
+            .navbar {
+                padding: 12px 20px;
+                flex-wrap: wrap;
+            }
+
+            .navbar img {
+                height: 35px;
+            }
+
+            .nav-links {
+                width: 100%;
+                flex-direction: column;
+                align-items: flex-start;
+                margin-top: 15px;
+                display: none;
+            }
+
+            .nav-links.active {
+                display: flex;
+            }
+
+            .nav-links a {
+                margin: 8px 0;
+                margin-left: 0;
+                padding: 8px 0;
+                width: 100%;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            }
+
+            .nav-links a[style*="background: rgba(255, 140, 0"] {
+                margin-bottom: 12px;
+                padding: 10px;
+                text-align: center;
+            }
+
+            .nav-links form {
+                width: 100%;
+                margin-left: 0;
+            }
+
+            .nav-links form a {
+                margin: 8px 0;
+            }
+
+            .mobile-menu-toggle {
+                display: block;
+                background: none;
+                border: none;
+                color: var(--white);
+                font-size: 24px;
+                cursor: pointer;
+                padding: 5px;
+            }
+
+            .container {
+                padding: 0 15px;
+                margin: 20px auto;
+            }
+
+            .footer {
+                padding: 20px 15px;
+                font-size: 12px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .navbar {
+                padding: 10px 15px;
+            }
+
+            .navbar img {
+                height: 30px;
+            }
+
+            .container {
+                padding: 0 12px;
+                margin: 15px auto;
+            }
+        }
+
+        .mobile-menu-toggle {
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .mobile-menu-toggle {
+                display: block;
+            }
+        }
     </style>
     
     @stack('styles')
@@ -96,9 +188,16 @@
     <!-- NAVIGATION HEADER -->
     <header class="navbar">
         <a href="{{ route('buyer.dashboard') }}">
-            <img src="{{ asset('media/abodeology-logo.png') }}" alt="Abodeology Logo" onerror="this.style.display='none'">
+            <img src="{{ asset('media/abodeology-logo.svg') }}" alt="Abodeology Logo" height="40" style="max-height: 40px;" onerror="this.onerror=null; this.src='{{ asset('media/abodeology-logo.svg') }}'; this.onerror=function(){this.style.display='none'; this.nextElementSibling.style.display='inline-block';};">
+            <span style="display: none; color: #2CB8B4; font-weight: 600; font-size: 20px; line-height: 40px;">Abodeology®</span>
         </a>
+        <button class="mobile-menu-toggle" onclick="document.querySelector('.nav-links').classList.toggle('active')" aria-label="Toggle menu">☰</button>
         <nav class="nav-links">
+            @if(auth()->user()->role === 'both')
+                <a href="{{ route('seller.dashboard') }}" style="background: rgba(255, 140, 0, 0.2); padding: 6px 12px; border-radius: 4px; margin-right: 10px; border: 1px solid #FF8C00;">
+                    <span style="color: #FF8C00;">🔄 Switch to Seller</span>
+                </a>
+            @endif
             <a href="{{ route('buyer.dashboard') }}">Dashboard</a>
             <a href="{{ route('profile.show') }}">Profile</a>
             <a href="#">Notifications</a>

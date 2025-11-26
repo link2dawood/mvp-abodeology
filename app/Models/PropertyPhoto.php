@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class PropertyPhoto extends Model
 {
+    public $timestamps = false; // Using uploaded_at instead
+
     protected $fillable = [
         'property_id',
         'file_path',

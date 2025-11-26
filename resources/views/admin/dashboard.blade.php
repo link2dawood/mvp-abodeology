@@ -122,7 +122,7 @@
     }
 
     .btn-danger:hover {
-        background: #c73f3f;
+        background: #C73E3E;
     }
 
     /* STATUS BADGES */
@@ -164,6 +164,79 @@
 
     .card ul li:last-child {
         border-bottom: none;
+    }
+
+    /* RESPONSIVE DESIGN */
+    @media (max-width: 768px) {
+        h2 {
+            font-size: 24px;
+        }
+
+        .grid {
+            grid-template-columns: 1fr;
+            gap: 15px;
+        }
+
+        .kpi-box {
+            padding: 20px;
+        }
+
+        .kpi-number {
+            font-size: 28px;
+        }
+
+        .card {
+            padding: 20px;
+        }
+
+        .table {
+            display: block;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .table th,
+        .table td {
+            padding: 8px;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+
+        .btn {
+            padding: 8px 14px;
+            font-size: 13px;
+            width: 100%;
+            text-align: center;
+            margin-top: 8px;
+        }
+    }
+
+    @media (max-width: 480px) {
+        h2 {
+            font-size: 20px;
+        }
+
+        .grid {
+            gap: 12px;
+        }
+
+        .kpi-box {
+            padding: 15px;
+        }
+
+        .kpi-number {
+            font-size: 24px;
+        }
+
+        .card {
+            padding: 15px;
+        }
+
+        .table th,
+        .table td {
+            padding: 6px;
+            font-size: 12px;
+        }
     }
 </style>
 @endpush

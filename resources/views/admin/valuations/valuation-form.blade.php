@@ -239,6 +239,20 @@
                     <label class="required">Bathrooms</label>
                     <input type="number" name="bathrooms" value="{{ $onboarding->bathrooms ?? '' }}" step="0.5" min="0" required>
                 </div>
+                <div class="form-group">
+                    <label>Reception Rooms</label>
+                    <input type="number" name="reception_rooms" value="{{ $onboarding->reception_rooms ?? '' }}" min="0">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Outbuildings</label>
+                <input type="text" name="outbuildings" value="{{ $onboarding->outbuildings ?? '' }}" placeholder="e.g., garage, shed, workshop">
+                <div class="help-text">List any outbuildings on the property</div>
+            </div>
+            <div class="form-group">
+                <label>Garden Details</label>
+                <textarea name="garden_details" rows="3" placeholder="Garden size, type, features, etc.">{{ $onboarding->garden_details ?? '' }}</textarea>
+                <div class="help-text">Describe the garden, including size, type, and any notable features</div>
             </div>
             <div class="form-row">
                 <div class="form-group">
@@ -430,7 +444,16 @@
                 </div>
                 <div class="form-group">
                     <label>Pricing Notes</label>
-                    <input type="text" name="pricing_notes" value="{{ $onboarding->pricing_notes ?? '' }}" placeholder="Pricing strategy notes">
+                    <select name="pricing_notes">
+                        <option value="">Select pricing type...</option>
+                        @php
+                            $selectedPricing = old('pricing_notes', $onboarding->pricing_notes ?? '');
+                        @endphp
+                        <option value="Offers in the Region of" {{ $selectedPricing === 'Offers in the Region of' ? 'selected' : '' }}>Offers in the Region of</option>
+                        <option value="Offers in Excess of" {{ $selectedPricing === 'Offers in Excess of' ? 'selected' : '' }}>Offers in Excess of</option>
+                        <option value="Guide Price" {{ $selectedPricing === 'Guide Price' ? 'selected' : '' }}>Guide Price</option>
+                        <option value="Asking Price" {{ $selectedPricing === 'Asking Price' ? 'selected' : '' }}>Asking Price</option>
+                    </select>
                 </div>
             </div>
             <div class="form-group">

@@ -8,7 +8,8 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rules\Password;
-use Intervention\Image\ImageManagerStatic as Image;
+use Intervention\Image\ImageManager;
+use Intervention\Image\Drivers\Gd\Driver as GdDriver;
 
 class ProfileController extends Controller
 {
@@ -25,8 +26,99 @@ class ProfileController extends Controller
      */
     public function show()
     {
+        $user = Auth::user();
+        
+        // For admin users, fetch additional statistics
+        $adminStats = null;
+        $agentStats = null;
+        $sellerStats = null;
+        $buyerStats = null;
+        
+        if ($user->role === 'admin') {
+            // Admin sees all system-wide stats
+            $adminStats = [
+                'total_properties' => \App\Models\Property::count(),
+                'total_users' => \App\Models\User::count(),
+                'total_valuations' => \App\Models\Valuation::count(),
+                'pending_aml_checks' => \App\Models\AmlCheck::where('verification_status', 'pending')->count(),
+                'active_listings' => \App\Models\Property::where('status', 'live')->count(),
+                'total_offers' => \App\Models\Offer::count(),
+            ];
+        } elseif ($user->role === 'agent') {
+            // Agent sees only their assigned/worked properties
+            // Properties where agent requested instruction
+            $agentPropertyIds = \App\Models\PropertyInstruction::where('requested_by', $user->id)
+                ->pluck('property_id')
+                ->toArray();
+            
+            // Get properties this agent has worked on
+            $agentProperties = \App\Models\Property::whereIn('id', $agentPropertyIds)->get();
+            
+            // Get seller IDs from agent's properties
+            $agentSellerIds = $agentProperties->pluck('seller_id')->toArray();
+            
+            $agentStats = [
+                'assigned_properties' => $agentProperties->count(),
+                'active_listings' => $agentProperties->where('status', 'live')->count(),
+                'completed_valuations' => \App\Models\Valuation::where('status', 'completed')->count(),
+                'pending_valuations' => \App\Models\Valuation::where('status', 'pending')->count(),
+                'pending_offers' => \App\Models\Offer::whereIn('property_id', $agentPropertyIds)
+                    ->where('status', 'pending')
+                    ->count(),
+                'total_viewings' => \App\Models\Viewing::whereIn('property_id', $agentPropertyIds)->count(),
+                'pending_aml_checks' => \App\Models\AmlCheck::where('verification_status', 'pending')
+                    ->whereIn('user_id', $agentSellerIds)
+                    ->count(),
+            ];
+        } elseif (in_array($user->role, ['seller', 'both'])) {
+            // Seller statistics
+            $sellerProperties = \App\Models\Property::where('seller_id', $user->id)->get();
+            $sellerPropertyIds = $sellerProperties->pluck('id')->toArray();
+            
+            $sellerStats = [
+                'total_properties' => $sellerProperties->count(),
+                'active_listings' => $sellerProperties->where('status', 'live')->count(),
+                'pending_valuations' => \App\Models\Valuation::where('seller_id', $user->id)
+                    ->where('status', 'pending')
+                    ->count(),
+                'completed_valuations' => \App\Models\Valuation::where('seller_id', $user->id)
+                    ->where('status', 'completed')
+                    ->count(),
+                'pending_offers' => \App\Models\Offer::whereIn('property_id', $sellerPropertyIds)
+                    ->whereIn('status', ['pending', 'countered'])
+                    ->count(),
+                'total_viewings' => \App\Models\Viewing::whereIn('property_id', $sellerPropertyIds)->count(),
+                'upcoming_viewings' => \App\Models\Viewing::whereIn('property_id', $sellerPropertyIds)
+                    ->where('viewing_date', '>=', now())
+                    ->where('status', '!=', 'cancelled')
+                    ->count(),
+                'aml_status' => \App\Models\AmlCheck::where('user_id', $user->id)->first(),
+            ];
+        }
+        
+        if (in_array($user->role, ['buyer', 'both'])) {
+            // Buyer statistics
+            $buyerOffers = \App\Models\Offer::where('buyer_id', $user->id)->get();
+            $buyerViewings = \App\Models\Viewing::where('buyer_id', $user->id)->get();
+            
+            $buyerStats = [
+                'total_offers' => $buyerOffers->count(),
+                'pending_offers' => $buyerOffers->where('status', 'pending')->count(),
+                'accepted_offers' => $buyerOffers->where('status', 'accepted')->count(),
+                'total_viewings' => $buyerViewings->count(),
+                'upcoming_viewings' => $buyerViewings->where('viewing_date', '>=', now())
+                    ->where('status', '!=', 'cancelled')
+                    ->count(),
+                'aml_status' => \App\Models\AmlCheck::where('user_id', $user->id)->first(),
+            ];
+        }
+        
         return view('profile.show', [
-            'user' => Auth::user()
+            'user' => $user,
+            'adminStats' => $adminStats,
+            'agentStats' => $agentStats,
+            'sellerStats' => $sellerStats,
+            'buyerStats' => $buyerStats,
         ]);
     }
 
@@ -115,8 +207,11 @@ class ProfileController extends Controller
             }
 
             // Delete old avatar if exists
-            if ($user->avatar && Storage::disk('public')->exists('avatars/' . $user->avatar)) {
-                Storage::disk('public')->delete('avatars/' . $user->avatar);
+            // Determine storage disk (S3 if configured, otherwise public)
+            $disk = config('filesystems.default') === 's3' ? 's3' : 'public';
+            
+            if ($user->avatar && Storage::disk($disk)->exists('avatars/' . $user->avatar)) {
+                Storage::disk($disk)->delete('avatars/' . $user->avatar);
             }
 
             // Generate secure filename
@@ -159,23 +254,47 @@ class ProfileController extends Controller
      */
     private function processAndStoreImage($file, $filename)
     {
+        // Determine storage disk (S3 if configured, otherwise public)
+        $disk = config('filesystems.default') === 's3' ? 's3' : 'public';
+        
         try {
-            // Process image with Intervention Image
-            $image = Image::make($file->getPathname());
+            // Process image with Intervention Image (v3 API)
+            $manager = new ImageManager(new GdDriver());
+            $image = $manager->read($file->getPathname());
             
             // Remove EXIF data and resize if needed
-            $image->resize(400, 400, function ($constraint) {
-                $constraint->aspectRatio();
-                $constraint->upsize();
-            });
+            $image->scale(width: 400, height: 400);
             
             // Save processed image
-            $path = storage_path('app/public/avatars/' . $filename);
-            $image->save($path, 85); // 85% quality
+            if ($disk === 's3') {
+                // For S3, save to temporary location first, then upload
+                $tempPath = storage_path('app/temp/' . $filename);
+                if (!file_exists(storage_path('app/temp'))) {
+                    mkdir(storage_path('app/temp'), 0755, true);
+                }
+                $image->save($tempPath, quality: 85);
+                
+                // Upload to S3
+                Storage::disk($disk)->put('avatars/' . $filename, file_get_contents($tempPath));
+                
+                // Delete temporary file
+                @unlink($tempPath);
+            } else {
+                // For local storage
+                $path = storage_path('app/public/avatars/' . $filename);
+                if (!file_exists(storage_path('app/public/avatars'))) {
+                    mkdir(storage_path('app/public/avatars'), 0755, true);
+                }
+                $image->save($path, quality: 85);
+            }
             
         } catch (\Exception $e) {
             // Fallback to simple file storage if image processing fails
-            $file->storeAs('avatars', $filename, 'public');
+            \Log::warning('Image processing failed, using fallback storage', [
+                'error' => $e->getMessage(),
+                'filename' => $filename
+            ]);
+            $file->storeAs('avatars', $filename, $disk);
         }
     }
 
@@ -250,8 +369,11 @@ class ProfileController extends Controller
     {
         $user = Auth::user();
 
-        if ($user->avatar && Storage::disk('public')->exists('avatars/' . $user->avatar)) {
-            Storage::disk('public')->delete('avatars/' . $user->avatar);
+        // Determine storage disk (S3 if configured, otherwise public)
+        $disk = config('filesystems.default') === 's3' ? 's3' : 'public';
+        
+        if ($user->avatar && Storage::disk($disk)->exists('avatars/' . $user->avatar)) {
+            Storage::disk($disk)->delete('avatars/' . $user->avatar);
         }
 
         $user->update([

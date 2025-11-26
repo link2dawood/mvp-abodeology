@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class HomecheckReport extends Model
 {
     protected $table = 'homecheck_reports';
+    
+    public $timestamps = true;
 
     protected $fillable = [
         'property_id',

@@ -91,9 +91,47 @@
         .text-white-50 {
             color: var(--text-secondary) !important;
         }
+
+        /* RESPONSIVE DESIGN */
+        @media (max-width: 768px) {
+            header {
+                padding: 12px 0;
+            }
+
+            header img {
+                height: 35px !important;
+                max-height: 35px !important;
+            }
+
+            .container {
+                padding: 20px 15px !important;
+                max-width: 100% !important;
+            }
+        }
+
+        @media (max-width: 480px) {
+            header {
+                padding: 10px 0;
+            }
+
+            header img {
+                height: 30px !important;
+                max-height: 30px !important;
+            }
+
+            .container {
+                padding: 15px 12px !important;
+            }
+        }
     </style>
 </head>
 <body class="d-flex flex-column">
+    <header style="background: #0F0F0F; padding: 15px 0; text-align: center;">
+        <a href="{{ url('/') }}" style="display: inline-block;">
+            <img src="{{ asset('media/abodeology-logo.svg') }}" alt="Abodeology Logo" height="40" style="max-height: 40px;" onerror="this.onerror=null; this.src='{{ asset('media/abodeology-logo.svg') }}'; this.onerror=function(){this.style.display='none'; this.nextElementSibling.style.display='inline-block';};">
+            <span style="display: none; color: #2CB8B4; font-weight: 600; font-size: 24px; line-height: 40px;">Abodeology®</span>
+        </a>
+    </header>
     <div class="page page-center">
         <div class="container py-4" style="max-width: 460px; margin: 0 auto;">
             @yield('content')

@@ -99,7 +99,7 @@ class CheckWebRole
         
         $dashboardRoutes = [
             'admin' => route('admin.dashboard'),
-            'agent' => route('admin.dashboard'),
+            'agent' => route('admin.agent.dashboard'),
             'buyer' => route('buyer.dashboard'),
             'seller' => route('seller.dashboard'),
             'both' => function() use ($user) {

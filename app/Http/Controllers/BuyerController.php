@@ -332,20 +332,32 @@ class BuyerController extends Controller
                 'status' => 'scheduled',
             ]);
 
-            // Notify viewing partner (PVA)
-            // In production, this would:
-            // 1. Assign a PVA to the viewing
-            // 2. Send notification email to the PVA
-            // For now, we'll just log it
-            \Log::info('Viewing request created', [
-                'viewing_id' => $viewing->id,
-                'property_id' => $property->id,
-                'buyer_id' => $user->id,
-                'viewing_date' => $viewingDateTime,
-            ]);
-
-            // TODO: Send notification email to viewing partner/PVA
-            // \Mail::to($pva->email)->send(new \App\Mail\ViewingRequestNotification($viewing, $property, $user));
+            // Notify all viewing partners (PVAs) about the new viewing request
+            try {
+                $pvas = \App\Models\User::where('role', 'pva')->get();
+                
+                foreach ($pvas as $pva) {
+                    try {
+                        \Mail::to($pva->email)->send(
+                            new \App\Mail\ViewingRequestNotification($viewing, $property, $user)
+                        );
+                    } catch (\Exception $e) {
+                        // Log the error but continue with other PVAs
+                        \Log::error('Failed to send viewing request notification to PVA ' . $pva->email . ': ' . $e->getMessage());
+                    }
+                }
+                
+                \Log::info('Viewing request created and notifications sent', [
+                    'viewing_id' => $viewing->id,
+                    'property_id' => $property->id,
+                    'buyer_id' => $user->id,
+                    'viewing_date' => $viewingDateTime,
+                    'pvas_notified' => $pvas->count(),
+                ]);
+            } catch (\Exception $e) {
+                // Log the error but don't fail the viewing request
+                \Log::error('Failed to send viewing request notifications: ' . $e->getMessage());
+            }
 
             \DB::commit();
 
@@ -372,7 +384,7 @@ class BuyerController extends Controller
     {
         $dashboards = [
             'admin' => 'admin.dashboard',
-            'agent' => 'admin.dashboard',
+            'agent' => 'admin.agent.dashboard',
             'buyer' => 'buyer.dashboard',
             'seller' => 'seller.dashboard',
             'both' => 'buyer.dashboard',

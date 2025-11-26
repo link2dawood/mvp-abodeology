@@ -180,7 +180,83 @@
     <form action="{{ route('seller.onboarding.store', $propertyId ?? 1) }}" method="POST" enctype="multipart/form-data">
         @csrf
 
-        <!-- SECTION 1: PROPERTY DETAILS -->
+        <!-- SECTION 1: SELLER INFORMATION -->
+        <div class="card">
+            <h3>Seller Information</h3>
+            <p style="color: #666; font-size: 14px; margin-bottom: 15px;">Primary seller information is pre-filled from your account. If there is a second seller, please provide their details below.</p>
+            
+            <div class="grid-2">
+                <div>
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">Seller 1 (Primary) Name</label>
+                    <input type="text" 
+                           name="seller1_name"
+                           placeholder="Seller 1 Full Name"
+                           value="{{ old('seller1_name', auth()->user()->name) }}"
+                           class="{{ $errors->has('seller1_name') ? 'error' : '' }}">
+                    @error('seller1_name')
+                        <div class="error-message">{{ $message }}</div>
+                    @enderror
+                </div>
+                <div>
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">Email</label>
+                    <input type="email" 
+                           name="seller1_email"
+                           placeholder="Seller 1 Email"
+                           value="{{ old('seller1_email', auth()->user()->email) }}"
+                           class="{{ $errors->has('seller1_email') ? 'error' : '' }}">
+                    @error('seller1_email')
+                        <div class="error-message">{{ $message }}</div>
+                    @enderror
+                </div>
+                <div>
+                    <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">Phone</label>
+                    <input type="tel" 
+                           name="seller1_phone"
+                           placeholder="Seller 1 Phone"
+                           value="{{ old('seller1_phone', auth()->user()->phone ?? '') }}"
+                           class="{{ $errors->has('seller1_phone') ? 'error' : '' }}">
+                    @error('seller1_phone')
+                        <div class="error-message">{{ $message }}</div>
+                    @enderror
+                </div>
+            </div>
+            
+            <hr style="margin: 20px 0; border: none; border-top: 1px solid var(--line-grey);">
+            
+            <h4 style="font-size: 16px; margin-bottom: 15px; color: #666;">Second Seller (Optional)</h4>
+            <p style="color: #666; font-size: 13px; margin-bottom: 15px;">If the property is owned by more than one person, please provide the second seller's details.</p>
+            
+            <div class="grid-2">
+                <input type="text" 
+                       name="seller2_name" 
+                       placeholder="Second Seller Full Name" 
+                       value="{{ old('seller2_name', $onboarding->seller2_name ?? '') }}"
+                       class="{{ $errors->has('seller2_name') ? 'error' : '' }}">
+                @error('seller2_name')
+                    <div class="error-message">{{ $message }}</div>
+                @enderror
+
+                <input type="email" 
+                       name="seller2_email" 
+                       placeholder="Second Seller Email" 
+                       value="{{ old('seller2_email', $onboarding->seller2_email ?? '') }}"
+                       class="{{ $errors->has('seller2_email') ? 'error' : '' }}">
+                @error('seller2_email')
+                    <div class="error-message">{{ $message }}</div>
+                @enderror
+
+                <input type="tel" 
+                       name="seller2_phone" 
+                       placeholder="Second Seller Phone" 
+                       value="{{ old('seller2_phone', $onboarding->seller2_phone ?? '') }}"
+                       class="{{ $errors->has('seller2_phone') ? 'error' : '' }}">
+                @error('seller2_phone')
+                    <div class="error-message">{{ $message }}</div>
+                @enderror
+            </div>
+        </div>
+
+        <!-- SECTION 2: PROPERTY DETAILS -->
         <div class="card">
             <h3>Property Details</h3>
             <input type="text" 
@@ -231,7 +307,33 @@
                 @error('bathrooms')
                     <div class="error-message">{{ $message }}</div>
                 @enderror
+
+                <input type="number" 
+                       name="reception_rooms" 
+                       placeholder="Number of reception rooms" 
+                       value="{{ old('reception_rooms', $onboarding->reception_rooms ?? '') }}"
+                       min="0"
+                       class="{{ $errors->has('reception_rooms') ? 'error' : '' }}">
+                @error('reception_rooms')
+                    <div class="error-message">{{ $message }}</div>
+                @enderror
             </div>
+            
+            <input type="text" 
+                   name="outbuildings" 
+                   placeholder="Outbuildings (e.g., garage, shed, workshop)" 
+                   value="{{ old('outbuildings', $onboarding->outbuildings ?? '') }}"
+                   class="{{ $errors->has('outbuildings') ? 'error' : '' }}">
+            @error('outbuildings')
+                <div class="error-message">{{ $message }}</div>
+            @enderror
+
+            <textarea name="garden_details" 
+                      placeholder="Garden details (size, type, features, etc.)"
+                      class="{{ $errors->has('garden_details') ? 'error' : '' }}">{{ old('garden_details', $onboarding->garden_details ?? '') }}</textarea>
+            @error('garden_details')
+                <div class="error-message">{{ $message }}</div>
+            @enderror
 
             <select name="parking" 
                     class="{{ $errors->has('parking') ? 'error' : '' }}">

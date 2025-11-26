@@ -229,7 +229,33 @@ class User extends Authenticatable implements MustVerifyEmail, JWTSubject
     public function getAvatarUrlAttribute(): string
     {
         if ($this->avatar) {
-            return asset('storage/avatars/' . $this->avatar);
+            // Determine storage disk (S3 if configured, otherwise public)
+            $disk = config('filesystems.default') === 's3' ? 's3' : 'public';
+            
+            if ($disk === 's3') {
+                // For S3, use temporary signed URL (valid for 1 hour) to avoid permission issues
+                // This works even if bucket is private
+                try {
+                    // Generate signed URL using Laravel's Storage facade
+                    $signedUrl = \Storage::disk('s3')->temporaryUrl(
+                        'avatars/' . $this->avatar,
+                        now()->addHour()
+                    );
+                    return $signedUrl;
+                } catch (\Exception $e) {
+                    // Fallback to regular URL if signed URL generation fails
+                    \Log::warning('Failed to generate S3 signed URL for avatar', [
+                        'avatar' => $this->avatar,
+                        'error' => $e->getMessage()
+                    ]);
+                    return \Storage::disk('s3')->url('avatars/' . $this->avatar);
+                }
+            } else {
+                // For local storage, check if file exists
+                if (\Storage::disk('public')->exists('avatars/' . $this->avatar)) {
+                    return asset('storage/avatars/' . $this->avatar);
+                }
+            }
         }
         
         return 'https://ui-avatars.com/api/?name=' . urlencode($this->name) . '&background=206bc4&color=fff&size=128';

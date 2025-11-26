@@ -59,9 +59,12 @@ class MemorandumOfSale extends Mailable
      */
     public function attachments(): array
     {
-        if ($this->memorandumPath && Storage::disk('public')->exists($this->memorandumPath)) {
+        // Determine storage disk (S3 if configured, otherwise public)
+        $disk = config('filesystems.default') === 's3' ? 's3' : 'public';
+        
+        if ($this->memorandumPath && Storage::disk($disk)->exists($this->memorandumPath)) {
             return [
-                Attachment::fromStorageDisk('public', $this->memorandumPath)
+                Attachment::fromStorageDisk($disk, $this->memorandumPath)
                     ->as('memorandum-of-sale.pdf'),
             ];
         }

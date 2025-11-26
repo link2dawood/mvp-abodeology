@@ -8,6 +8,7 @@ use App\Models\Property;
 use App\Models\PropertyMaterialInformation;
 use App\Models\Offer;
 use App\Models\User;
+use App\Models\AmlCheck;
 
 class AdminController extends Controller
 {
@@ -22,7 +23,21 @@ class AdminController extends Controller
     }
 
     /**
-     * Show the admin dashboard.
+     * Get agent's assigned property IDs.
+     * Agents are assigned to properties via PropertyInstruction requested_by field.
+     *
+     * @param int $agentId
+     * @return array
+     */
+    private function getAgentPropertyIds($agentId): array
+    {
+        return \App\Models\PropertyInstruction::where('requested_by', $agentId)
+            ->pluck('property_id')
+            ->toArray();
+    }
+
+    /**
+     * Show the admin dashboard (super user - full system access).
      *
      * @return \Illuminate\Contracts\Support\Renderable
      */
@@ -30,35 +45,67 @@ class AdminController extends Controller
     {
         $user = auth()->user();
         
-        // Role check as fallback (middleware should handle this, but extra protection)
-        if (!in_array($user->role, ['admin', 'agent'])) {
+        // Only admins can access this dashboard
+        if ($user->role !== 'admin') {
+            if ($user->role === 'agent') {
+                return redirect()->route('admin.agent.dashboard');
+            }
             return redirect()->route($this->getRoleDashboard($user->role))
                 ->with('error', 'You do not have permission to access the admin dashboard.');
         }
         
         // Fetch real data from database
-        $valuations = Valuation::with('seller')
-            ->orderBy('created_at', 'desc')
-            ->limit(10)
-            ->get();
+        $valuationsQuery = Valuation::with('seller');
+        if ($user->role === 'agent' && $agentPropertyIds) {
+            // Filter valuations for agent's assigned properties
+            $valuationsQuery->whereHas('seller', function($q) use ($agentPropertyIds) {
+                $q->whereHas('properties', function($query) use ($agentPropertyIds) {
+                    $query->whereIn('properties.id', $agentPropertyIds);
+                });
+            });
+        }
+        $valuations = $valuationsQuery->orderBy('created_at', 'desc')->limit(10)->get();
 
         // Get today's scheduled valuations (appointments)
-        $todaysAppointments = Valuation::with('seller')
+        $todaysAppointmentsQuery = Valuation::with('seller')
             ->where('status', 'scheduled')
-            ->whereDate('valuation_date', today())
-            ->orderBy('valuation_time', 'asc')
-            ->get();
-
-        $pendingValuations = Valuation::where('status', 'pending')->count();
-        $scheduledValuations = Valuation::where('status', 'scheduled')->count();
-        $activeListings = Property::where('status', 'live')->count();
-        $offersReceived = Offer::where('status', 'pending')->count();
-        $salesInProgress = Property::where('status', 'sold')->count();
-        $pvasActive = User::where('role', 'pva')->count();
+            ->whereDate('valuation_date', today());
+        if ($user->role === 'agent' && $agentPropertyIds) {
+            $todaysAppointmentsQuery->whereHas('seller', function($q) use ($agentPropertyIds) {
+                $q->whereHas('properties', function($query) use ($agentPropertyIds) {
+                    $query->whereIn('properties.id', $agentPropertyIds);
+                });
+            });
+        }
+        $todaysAppointments = $todaysAppointmentsQuery->orderBy('valuation_time', 'asc')->get();
 
         // Dashboard statistics
+        $valuationsCountQuery = Valuation::query();
+        $propertiesQuery = Property::query();
+        $offersQuery = Offer::query();
+        
+        if ($user->role === 'agent' && $agentPropertyIds) {
+            // Filter valuations
+            $valuationsCountQuery->whereHas('seller', function($q) use ($agentPropertyIds) {
+                $q->whereHas('properties', function($query) use ($agentPropertyIds) {
+                    $query->whereIn('properties.id', $agentPropertyIds);
+                });
+            });
+            // Filter properties
+            $propertiesQuery->whereIn('id', $agentPropertyIds);
+            // Filter offers
+            $offersQuery->whereIn('property_id', $agentPropertyIds);
+        }
+        
+        $pendingValuations = (clone $valuationsCountQuery)->where('status', 'pending')->count();
+        $scheduledValuations = (clone $valuationsCountQuery)->where('status', 'scheduled')->count();
+        $activeListings = (clone $propertiesQuery)->where('status', 'live')->count();
+        $offersReceived = (clone $offersQuery)->where('status', 'pending')->count();
+        $salesInProgress = (clone $propertiesQuery)->where('status', 'sold')->count();
+        $pvasActive = User::where('role', 'pva')->count();
+
         $stats = [
-            'total_valuations' => Valuation::count(),
+            'total_valuations' => $valuationsCountQuery->count(),
             'pending_valuations' => $pendingValuations,
             'scheduled_valuations' => $scheduledValuations,
             'active_listings' => $activeListings,
@@ -67,27 +114,31 @@ class AdminController extends Controller
             'pvas_active' => $pvasActive,
         ];
 
-        // Get recent data
-        $sellers = User::whereIn('role', ['seller', 'both'])
-            ->orderBy('created_at', 'desc')
-            ->limit(5)
-            ->get();
+        // Get recent data - filtered for agents
+        $sellersQuery = User::whereIn('role', ['seller', 'both']);
+        if ($user->role === 'agent' && $agentPropertyIds) {
+            $sellersQuery->whereHas('properties', function($q) use ($agentPropertyIds) {
+                $q->whereIn('properties.id', $agentPropertyIds);
+            });
+        }
+        $sellers = $sellersQuery->orderBy('created_at', 'desc')->limit(5)->get();
 
         $buyers = User::whereIn('role', ['buyer', 'both'])
             ->orderBy('created_at', 'desc')
             ->limit(5)
             ->get();
 
-        $offers = Offer::with(['buyer', 'property'])
-            ->orderBy('created_at', 'desc')
-            ->limit(5)
-            ->get();
+        $offersQuery = Offer::with(['buyer', 'property']);
+        if ($user->role === 'agent' && $agentPropertyIds) {
+            $offersQuery->whereIn('property_id', $agentPropertyIds);
+        }
+        $offers = $offersQuery->orderBy('created_at', 'desc')->limit(5)->get();
 
-        $sales = Property::where('status', 'sold')
-            ->with('seller')
-            ->orderBy('updated_at', 'desc')
-            ->limit(5)
-            ->get();
+        $salesQuery = Property::where('status', 'sold')->with('seller');
+        if ($user->role === 'agent' && $agentPropertyIds) {
+            $salesQuery->whereIn('id', $agentPropertyIds);
+        }
+        $sales = $salesQuery->orderBy('updated_at', 'desc')->limit(5)->get();
 
         $pvas = User::where('role', 'pva')
             ->orderBy('created_at', 'desc')
@@ -121,7 +172,7 @@ class AdminController extends Controller
     {
         $dashboards = [
             'admin' => 'admin.dashboard',
-            'agent' => 'admin.dashboard',
+            'agent' => 'admin.agent.dashboard',
             'buyer' => 'buyer.dashboard',
             'seller' => 'seller.dashboard',
             'both' => 'buyer.dashboard',
@@ -129,6 +180,131 @@ class AdminController extends Controller
         ];
 
         return $dashboards[$role] ?? 'home';
+    }
+
+    /**
+     * Show the agent dashboard (restricted - only sees assigned properties, progress, sales, and tasks).
+     *
+     * @return \Illuminate\Contracts\Support\Renderable
+     */
+    public function agentDashboard()
+    {
+        $user = auth()->user();
+        
+        // Only agents can access this dashboard
+        if ($user->role !== 'agent') {
+            if ($user->role === 'admin') {
+                return redirect()->route('admin.dashboard');
+            }
+            return redirect()->route($this->getRoleDashboard($user->role))
+                ->with('error', 'You do not have permission to access the agent dashboard.');
+        }
+
+        // Get agent's assigned property IDs
+        $agentPropertyIds = $this->getAgentPropertyIds($user->id);
+        
+        // Get agent's assigned properties
+        $properties = Property::whereIn('id', $agentPropertyIds)
+            ->with('seller')
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get();
+
+        // Get valuations for agent's assigned properties
+        $valuations = Valuation::whereHas('seller', function($q) use ($agentPropertyIds) {
+                $q->whereHas('properties', function($query) use ($agentPropertyIds) {
+                    $query->whereIn('properties.id', $agentPropertyIds);
+                });
+            })
+            ->with('seller')
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get();
+
+        // Get offers for agent's assigned properties
+        $offers = Offer::whereIn('property_id', $agentPropertyIds)
+            ->with(['property', 'buyer'])
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get();
+
+        // Get today's scheduled valuations (appointments) for agent
+        $todaysAppointments = Valuation::whereHas('seller', function($q) use ($agentPropertyIds) {
+                $q->whereHas('properties', function($query) use ($agentPropertyIds) {
+                    $query->whereIn('properties.id', $agentPropertyIds);
+                });
+            })
+            ->where('status', 'scheduled')
+            ->whereDate('valuation_date', today())
+            ->with('seller')
+            ->orderBy('valuation_time', 'asc')
+            ->get();
+
+        // Get viewings for agent's assigned properties
+        $viewings = \App\Models\Viewing::whereIn('property_id', $agentPropertyIds)
+            ->with(['property', 'buyer'])
+            ->orderBy('viewing_date', 'asc')
+            ->limit(10)
+            ->get();
+
+        // Get sales (sold properties) for agent's assigned properties
+        $sales = Property::whereIn('id', $agentPropertyIds)
+            ->where('status', 'sold')
+            ->with('seller')
+            ->orderBy('updated_at', 'desc')
+            ->limit(10)
+            ->get();
+
+        // Calculate statistics
+        $stats = [
+            'assigned_properties' => Property::whereIn('id', $agentPropertyIds)->count(),
+            'active_listings' => Property::whereIn('id', $agentPropertyIds)->where('status', 'live')->count(),
+            'pending_valuations' => Valuation::whereHas('seller', function($q) use ($agentPropertyIds) {
+                    $q->whereHas('properties', function($query) use ($agentPropertyIds) {
+                        $query->whereIn('properties.id', $agentPropertyIds);
+                    });
+                })
+                ->where('status', 'pending')
+                ->count(),
+            'pending_offers' => Offer::whereIn('property_id', $agentPropertyIds)
+                ->where('status', 'pending')
+                ->count(),
+            'upcoming_viewings' => \App\Models\Viewing::whereIn('property_id', $agentPropertyIds)
+                ->where('viewing_date', '>=', now())
+                ->count(),
+            'sales_in_progress' => Property::whereIn('id', $agentPropertyIds)
+                ->whereIn('status', ['sold', 'under_offer'])
+                ->count(),
+        ];
+
+        return view('admin.agent-dashboard', compact('stats', 'properties', 'valuations', 'offers', 'viewings', 'sales', 'todaysAppointments'));
+    }
+
+    /**
+     * List all users with their roles (Admin Only).
+     * Agents cannot access this page - they can only view their clients through property relationships.
+     *
+     * @return \Illuminate\Contracts\Support\Renderable
+     */
+    public function users()
+    {
+        $user = auth()->user();
+        
+        // Only admins can access user management
+        if ($user->role !== 'admin') {
+            if ($user->role === 'agent') {
+                return redirect()->route('admin.agent.dashboard')
+                    ->with('error', 'You do not have permission to access user management. You can only view your assigned clients through their properties.');
+            }
+            return redirect()->route($this->getRoleDashboard($user->role))
+                ->with('error', 'You do not have permission to access this page.');
+        }
+
+        $users = User::query()
+            ->orderBy('created_at', 'desc')
+            ->paginate(20);
+
+        return view('admin.users.index', compact('users'));
     }
 
     /**
@@ -145,9 +321,23 @@ class AdminController extends Controller
                 ->with('error', 'You do not have permission to access this page.');
         }
 
-        $valuations = Valuation::with('seller')
-            ->orderBy('created_at', 'desc')
-            ->paginate(20);
+        $valuationsQuery = Valuation::with('seller');
+        
+        // For agents, only show valuations for their assigned properties
+        if ($user->role === 'agent') {
+            $agentPropertyIds = $this->getAgentPropertyIds($user->id);
+            if (empty($agentPropertyIds)) {
+                $valuations = collect([]);
+            } else {
+                $valuationsQuery->whereHas('seller', function($q) use ($agentPropertyIds) {
+                    $q->whereHas('properties', function($query) use ($agentPropertyIds) {
+                        $query->whereIn('properties.id', $agentPropertyIds);
+                    });
+                });
+            }
+        }
+        
+        $valuations = $valuationsQuery->orderBy('created_at', 'desc')->paginate(20);
 
         return view('admin.valuations.index', compact('valuations'));
     }
@@ -168,6 +358,19 @@ class AdminController extends Controller
         }
 
         $valuation = Valuation::with('seller')->findOrFail($id);
+        
+        // For agents, verify they have access to this valuation's property
+        if ($user->role === 'agent') {
+            $agentPropertyIds = $this->getAgentPropertyIds($user->id);
+            $property = Property::where('seller_id', $valuation->seller_id)
+                ->where('address', $valuation->property_address)
+                ->first();
+            
+            if (!$property || !in_array($property->id, $agentPropertyIds)) {
+                return redirect()->route('admin.valuations.index')
+                    ->with('error', 'You do not have permission to view this valuation.');
+            }
+        }
 
         return view('admin.valuations.show', compact('valuation'));
     }
@@ -190,6 +393,11 @@ class AdminController extends Controller
 
         $valuation = Valuation::with('seller')->findOrFail($id);
 
+        // Check if property already exists for this valuation
+        $existingProperty = \App\Models\Property::where('seller_id', $valuation->seller_id)
+            ->where('address', $valuation->property_address)
+            ->first();
+
         // Pre-fill form with valuation and seller data (for on-site completion)
         $onboarding = (object) [
             // Seller information (pre-filled from valuation)
@@ -203,6 +411,9 @@ class AdminController extends Controller
             'property_type' => $valuation->property_type,
             'bedrooms' => $valuation->bedrooms,
             'bathrooms' => null,
+            'reception_rooms' => $existingProperty->reception_rooms ?? null,
+            'outbuildings' => $existingProperty->outbuildings ?? null,
+            'garden_details' => $existingProperty->garden_details ?? null,
             'parking' => null,
             'tenure' => null,
             'lease_years' => null,
@@ -224,7 +435,8 @@ class AdminController extends Controller
             'alterations' => null,
             'viewing_contact' => null,
             'preferred_viewing_times' => null,
-            'access_notes' => null,
+            'access_notes' => $existingProperty->access_notes ?? null,
+            'pricing_notes' => $existingProperty->pricing_notes ?? null,
             'for_sale_board' => null,
             'photography_homecheck' => null,
             'publish_marketing' => null,
@@ -264,6 +476,9 @@ class AdminController extends Controller
             'property_type' => ['required', 'string', 'in:detached,semi,terraced,flat,maisonette,bungalow,other'],
             'bedrooms' => ['required', 'integer', 'min:0'],
             'bathrooms' => ['required', 'numeric', 'min:0'],
+            'reception_rooms' => ['nullable', 'integer', 'min:0'],
+            'outbuildings' => ['nullable', 'string', 'max:500'],
+            'garden_details' => ['nullable', 'string', 'max:2000'],
             'parking' => ['nullable', 'string', 'in:none,on_street,driveway,garage,allocated,permit'],
             'tenure' => ['required', 'string', 'in:freehold,leasehold,share_freehold,unknown'],
             'lease_years_remaining' => ['nullable', 'integer', 'min:0'],
@@ -290,6 +505,7 @@ class AdminController extends Controller
             'viewing_contact' => ['nullable', 'string', 'max:255'],
             'preferred_viewing_times' => ['nullable', 'string', 'max:500'],
             'agent_notes' => ['nullable', 'string', 'max:5000'],
+            'pricing_notes' => ['nullable', 'string', 'in:Offers in the Region of,Offers in Excess of,Guide Price,Asking Price'],
             
             // ID Visual Check (HMRC/EA Act Requirement)
             'id_visual_check' => ['required', 'accepted'],
@@ -318,6 +534,9 @@ class AdminController extends Controller
                     'property_type' => $validated['property_type'],
                     'bedrooms' => $validated['bedrooms'],
                     'bathrooms' => $validated['bathrooms'],
+                    'reception_rooms' => $validated['reception_rooms'] ?? null,
+                    'outbuildings' => $validated['outbuildings'] ?? null,
+                    'garden_details' => $validated['garden_details'] ?? null,
                     'parking' => $validated['parking'] ?? null,
                     'tenure' => $validated['tenure'],
                     'lease_years_remaining' => $validated['lease_years_remaining'] ?? null,
@@ -325,6 +544,7 @@ class AdminController extends Controller
                     'service_charge' => $validated['service_charge'] ?? null,
                     'managing_agent' => $validated['managing_agent'] ?? null,
                     'asking_price' => $validated['asking_price'] ?? null,
+                    'pricing_notes' => $validated['pricing_notes'] ?? null,
                     'status' => 'property_details_captured', // Set status after Valuation Form completion
                 ]
             );
@@ -350,7 +570,7 @@ class AdminController extends Controller
             $valuation->update([
                 'estimated_value' => $validated['estimated_value'] ?? null,
                 'status' => 'completed',
-                'notes' => $validated['agent_notes'] ?? $validated['pricing_notes'] ?? $valuation->notes,
+                'notes' => $validated['agent_notes'] ?? $valuation->notes,
                 'id_visual_check' => true,
                 'id_visual_check_notes' => $validated['id_visual_check_notes'] ?? null,
             ]);
@@ -395,9 +615,19 @@ class AdminController extends Controller
                 ->with('error', 'You do not have permission to access this page.');
         }
 
-        $properties = Property::with(['seller', 'instruction'])
-            ->orderBy('created_at', 'desc')
-            ->paginate(20);
+        $propertiesQuery = Property::with(['seller', 'instruction']);
+        
+        // For agents, only show their assigned properties
+        if ($user->role === 'agent') {
+            $agentPropertyIds = $this->getAgentPropertyIds($user->id);
+            if (empty($agentPropertyIds)) {
+                $properties = collect([]);
+            } else {
+                $propertiesQuery->whereIn('id', $agentPropertyIds);
+            }
+        }
+        
+        $properties = $propertiesQuery->orderBy('created_at', 'desc')->paginate(20);
 
         return view('admin.properties.index', compact('properties'));
     }
@@ -418,6 +648,15 @@ class AdminController extends Controller
         }
 
         $property = Property::with(['seller', 'instruction', 'materialInformation', 'homecheckReports', 'photos', 'documents'])->findOrFail($id);
+        
+        // For agents, verify they have access to this property
+        if ($user->role === 'agent') {
+            $agentPropertyIds = $this->getAgentPropertyIds($user->id);
+            if (!in_array($property->id, $agentPropertyIds)) {
+                return redirect()->route('admin.properties.index')
+                    ->with('error', 'You do not have permission to view this property.');
+            }
+        }
 
         return view('admin.properties.show', compact('property'));
     }
@@ -539,6 +778,15 @@ class AdminController extends Controller
         }
 
         $property = Property::with(['seller', 'homecheckReports'])->findOrFail($id);
+        
+        // For agents, verify they have access to this property
+        if ($user->role === 'agent') {
+            $agentPropertyIds = $this->getAgentPropertyIds($user->id);
+            if (!in_array($property->id, $agentPropertyIds)) {
+                return redirect()->route('admin.properties.index')
+                    ->with('error', 'You do not have permission to schedule a HomeCheck for this property.');
+            }
+        }
 
         // Check if there's already a scheduled or in-progress HomeCheck
         $existingHomeCheck = \App\Models\HomecheckReport::where('property_id', $property->id)
@@ -565,6 +813,15 @@ class AdminController extends Controller
         }
 
         $property = Property::findOrFail($id);
+        
+        // For agents, verify they have access to this property
+        if ($user->role === 'agent') {
+            $agentPropertyIds = $this->getAgentPropertyIds($user->id);
+            if (!in_array($property->id, $agentPropertyIds)) {
+                return redirect()->route('admin.properties.index')
+                    ->with('error', 'You do not have permission to schedule a HomeCheck for this property.');
+            }
+        }
 
         $validated = $request->validate([
             'scheduled_date' => ['required', 'date', 'after_or_equal:today'],
@@ -588,12 +845,19 @@ class AdminController extends Controller
             }
 
             // Create HomeCheck report
+            // Convert date string to datetime for scheduled_date
+            $scheduledDate = \Carbon\Carbon::parse($validated['scheduled_date'])->startOfDay();
+            
+            // Create HomeCheck report
+            // Use empty string for report_path if column is still NOT NULL (temporary workaround until migration runs)
+            // After migration, this can be changed to null
             $homecheckReport = \App\Models\HomecheckReport::create([
                 'property_id' => $property->id,
                 'status' => 'scheduled',
                 'scheduled_by' => $user->id,
-                'scheduled_date' => $validated['scheduled_date'],
+                'scheduled_date' => $scheduledDate,
                 'notes' => $validated['notes'] ?? null,
+                'report_path' => '', // Temporary: empty string until migration makes column nullable
             ]);
 
             return redirect()->route('admin.properties.show', $property->id)
@@ -601,10 +865,20 @@ class AdminController extends Controller
 
         } catch (\Exception $e) {
             \Log::error('HomeCheck scheduling error: ' . $e->getMessage());
+            \Log::error('HomeCheck scheduling error trace: ' . $e->getTraceAsString());
+            \Log::error('HomeCheck scheduling error file: ' . $e->getFile() . ':' . $e->getLine());
+
+            // Provide more helpful error message
+            $errorMessage = 'An error occurred while scheduling the HomeCheck. ';
+            if (str_contains($e->getMessage(), 'report_path')) {
+                $errorMessage .= 'Please run the migration to make report_path nullable: php artisan migrate';
+            } else {
+                $errorMessage .= 'Error: ' . $e->getMessage();
+            }
 
             return back()
                 ->withInput()
-                ->with('error', 'An error occurred while scheduling the HomeCheck. Please try again.');
+                ->with('error', $errorMessage);
         }
     }
 
@@ -624,6 +898,15 @@ class AdminController extends Controller
         }
 
         $property = Property::with(['seller', 'homecheckReports'])->findOrFail($id);
+        
+        // For agents, verify they have access to this property
+        if ($user->role === 'agent') {
+            $agentPropertyIds = $this->getAgentPropertyIds($user->id);
+            if (!in_array($property->id, $agentPropertyIds)) {
+                return redirect()->route('admin.properties.index')
+                    ->with('error', 'You do not have permission to complete a HomeCheck for this property.');
+            }
+        }
 
         // Get the active HomeCheck report
         $homecheckReport = \App\Models\HomecheckReport::where('property_id', $property->id)
@@ -661,6 +944,15 @@ class AdminController extends Controller
         }
 
         $property = Property::findOrFail($id);
+        
+        // For agents, verify they have access to this property
+        if ($user->role === 'agent') {
+            $agentPropertyIds = $this->getAgentPropertyIds($user->id);
+            if (!in_array($property->id, $agentPropertyIds)) {
+                return redirect()->route('admin.properties.index')
+                    ->with('error', 'You do not have permission to complete a HomeCheck for this property.');
+            }
+        }
 
         // Get the active HomeCheck report
         $homecheckReport = \App\Models\HomecheckReport::where('property_id', $property->id)
@@ -702,10 +994,13 @@ class AdminController extends Controller
                 $roomName = $roomData['name'];
                 $is360 = isset($roomData['is_360']) && $roomData['is_360'];
                 
+                // Determine storage disk (S3 if configured, otherwise public)
+                $disk = config('filesystems.default') === 's3' ? 's3' : 'public';
+                
                 // Process each image
                 foreach ($roomData['images'] as $imageIndex => $image) {
                     // Store image in property-specific folder
-                    $imagePath = $image->store('homechecks/' . $property->id . '/rooms/' . $roomName . '/' . ($is360 ? '360' : 'photos'), 'public');
+                    $imagePath = $image->store('homechecks/' . $property->id . '/rooms/' . $roomName . '/' . ($is360 ? '360' : 'photos'), $disk);
                     
                     // Create homecheck data record
                     \App\Models\HomecheckData::create([
@@ -800,6 +1095,15 @@ class AdminController extends Controller
         }
 
         $property = Property::findOrFail($id);
+        
+        // For agents, verify they have access to this property
+        if ($user->role === 'agent') {
+            $agentPropertyIds = $this->getAgentPropertyIds($user->id);
+            if (!in_array($property->id, $agentPropertyIds)) {
+                return redirect()->route('admin.properties.index')
+                    ->with('error', 'You do not have permission to upload listing materials for this property.');
+            }
+        }
 
         // Only allow listing upload if property status is 'signed' or later
         if (!in_array($property->status, ['signed', 'pre_marketing', 'draft'])) {
@@ -810,24 +1114,27 @@ class AdminController extends Controller
             'photos' => ['required', 'array', 'min:1'],
             'photos.*' => ['required', 'image', 'mimes:jpeg,png,jpg', 'max:10240'], // 10MB max
             'primary_photo_index' => ['nullable', 'integer', 'min:0'],
-            'floorplan' => ['nullable', 'file', 'mimes:pdf,jpeg,png,jpg', 'max:10240'], // 10MB max
-            'epc' => ['nullable', 'file', 'mimes:pdf,jpeg,png,jpg', 'max:10240'], // 10MB max
+            'floorplan' => ['nullable', 'file', 'mimes:pdf,doc,docx,jpeg,png,jpg', 'max:10240'], // 10MB max
+            'epc' => ['nullable', 'file', 'mimes:pdf,doc,docx,jpeg,png,jpg', 'max:10240'], // 10MB max
         ], [
             'photos.required' => 'Please upload at least one property photo.',
             'photos.min' => 'Please upload at least one property photo.',
             'photos.*.image' => 'All photo files must be images.',
             'photos.*.max' => 'Photo size must not exceed 10MB.',
-            'floorplan.mimes' => 'Floorplan must be a PDF or image file.',
-            'epc.mimes' => 'EPC must be a PDF or image file.',
+            'floorplan.mimes' => 'Floorplan must be a PDF, DOC, DOCX, or image file.',
+            'epc.mimes' => 'EPC must be a PDF, DOC, DOCX, or image file.',
         ]);
 
         try {
             \DB::beginTransaction();
 
+            // Determine storage disk (S3 if configured, otherwise public)
+            $disk = config('filesystems.default') === 's3' ? 's3' : 'public';
+
             // Upload and save photos
             $primaryPhotoIndex = $validated['primary_photo_index'] ?? 0;
             foreach ($validated['photos'] as $index => $photo) {
-                $photoPath = $photo->store('properties/' . $property->id . '/photos', 'public');
+                $photoPath = $photo->store('properties/' . $property->id . '/photos', $disk);
                 
                 \App\Models\PropertyPhoto::create([
                     'property_id' => $property->id,
@@ -840,7 +1147,7 @@ class AdminController extends Controller
 
             // Upload floorplan if provided
             if ($request->hasFile('floorplan')) {
-                $floorplanPath = $request->file('floorplan')->store('properties/' . $property->id . '/documents', 'public');
+                $floorplanPath = $request->file('floorplan')->store('properties/' . $property->id . '/documents', $disk);
                 
                 \App\Models\PropertyDocument::updateOrCreate(
                     [
@@ -856,7 +1163,7 @@ class AdminController extends Controller
 
             // Upload EPC if provided
             if ($request->hasFile('epc')) {
-                $epcPath = $request->file('epc')->store('properties/' . $property->id . '/documents', 'public');
+                $epcPath = $request->file('epc')->store('properties/' . $property->id . '/documents', $disk);
                 
                 \App\Models\PropertyDocument::updateOrCreate(
                     [
@@ -883,10 +1190,22 @@ class AdminController extends Controller
         } catch (\Exception $e) {
             \DB::rollBack();
             \Log::error('Listing upload error: ' . $e->getMessage());
+            \Log::error('Listing upload error trace: ' . $e->getTraceAsString());
+            \Log::error('Listing upload error file: ' . $e->getFile() . ':' . $e->getLine());
+
+            // Provide more helpful error message
+            $errorMessage = 'An error occurred while uploading the listing. ';
+            if (str_contains($e->getMessage(), 'storage') || str_contains($e->getMessage(), 'disk')) {
+                $errorMessage .= 'Storage error: Please ensure the storage directory exists and is writable.';
+            } elseif (str_contains($e->getMessage(), 'SQL') || str_contains($e->getMessage(), 'column')) {
+                $errorMessage .= 'Database error: ' . $e->getMessage();
+            } else {
+                $errorMessage .= 'Error: ' . $e->getMessage();
+            }
 
             return back()
                 ->withInput()
-                ->with('error', 'An error occurred while uploading the listing. Please try again.');
+                ->with('error', $errorMessage);
         }
     }
 
@@ -906,6 +1225,15 @@ class AdminController extends Controller
         }
 
         $property = Property::with(['seller', 'photos', 'documents'])->findOrFail($id);
+        
+        // For agents, verify they have access to this property
+        if ($user->role === 'agent') {
+            $agentPropertyIds = $this->getAgentPropertyIds($user->id);
+            if (!in_array($property->id, $agentPropertyIds)) {
+                return redirect()->route('admin.properties.index')
+                    ->with('error', 'You do not have permission to publish this listing.');
+            }
+        }
 
         // Validate that listing is ready for publishing
         if ($property->photos->count() < 1) {
@@ -979,5 +1307,132 @@ class AdminController extends Controller
         }
 
         return $results;
+    }
+
+    /**
+     * List all AML checks for admin review.
+     *
+     * @return \Illuminate\Contracts\Support\Renderable
+     */
+    public function amlChecks()
+    {
+        $user = auth()->user();
+        
+        if (!in_array($user->role, ['admin', 'agent'])) {
+            return redirect()->route($this->getRoleDashboard($user->role))
+                ->with('error', 'You do not have permission to access this page.');
+        }
+
+        $amlChecksQuery = AmlCheck::with(['user', 'checker']);
+        
+        // For agents, only show AML checks for their assigned properties' sellers
+        if ($user->role === 'agent') {
+            $agentPropertyIds = $this->getAgentPropertyIds($user->id);
+            if (empty($agentPropertyIds)) {
+                $amlChecks = collect([]);
+            } else {
+                $agentSellerIds = Property::whereIn('id', $agentPropertyIds)
+                    ->pluck('seller_id')
+                    ->toArray();
+                $amlChecksQuery->whereIn('user_id', $agentSellerIds);
+            }
+        }
+        
+        $amlChecks = $amlChecksQuery->orderBy('created_at', 'desc')->paginate(20);
+
+        return view('admin.aml-checks.index', compact('amlChecks'));
+    }
+
+    /**
+     * Show individual AML check details and documents.
+     *
+     * @param  int  $id  AML Check ID
+     * @return \Illuminate\Contracts\Support\Renderable
+     */
+    public function showAmlCheck($id)
+    {
+        $user = auth()->user();
+        
+        if (!in_array($user->role, ['admin', 'agent'])) {
+            return redirect()->route($this->getRoleDashboard($user->role))
+                ->with('error', 'You do not have permission to access this page.');
+        }
+
+        $amlCheck = AmlCheck::with(['user', 'checker', 'documents'])->findOrFail($id);
+        
+        // For agents, verify they have access to this AML check's user
+        if ($user->role === 'agent') {
+            $agentPropertyIds = $this->getAgentPropertyIds($user->id);
+            $agentSellerIds = Property::whereIn('id', $agentPropertyIds)
+                ->pluck('seller_id')
+                ->toArray();
+            
+            if (!in_array($amlCheck->user_id, $agentSellerIds)) {
+                return redirect()->route('admin.aml-checks.index')
+                    ->with('error', 'You do not have permission to view this AML check.');
+            }
+        }
+
+        return view('admin.aml-checks.show', compact('amlCheck'));
+    }
+
+    /**
+     * Verify or reject an AML check.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  int  $id  AML Check ID
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function verifyAmlCheck(Request $request, $id)
+    {
+        $user = auth()->user();
+        
+        if (!in_array($user->role, ['admin', 'agent'])) {
+            return redirect()->route($this->getRoleDashboard($user->role))
+                ->with('error', 'You do not have permission to perform this action.');
+        }
+
+        $validated = $request->validate([
+            'verification_status' => ['required', 'string', 'in:verified,rejected'],
+            'notes' => ['nullable', 'string', 'max:1000'],
+        ], [
+            'verification_status.required' => 'Please select a verification status.',
+            'verification_status.in' => 'Invalid verification status.',
+        ]);
+
+        $amlCheck = AmlCheck::findOrFail($id);
+        
+        // For agents, verify they have access to this AML check's user
+        if ($user->role === 'agent') {
+            $agentPropertyIds = $this->getAgentPropertyIds($user->id);
+            $agentSellerIds = Property::whereIn('id', $agentPropertyIds)
+                ->pluck('seller_id')
+                ->toArray();
+            
+            if (!in_array($amlCheck->user_id, $agentSellerIds)) {
+                return redirect()->route('admin.aml-checks.index')
+                    ->with('error', 'You do not have permission to verify this AML check.');
+            }
+        }
+
+        try {
+            $amlCheck->update([
+                'verification_status' => $validated['verification_status'],
+                'checked_by' => $user->id,
+                'checked_at' => now(),
+            ]);
+
+            $statusText = $validated['verification_status'] === 'verified' ? 'verified' : 'rejected';
+            
+            return redirect()->route('admin.aml-checks.show', $amlCheck->id)
+                ->with('success', "AML check has been {$statusText} successfully.");
+
+        } catch (\Exception $e) {
+            \Log::error('AML verification error: ' . $e->getMessage());
+
+            return back()
+                ->withInput()
+                ->with('error', 'An error occurred while verifying the AML check. Please try again.');
+        }
     }
 }

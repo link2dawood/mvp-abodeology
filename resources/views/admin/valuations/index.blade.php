@@ -99,6 +99,64 @@
     .btn-secondary:hover {
         background: #5a6268;
     }
+
+    /* RESPONSIVE DESIGN */
+    @media (max-width: 768px) {
+        h2 {
+            font-size: 24px;
+        }
+
+        .card {
+            padding: 20px;
+            overflow-x: auto;
+        }
+
+        .table {
+            display: block;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            min-width: 600px;
+        }
+
+        .table th,
+        .table td {
+            padding: 8px;
+            font-size: 13px;
+        }
+
+        .btn {
+            padding: 6px 12px;
+            font-size: 13px;
+            display: block;
+            margin: 5px 0;
+            text-align: center;
+        }
+
+        .page-subtitle {
+            font-size: 14px;
+        }
+    }
+
+    @media (max-width: 480px) {
+        h2 {
+            font-size: 20px;
+        }
+
+        .card {
+            padding: 15px;
+        }
+
+        .table th,
+        .table td {
+            padding: 6px;
+            font-size: 12px;
+        }
+
+        .status {
+            font-size: 11px;
+            padding: 4px 8px;
+        }
+    }
 </style>
 @endpush
 

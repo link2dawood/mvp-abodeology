@@ -42,4 +42,36 @@ class AmlCheck extends Model
     {
         return $this->belongsTo(User::class, 'checked_by');
     }
+
+    /**
+     * Get all documents for this AML check.
+     */
+    public function documents()
+    {
+        return $this->hasMany(AmlDocument::class);
+    }
+
+    /**
+     * Get ID documents for this AML check.
+     */
+    public function idDocuments()
+    {
+        return $this->hasMany(AmlDocument::class)->where('document_type', 'id_document');
+    }
+
+    /**
+     * Get proof of address documents for this AML check.
+     */
+    public function proofOfAddressDocuments()
+    {
+        return $this->hasMany(AmlDocument::class)->where('document_type', 'proof_of_address');
+    }
+
+    /**
+     * Get additional documents for this AML check.
+     */
+    public function additionalDocuments()
+    {
+        return $this->hasMany(AmlDocument::class)->where('document_type', 'additional');
+    }
 }

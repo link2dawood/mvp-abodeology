@@ -88,11 +88,119 @@
     table tr:last-child td {
         border-bottom: none;
     }
+
+    /* RESPONSIVE DESIGN */
+    @media (max-width: 768px) {
+        .container {
+            padding: 15px;
+            margin: 20px auto;
+        }
+
+        h2 {
+            font-size: 20px;
+            margin-top: 30px;
+        }
+
+        .card {
+            padding: 15px;
+            margin: 12px 0;
+        }
+
+        .btn {
+            width: 100%;
+            margin: 8px 0;
+            text-align: center;
+            padding: 12px 20px;
+        }
+
+        table {
+            display: block;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        table th,
+        table td {
+            padding: 8px;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+
+        .card > div[style*="display: flex"] {
+            flex-direction: column;
+        }
+
+        .card > div[style*="display: flex"] > div:last-child {
+            margin-top: 15px;
+        }
+
+        .card > div[style*="display: flex"] > div:last-child .btn {
+            width: 100%;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .container {
+            padding: 12px;
+            margin: 15px auto;
+        }
+
+        h2 {
+            font-size: 18px;
+        }
+
+        .card {
+            padding: 12px;
+        }
+
+        table th,
+        table td {
+            padding: 6px;
+            font-size: 12px;
+        }
+
+        .status {
+            font-size: 12px;
+            padding: 6px 10px;
+        }
+    }
 </style>
 @endpush
 
 @section('content')
 <div class="container">
+    @if(isset($valuations) && $valuations->count() > 0)
+        <h2 style="margin-top: 0;">Upcoming Valuations</h2>
+        <div style="margin-bottom: 30px;">
+            @foreach($valuations as $valuation)
+                @if($valuation->valuation_date && $valuation->valuation_date >= now()->toDateString())
+                    <div class="card" style="margin-bottom: 15px;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <div style="flex: 1;">
+                                <strong style="font-size: 16px;">{{ $valuation->property_address }}</strong>
+                                @if($valuation->postcode)
+                                    <div style="color: #666; font-size: 14px; margin-top: 5px;">{{ $valuation->postcode }}</div>
+                                @endif
+                                <div style="margin-top: 10px; font-size: 14px;">
+                                    <strong>Valuation Date:</strong> 
+                                    {{ \Carbon\Carbon::parse($valuation->valuation_date)->format('l, F j, Y') }}
+                                    @if($valuation->valuation_time)
+                                        @ {{ \Carbon\Carbon::parse($valuation->valuation_time)->format('g:i A') }}
+                                    @endif
+                                </div>
+                                @if($valuation->status)
+                                    <div style="margin-top: 8px;">
+                                        <span class="status">Status: {{ ucfirst($valuation->status) }}</span>
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                @endif
+            @endforeach
+        </div>
+    @endif
+
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
         <h2 style="margin: 0; border: none; padding: 0;">Your Properties</h2>
         <a href="{{ route('seller.properties.create') }}" class="btn" style="margin: 0;">+ Create New Property</a>
@@ -126,6 +234,17 @@
                                     <span style="margin-left: 15px; font-size: 14px;">Asking Price: £{{ number_format($prop->asking_price, 0) }}</span>
                                 @endif
                             </div>
+                            @if($prop->valuation && ($prop->valuation->valuation_date || $prop->valuation->valuation_time))
+                                <div style="margin-top: 10px; font-size: 14px; color: #666;">
+                                    <strong>Valuation:</strong>
+                                    @if($prop->valuation->valuation_date)
+                                        {{ \Carbon\Carbon::parse($prop->valuation->valuation_date)->format('l, F j, Y') }}
+                                    @endif
+                                    @if($prop->valuation->valuation_time)
+                                        @ {{ \Carbon\Carbon::parse($prop->valuation->valuation_time)->format('g:i A') }}
+                                    @endif
+                                </div>
+                            @endif
                             @if($prop->status === 'awaiting_aml')
                                 <div style="margin-top: 10px; padding: 10px; background: #fff3cd; border-left: 3px solid #ffc107; border-radius: 3px;">
                                     <p style="margin: 0 0 8px 0; font-size: 13px; color: #856404; font-weight: 600;">⚠️ Action Required: Upload AML Documents</p>

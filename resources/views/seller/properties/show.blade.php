@@ -206,6 +206,13 @@
                 </div>
             @endif
 
+            @if($property->reception_rooms)
+                <div class="info-item">
+                    <div class="info-label">Reception Rooms</div>
+                    <div class="info-value">{{ $property->reception_rooms }}</div>
+                </div>
+            @endif
+
             @if($property->tenure)
                 <div class="info-item">
                     <div class="info-label">Tenure</div>
@@ -220,6 +227,25 @@
                 </div>
             @endif
         </div>
+
+        @if($property->outbuildings || $property->garden_details)
+            <div class="section-title">Outdoor Features</div>
+            <div class="info-grid">
+                @if($property->outbuildings)
+                    <div class="info-item">
+                        <div class="info-label">Outbuildings</div>
+                        <div class="info-value">{{ $property->outbuildings }}</div>
+                    </div>
+                @endif
+
+                @if($property->garden_details)
+                    <div class="info-item" style="grid-column: 1 / -1;">
+                        <div class="info-label">Garden Details</div>
+                        <div class="info-value" style="white-space: pre-wrap;">{{ $property->garden_details }}</div>
+                    </div>
+                @endif
+            </div>
+        @endif
 
         @if($property->lease_years_remaining || $property->ground_rent || $property->service_charge)
             <div class="section-title">Leasehold Information</div>

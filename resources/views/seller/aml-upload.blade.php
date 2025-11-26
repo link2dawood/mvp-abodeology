@@ -185,33 +185,59 @@
         @csrf
 
         <div class="card">
-            <h3>Photo ID Document</h3>
+            <h3>Photo ID Documents</h3>
             <div class="upload-box">
-                <strong>Upload Photo ID</strong>
+                <strong>Upload Photo ID Documents</strong>
                 <p>Acceptable formats: Passport, Driving License, or National ID Card</p>
+                <p style="font-size: 12px; color: #666; margin-top: 5px;">You can upload multiple documents (e.g., front and back of ID card)</p>
                 <input type="file" 
-                       name="id_document" 
+                       name="id_documents[]" 
                        accept="image/*,.pdf"
+                       multiple
                        required
-                       class="{{ $errors->has('id_document') ? 'error' : '' }}">
+                       class="{{ $errors->has('id_documents') ? 'error' : '' }}">
             </div>
-            @error('id_document')
+            @error('id_documents')
+                <div class="error-message">{{ $message }}</div>
+            @enderror
+            @error('id_documents.*')
                 <div class="error-message">{{ $message }}</div>
             @enderror
         </div>
 
         <div class="card">
-            <h3>Proof of Address Document</h3>
+            <h3>Proof of Address Documents</h3>
             <div class="upload-box">
-                <strong>Upload Proof of Address</strong>
+                <strong>Upload Proof of Address Documents</strong>
                 <p>Acceptable formats: Utility bill, Bank statement, or Council tax bill (dated within last 3 months)</p>
+                <p style="font-size: 12px; color: #666; margin-top: 5px;">You can upload multiple documents if needed</p>
                 <input type="file" 
-                       name="proof_of_address" 
+                       name="proof_of_address_documents[]" 
                        accept="image/*,.pdf"
+                       multiple
                        required
-                       class="{{ $errors->has('proof_of_address') ? 'error' : '' }}">
+                       class="{{ $errors->has('proof_of_address_documents') ? 'error' : '' }}">
             </div>
-            @error('proof_of_address')
+            @error('proof_of_address_documents')
+                <div class="error-message">{{ $message }}</div>
+            @enderror
+            @error('proof_of_address_documents.*')
+                <div class="error-message">{{ $message }}</div>
+            @enderror
+        </div>
+
+        <div class="card">
+            <h3>Additional Documents (Optional)</h3>
+            <div class="upload-box">
+                <strong>Upload Additional Documents</strong>
+                <p>Any other supporting documents you'd like to provide</p>
+                <input type="file" 
+                       name="additional_documents[]" 
+                       accept="image/*,.pdf"
+                       multiple
+                       class="{{ $errors->has('additional_documents') ? 'error' : '' }}">
+            </div>
+            @error('additional_documents.*')
                 <div class="error-message">{{ $message }}</div>
             @enderror
         </div>

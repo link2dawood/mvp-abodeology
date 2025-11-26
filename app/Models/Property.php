@@ -13,11 +13,17 @@ class Property extends Model
 
     protected $fillable = [
         'seller_id',
+        'seller2_name',
+        'seller2_email',
+        'seller2_phone',
         'address',
         'postcode',
         'property_type',
         'bedrooms',
         'bathrooms',
+        'reception_rooms',
+        'outbuildings',
+        'garden_details',
         'parking',
         'tenure',
         'lease_years_remaining',
@@ -30,6 +36,7 @@ class Property extends Model
         'solicitor_phone',
         'solicitor_details_completed',
         'asking_price',
+        'pricing_notes',
         'status',
     ];
 

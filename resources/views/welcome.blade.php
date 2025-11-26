@@ -21,9 +21,15 @@
         @endif
     </head>
     <body class="bg-[#FDFDFC] dark:bg-[#0a0a0a] text-[#1b1b18] flex p-6 lg:p-8 items-center lg:justify-center min-h-screen flex-col">
-        <header class="w-full lg:max-w-4xl max-w-[335px] text-sm mb-6 not-has-[nav]:hidden">
+        <header class="w-full lg:max-w-4xl max-w-[335px] text-sm mb-6">
+            <div style="text-align: center; margin-bottom: 20px;">
+                <a href="{{ url('/') }}" style="display: inline-block;">
+                    <img src="{{ asset('media/abodeology-logo.svg') }}" alt="Abodeology Logo" height="40" style="max-height: 40px;" onerror="this.onerror=null; this.src='{{ asset('media/abodeology-logo.svg') }}'; this.onerror=function(){this.style.display='none'; this.nextElementSibling.style.display='inline-block';};">
+                    <span style="display: none; color: #2CB8B4; font-weight: 600; font-size: 24px; line-height: 40px;">Abodeology®</span>
+                </a>
+            </div>
             @if (Route::has('login'))
-                <nav class="flex items-center justify-end gap-4">
+                <nav class="flex items-center justify-end gap-4 not-has-[nav]:hidden">
                     @auth
                         <a
                             href="{{ url('/dashboard') }}"

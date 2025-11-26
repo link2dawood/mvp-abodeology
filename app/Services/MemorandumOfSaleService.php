@@ -30,11 +30,16 @@ class MemorandumOfSaleService
             $directory = 'memorandums-of-sale/' . $property->id;
             $filePath = $directory . '/' . $fileName;
 
-            // Ensure directory exists
-            Storage::disk('public')->makeDirectory($directory);
+            // Determine storage disk (S3 if configured, otherwise public)
+            $disk = config('filesystems.default') === 's3' ? 's3' : 'public';
+
+            // Ensure directory exists (only for local storage, S3 doesn't need directories)
+            if ($disk !== 's3') {
+                Storage::disk($disk)->makeDirectory($directory);
+            }
 
             // Save memorandum
-            Storage::disk('public')->put($filePath, $content);
+            Storage::disk($disk)->put($filePath, $content);
 
             // Create PropertyDocument record
             \App\Models\PropertyDocument::create([

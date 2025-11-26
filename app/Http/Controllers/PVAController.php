@@ -240,7 +240,7 @@ class PVAController extends Controller
     {
         $dashboards = [
             'admin' => 'admin.dashboard',
-            'agent' => 'admin.dashboard',
+            'agent' => 'admin.agent.dashboard',
             'buyer' => 'buyer.dashboard',
             'seller' => 'seller.dashboard',
             'both' => 'buyer.dashboard',

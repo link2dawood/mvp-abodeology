@@ -336,15 +336,20 @@ class HomeCheckReportService
      */
     protected function saveReport(Property $property, HomecheckReport $homecheckReport, string $content): string
     {
+        // Determine storage disk (S3 if configured, otherwise public)
+        $disk = config('filesystems.default') === 's3' ? 's3' : 'public';
+        
         $fileName = 'homecheck-report-' . $property->id . '-' . $homecheckReport->id . '-' . time() . '.html';
         $directory = 'homecheck-reports/' . $property->id;
         $filePath = $directory . '/' . $fileName;
 
-        // Ensure directory exists
-        Storage::disk('public')->makeDirectory($directory);
+        // Ensure directory exists (only for local storage, S3 doesn't need directories)
+        if ($disk !== 's3') {
+            Storage::disk($disk)->makeDirectory($directory);
+        }
 
         // Save report
-        Storage::disk('public')->put($filePath, $content);
+        Storage::disk($disk)->put($filePath, $content);
 
         return $filePath;
     }

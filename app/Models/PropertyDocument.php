@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class PropertyDocument extends Model
 {
+    public $timestamps = false; // Using uploaded_at instead
+
     protected $fillable = [
         'property_id',
         'document_type',

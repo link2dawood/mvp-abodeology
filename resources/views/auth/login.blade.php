@@ -133,13 +133,47 @@
         .footer-links p {
             margin: 10px 0;
         }
+
+        /* RESPONSIVE DESIGN */
+        @media (max-width: 480px) {
+            .wrapper {
+                padding: 15px;
+                align-items: flex-start;
+                padding-top: 30px;
+            }
+
+            .login-box {
+                padding: 25px 20px;
+                max-width: 100%;
+            }
+
+            .logo img {
+                width: 140px;
+            }
+
+            h2 {
+                font-size: 20px;
+            }
+
+            input[type="email"],
+            input[type="password"] {
+                padding: 12px;
+                font-size: 14px;
+            }
+
+            .btn {
+                padding: 12px;
+                font-size: 15px;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="wrapper">
         <div class="login-box">
             <div class="logo">
-                <img src="{{ asset('media/abodeology-logo.png') }}" alt="Abodeology Logo" onerror="this.style.display='none'">
+                <img src="{{ asset('media/abodeology-logo.svg') }}" alt="Abodeology Logo" height="40" style="max-height: 40px;" onerror="this.onerror=null; this.src='{{ asset('media/abodeology-logo.svg') }}'; this.onerror=function(){this.style.display='none'; this.nextElementSibling.style.display='inline-block';};">
+                <span style="display: none; color: #2CB8B4; font-weight: 600; font-size: 24px;">Abodeology®</span>
             </div>
             
             <h2>Sign in to Abodeology</h2>

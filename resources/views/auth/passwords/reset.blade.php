@@ -4,7 +4,6 @@
 
 @section('content')
 <div class="text-center mb-4">
-    <img src="{{ asset('media/abodeology-logo.png') }}" height="36" alt="Abodeology Logo" onerror="this.style.display='none'">
     <h1 class="h2 mt-3" style="color: var(--text-primary);">Reset your password</h1>
     <p style="color: var(--text-secondary);">Enter your new password below to complete the reset process.</p>
 </div>

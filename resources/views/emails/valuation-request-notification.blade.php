@@ -23,10 +23,16 @@
         .logo {
             text-align: center;
             margin-bottom: 30px;
+            background: #0F0F0F;
+            padding: 20px;
+            border-radius: 8px;
         }
-        .logo img {
-            max-width: 180px;
-            height: auto;
+        .logo-text {
+            color: #2CB8B4;
+            font-size: 28px;
+            font-weight: 600;
+            margin: 0;
+            letter-spacing: 1px;
         }
         h1 {
             color: #2CB8B4;
@@ -109,7 +115,7 @@
 <body>
     <div class="email-container">
         <div class="logo">
-            <img src="{{ asset('media/abodeology-logo.png') }}" alt="Abodeology Logo" onerror="this.style.display='none'">
+            <h1 class="logo-text">Abodeology®</h1>
         </div>
 
         <h1>New Valuation Appointment Request</h1>

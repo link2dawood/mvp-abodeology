@@ -154,6 +154,57 @@
         background: var(--danger); 
         color: var(--white); 
     }
+
+    /* RESPONSIVE DESIGN */
+    @media (max-width: 768px) {
+        h2 {
+            font-size: 24px;
+        }
+
+        .grid {
+            grid-template-columns: 1fr;
+            gap: 15px;
+        }
+
+        .card {
+            padding: 20px;
+        }
+
+        .table {
+            display: block;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .table th,
+        .table td {
+            padding: 8px;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+
+        .btn {
+            width: 100%;
+            text-align: center;
+            margin-top: 10px;
+        }
+    }
+
+    @media (max-width: 480px) {
+        h2 {
+            font-size: 20px;
+        }
+
+        .card {
+            padding: 15px;
+        }
+
+        .table th,
+        .table td {
+            padding: 6px;
+            font-size: 12px;
+        }
+    }
 </style>
 @endpush
 

@@ -63,7 +63,7 @@ class GoogleController extends Controller
                 return route('admin.dashboard');
             
             case 'agent':
-                return route('admin.dashboard');
+                return route('admin.agent.dashboard');
             
             case 'buyer':
                 return route('buyer.dashboard');

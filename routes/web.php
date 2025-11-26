@@ -31,6 +31,16 @@ Route::prefix('valuation')->name('valuation.')->group(function () {
 Route::middleware(['auth', 'role.web:admin,agent'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [App\Http\Controllers\AdminController::class, 'dashboard'])->name('dashboard');
     
+    // Agent Dashboard (separate from admin)
+    Route::prefix('agent')->name('agent.')->group(function () {
+        Route::get('/dashboard', [App\Http\Controllers\AdminController::class, 'agentDashboard'])->name('dashboard');
+    });
+    
+    // User Management Routes (Admin Only)
+    Route::middleware(['role.web:admin'])->group(function () {
+        Route::get('/users', [App\Http\Controllers\AdminController::class, 'users'])->name('users.index');
+    });
+    
     // Valuation Management Routes
     Route::get('/valuations', [App\Http\Controllers\AdminController::class, 'valuations'])->name('valuations.index');
     Route::get('/valuations/{id}', [App\Http\Controllers\AdminController::class, 'showValuation'])->name('valuations.show');
@@ -54,6 +64,11 @@ Route::middleware(['auth', 'role.web:admin,agent'])->prefix('admin')->name('admi
     // Listing Management Routes
     Route::get('/properties/{id}/listing-upload', [App\Http\Controllers\AdminController::class, 'showListingUpload'])->name('properties.listing-upload');
     Route::post('/properties/{id}/listing-upload', [App\Http\Controllers\AdminController::class, 'storeListingUpload'])->name('properties.listing-upload.store');
+    
+    // AML Document Management Routes
+    Route::get('/aml-checks', [App\Http\Controllers\AdminController::class, 'amlChecks'])->name('aml-checks.index');
+    Route::get('/aml-checks/{id}', [App\Http\Controllers\AdminController::class, 'showAmlCheck'])->name('aml-checks.show');
+    Route::post('/aml-checks/{id}/verify', [App\Http\Controllers\AdminController::class, 'verifyAmlCheck'])->name('aml-checks.verify');
     Route::post('/properties/{id}/publish', [App\Http\Controllers\AdminController::class, 'publishListing'])->name('properties.publish');
 });
 

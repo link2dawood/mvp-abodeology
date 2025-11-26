@@ -176,6 +176,24 @@
             <div class="info-value">{{ $property->bathrooms }}</div>
         </div>
         @endif
+        @if($property->reception_rooms)
+        <div class="info-row">
+            <div class="info-label">Reception Rooms:</div>
+            <div class="info-value">{{ $property->reception_rooms }}</div>
+        </div>
+        @endif
+        @if($property->outbuildings)
+        <div class="info-row">
+            <div class="info-label">Outbuildings:</div>
+            <div class="info-value">{{ $property->outbuildings }}</div>
+        </div>
+        @endif
+        @if($property->garden_details)
+        <div class="info-row">
+            <div class="info-label">Garden Details:</div>
+            <div class="info-value">{{ $property->garden_details }}</div>
+        </div>
+        @endif
         @if($property->asking_price)
         <div class="info-row">
             <div class="info-label">Asking Price:</div>
@@ -187,7 +205,7 @@
     <div class="card">
         <h3>Seller Information</h3>
         <div class="info-row">
-            <div class="info-label">Name:</div>
+            <div class="info-label">Seller 1 (Primary):</div>
             <div class="info-value">{{ $property->seller->name ?? 'N/A' }}</div>
         </div>
         <div class="info-row">
@@ -199,6 +217,26 @@
             <div class="info-label">Phone:</div>
             <div class="info-value">{{ $property->seller->phone }}</div>
         </div>
+        @endif
+        
+        @if($property->seller2_name || $property->seller2_email || $property->seller2_phone)
+        <hr style="margin: 15px 0; border: none; border-top: 1px solid var(--line-grey);">
+        <div class="info-row">
+            <div class="info-label">Seller 2:</div>
+            <div class="info-value">{{ $property->seller2_name ?? 'N/A' }}</div>
+        </div>
+        @if($property->seller2_email)
+        <div class="info-row">
+            <div class="info-label">Email:</div>
+            <div class="info-value">{{ $property->seller2_email }}</div>
+        </div>
+        @endif
+        @if($property->seller2_phone)
+        <div class="info-row">
+            <div class="info-label">Phone:</div>
+            <div class="info-value">{{ $property->seller2_phone }}</div>
+        </div>
+        @endif
         @endif
     </div>
 

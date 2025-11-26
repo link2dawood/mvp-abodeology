@@ -12,6 +12,7 @@
         "laravel/socialite": "^5.23",
         "laravel/tinker": "^2.10.1",
         "laravel/ui": "*",
+        "league/flysystem-aws-s3-v3": "^3.30",
         "tymon/jwt-auth": "^2.2"
     },
     "require-dev": {

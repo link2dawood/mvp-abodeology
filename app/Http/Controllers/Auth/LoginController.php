@@ -58,8 +58,8 @@ class LoginController extends Controller
                 return route('admin.dashboard');
             
             case 'agent':
-                // Agents can use admin dashboard or have their own
-                return route('admin.dashboard');
+                // Agents have their own dashboard
+                return route('admin.agent.dashboard');
             
             case 'buyer':
                 return route('buyer.dashboard');

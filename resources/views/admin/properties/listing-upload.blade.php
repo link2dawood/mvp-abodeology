@@ -132,12 +132,29 @@
         </div>
     @endif
 
+    @if($errors->any())
+        <div style="background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; padding: 12px 20px; border-radius: 4px; margin-bottom: 20px;">
+            <strong>Please fix the following errors:</strong>
+            <ul style="margin: 10px 0 0 0; padding-left: 20px;">
+                @foreach($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
     <form action="{{ route('admin.properties.listing-upload.store', $property->id) }}" method="POST" enctype="multipart/form-data">
         @csrf
 
         <div class="upload-section">
             <h3>Property Photos *</h3>
             <p class="help-text">Upload at least one photo. The first photo will be used as the primary image by default, or select a primary photo below.</p>
+            @error('photos')
+                <div style="color: #dc3545; font-size: 14px; margin-top: 5px;">{{ $message }}</div>
+            @enderror
+            @error('photos.*')
+                <div style="color: #dc3545; font-size: 14px; margin-top: 5px;">{{ $message }}</div>
+            @enderror
             
             <div class="file-upload-area">
                 <label for="photos" class="file-upload-label">Choose Photos</label>
@@ -153,22 +170,28 @@
 
         <div class="upload-section">
             <h3>Floorplan (Optional)</h3>
-            <p class="help-text">Upload a floorplan document (PDF or image).</p>
+            <p class="help-text">Upload a floorplan document (PDF, DOC, DOCX, or image).</p>
+            @error('floorplan')
+                <div style="color: #dc3545; font-size: 14px; margin-top: 5px;">{{ $message }}</div>
+            @enderror
             
             <div class="file-upload-area">
                 <label for="floorplan" class="file-upload-label">Choose Floorplan</label>
-                <input type="file" id="floorplan" name="floorplan" accept=".pdf,image/*" onchange="previewFile(this, 'floorplan-preview')">
+                <input type="file" id="floorplan" name="floorplan" accept=".pdf,.doc,.docx,image/*" onchange="previewFile(this, 'floorplan-preview')">
                 <div id="floorplan-preview" class="file-list"></div>
             </div>
         </div>
 
         <div class="upload-section">
             <h3>EPC Certificate (Optional)</h3>
-            <p class="help-text">Upload an Energy Performance Certificate (PDF or image).</p>
+            <p class="help-text">Upload an Energy Performance Certificate (PDF, DOC, DOCX, or image).</p>
+            @error('epc')
+                <div style="color: #dc3545; font-size: 14px; margin-top: 5px;">{{ $message }}</div>
+            @enderror
             
             <div class="file-upload-area">
                 <label for="epc" class="file-upload-label">Choose EPC</label>
-                <input type="file" id="epc" name="epc" accept=".pdf,image/*" onchange="previewFile(this, 'epc-preview')">
+                <input type="file" id="epc" name="epc" accept=".pdf,.doc,.docx,image/*" onchange="previewFile(this, 'epc-preview')">
                 <div id="epc-preview" class="file-list"></div>
             </div>
         </div>
