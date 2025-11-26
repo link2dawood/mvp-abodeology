@@ -221,7 +221,7 @@
                 </div>
                 
                 <div style="text-align: center; margin-top: 15px;">
-                    <a href="{{ asset('terms-and-conditions.pdf') }}" target="_blank" class="btn" style="background: #6c757d;">
+                    <a href="{{ asset('terms-and-conditions.pdf') }}" target="_blank" class="btn" style="background: var(--abodeology-teal);">
                         Open PDF in New Window
                     </a>
                 </div>

@@ -300,9 +300,35 @@ class AdminController extends Controller
                 ->with('error', 'You do not have permission to access this page.');
         }
 
-        $users = User::query()
-            ->orderBy('created_at', 'desc')
-            ->paginate(20);
+        $query = User::query();
+
+        // Search by name or email
+        if (request()->has('search') && request('search')) {
+            $search = request('search');
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', '%' . $search . '%')
+                  ->orWhere('email', 'like', '%' . $search . '%')
+                  ->orWhere('phone', 'like', '%' . $search . '%');
+            });
+        }
+
+        // Filter by role
+        if (request()->has('role') && request('role')) {
+            $query->where('role', request('role'));
+        }
+
+        // Filter by registration date
+        if (request()->has('date_from') && request('date_from')) {
+            $query->whereDate('created_at', '>=', request('date_from'));
+        }
+
+        if (request()->has('date_to') && request('date_to')) {
+            $query->whereDate('created_at', '<=', request('date_to'));
+        }
+
+        $users = $query->orderBy('created_at', 'desc')
+            ->paginate(20)
+            ->appends(request()->query());
 
         return view('admin.users.index', compact('users'));
     }

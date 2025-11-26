@@ -120,11 +120,11 @@
     }
 
     .btn-secondary {
-        background: #6c757d;
+        background: var(--abodeology-teal);
     }
 
     .btn-secondary:hover {
-        background: #5a6268;
+        background: #25A29F;
     }
 </style>
 @endpush

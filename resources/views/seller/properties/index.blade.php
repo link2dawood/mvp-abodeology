@@ -26,7 +26,7 @@
     }
 
     .btn {
-        background: #000000;
+        background: #2CB8B4;
         color: #ffffff;
         padding: 10px 20px;
         text-decoration: none;
@@ -36,12 +36,12 @@
         font-weight: 600;
         border: none;
         cursor: pointer;
-        transition: opacity 0.3s ease;
+        transition: background 0.3s ease;
         margin-right: 10px;
     }
 
     .btn:hover {
-        opacity: 0.85;
+        background: #25A29F;
     }
 
     .btn-primary {
@@ -96,7 +96,7 @@
     .property-status {
         display: inline-block;
         padding: 6px 12px;
-        background: #000000;
+        background: #2CB8B4;
         color: #fff;
         border-radius: 3px;
         font-size: 12px;
@@ -106,6 +106,11 @@
 
     .property-status.draft {
         background: #666;
+    }
+
+    .property-status.property_details_captured,
+    .property-status.property_details_completed {
+        background: #2CB8B4;
     }
 
     .property-status.live {

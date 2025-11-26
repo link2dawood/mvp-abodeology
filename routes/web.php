@@ -16,7 +16,7 @@ Route::middleware(['auth'])->prefix('profile')->name('profile.')->group(function
     Route::get('/edit', [App\Http\Controllers\ProfileController::class, 'edit'])->name('edit');
     Route::put('/', [App\Http\Controllers\ProfileController::class, 'update'])->name('update');
     Route::put('/password', [App\Http\Controllers\ProfileController::class, 'updatePassword'])->name('password.update');
-    Route::put('/avatar', [App\Http\Controllers\ProfileController::class, 'updateAvatar'])->name('avatar.update');
+    Route::match(['put', 'post'], '/avatar', [App\Http\Controllers\ProfileController::class, 'updateAvatar'])->name('avatar.update');
     Route::delete('/avatar', [App\Http\Controllers\ProfileController::class, 'removeAvatar'])->name('avatar.remove');
 });
 

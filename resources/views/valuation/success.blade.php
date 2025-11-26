@@ -49,6 +49,9 @@
         /* LOGO */
         .logo {
             margin-bottom: 25px;
+            background: var(--black);
+            padding: 20px;
+            border-radius: 8px;
         }
 
         .logo img {

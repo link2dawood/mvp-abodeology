@@ -119,12 +119,12 @@
     }
 
     .btn-secondary {
-        background: #6c757d;
+        background: var(--abodeology-teal);
         color: var(--white);
     }
 
     .btn-secondary:hover {
-        background: #5a6268;
+        background: #25A29F;
     }
 
     .pre-filled-note {
@@ -198,7 +198,7 @@
                 </div>
                 <div class="form-group">
                     <label>Phone</label>
-                    <input type="tel" name="seller_phone" value="{{ $onboarding->seller_phone ?? $valuation->seller->phone ?? '' }}">
+                    <input type="tel" name="seller_phone" value="{{ old('seller_phone', $onboarding->seller_phone ?? $valuation->seller->phone ?? '') }}">
                 </div>
             </div>
         </div>
@@ -211,47 +211,47 @@
             </div>
             <div class="form-group">
                 <label class="required">Property Address</label>
-                <input type="text" name="property_address" value="{{ $onboarding->property_address ?? $valuation->property_address ?? '' }}" required>
+                <input type="text" name="property_address" value="{{ old('property_address', $onboarding->property_address ?? $valuation->property_address ?? '') }}" required>
             </div>
             <div class="form-row">
                 <div class="form-group">
                     <label>Postcode</label>
-                    <input type="text" name="postcode" value="{{ $onboarding->postcode ?? $valuation->postcode ?? '' }}">
+                    <input type="text" name="postcode" value="{{ old('postcode', $onboarding->postcode ?? $valuation->postcode ?? '') }}">
                 </div>
                 <div class="form-group">
                     <label class="required">Property Type</label>
                     <select name="property_type" required>
                         <option value="">Select...</option>
-                        <option value="detached" {{ ($onboarding->property_type ?? $valuation->property_type) === 'detached' ? 'selected' : '' }}>Detached</option>
-                        <option value="semi" {{ ($onboarding->property_type ?? $valuation->property_type) === 'semi' ? 'selected' : '' }}>Semi-Detached</option>
-                        <option value="terraced" {{ ($onboarding->property_type ?? $valuation->property_type) === 'terraced' ? 'selected' : '' }}>Terraced</option>
-                        <option value="flat" {{ ($onboarding->property_type ?? $valuation->property_type) === 'flat' ? 'selected' : '' }}>Flat</option>
-                        <option value="maisonette" {{ ($onboarding->property_type ?? $valuation->property_type) === 'maisonette' ? 'selected' : '' }}>Maisonette</option>
-                        <option value="bungalow" {{ ($onboarding->property_type ?? $valuation->property_type) === 'bungalow' ? 'selected' : '' }}>Bungalow</option>
-                        <option value="other" {{ ($onboarding->property_type ?? $valuation->property_type) === 'other' ? 'selected' : '' }}>Other</option>
+                        <option value="detached" {{ old('property_type', $onboarding->property_type ?? $valuation->property_type) === 'detached' ? 'selected' : '' }}>Detached</option>
+                        <option value="semi" {{ old('property_type', $onboarding->property_type ?? $valuation->property_type) === 'semi' ? 'selected' : '' }}>Semi-Detached</option>
+                        <option value="terraced" {{ old('property_type', $onboarding->property_type ?? $valuation->property_type) === 'terraced' ? 'selected' : '' }}>Terraced</option>
+                        <option value="flat" {{ old('property_type', $onboarding->property_type ?? $valuation->property_type) === 'flat' ? 'selected' : '' }}>Flat</option>
+                        <option value="maisonette" {{ old('property_type', $onboarding->property_type ?? $valuation->property_type) === 'maisonette' ? 'selected' : '' }}>Maisonette</option>
+                        <option value="bungalow" {{ old('property_type', $onboarding->property_type ?? $valuation->property_type) === 'bungalow' ? 'selected' : '' }}>Bungalow</option>
+                        <option value="other" {{ old('property_type', $onboarding->property_type ?? $valuation->property_type) === 'other' ? 'selected' : '' }}>Other</option>
                     </select>
                 </div>
                 <div class="form-group">
                     <label class="required">Bedrooms</label>
-                    <input type="number" name="bedrooms" value="{{ $onboarding->bedrooms ?? $valuation->bedrooms ?? '' }}" min="0" required>
+                    <input type="number" name="bedrooms" value="{{ old('bedrooms', $onboarding->bedrooms ?? $valuation->bedrooms ?? '') }}" min="0" required>
                 </div>
                 <div class="form-group">
                     <label class="required">Bathrooms</label>
-                    <input type="number" name="bathrooms" value="{{ $onboarding->bathrooms ?? '' }}" step="0.5" min="0" required>
+                    <input type="number" name="bathrooms" value="{{ old('bathrooms', $onboarding->bathrooms ?? '') }}" step="0.5" min="0" required>
                 </div>
                 <div class="form-group">
                     <label>Reception Rooms</label>
-                    <input type="number" name="reception_rooms" value="{{ $onboarding->reception_rooms ?? '' }}" min="0">
+                    <input type="number" name="reception_rooms" value="{{ old('reception_rooms', $onboarding->reception_rooms ?? '') }}" min="0">
                 </div>
             </div>
             <div class="form-group">
                 <label>Outbuildings</label>
-                <input type="text" name="outbuildings" value="{{ $onboarding->outbuildings ?? '' }}" placeholder="e.g., garage, shed, workshop">
+                <input type="text" name="outbuildings" value="{{ old('outbuildings', $onboarding->outbuildings ?? '') }}" placeholder="e.g., garage, shed, workshop">
                 <div class="help-text">List any outbuildings on the property</div>
             </div>
             <div class="form-group">
                 <label>Garden Details</label>
-                <textarea name="garden_details" rows="3" placeholder="Garden size, type, features, etc.">{{ $onboarding->garden_details ?? '' }}</textarea>
+                <textarea name="garden_details" rows="3" placeholder="Garden size, type, features, etc.">{{ old('garden_details', $onboarding->garden_details ?? '') }}</textarea>
                 <div class="help-text">Describe the garden, including size, type, and any notable features</div>
             </div>
             <div class="form-row">
@@ -259,53 +259,53 @@
                     <label>Parking</label>
                     <select name="parking">
                         <option value="">Select...</option>
-                        <option value="none" {{ ($onboarding->parking ?? '') === 'none' ? 'selected' : '' }}>None</option>
-                        <option value="on_street" {{ ($onboarding->parking ?? '') === 'on_street' ? 'selected' : '' }}>On Street</option>
-                        <option value="driveway" {{ ($onboarding->parking ?? '') === 'driveway' ? 'selected' : '' }}>Driveway</option>
-                        <option value="garage" {{ ($onboarding->parking ?? '') === 'garage' ? 'selected' : '' }}>Garage</option>
-                        <option value="allocated" {{ ($onboarding->parking ?? '') === 'allocated' ? 'selected' : '' }}>Allocated</option>
-                        <option value="permit" {{ ($onboarding->parking ?? '') === 'permit' ? 'selected' : '' }}>Permit</option>
+                        <option value="none" {{ old('parking', $onboarding->parking ?? '') === 'none' ? 'selected' : '' }}>None</option>
+                        <option value="on_street" {{ old('parking', $onboarding->parking ?? '') === 'on_street' ? 'selected' : '' }}>On Street</option>
+                        <option value="driveway" {{ old('parking', $onboarding->parking ?? '') === 'driveway' ? 'selected' : '' }}>Driveway</option>
+                        <option value="garage" {{ old('parking', $onboarding->parking ?? '') === 'garage' ? 'selected' : '' }}>Garage</option>
+                        <option value="allocated" {{ old('parking', $onboarding->parking ?? '') === 'allocated' ? 'selected' : '' }}>Allocated</option>
+                        <option value="permit" {{ old('parking', $onboarding->parking ?? '') === 'permit' ? 'selected' : '' }}>Permit</option>
                     </select>
                 </div>
                 <div class="form-group">
                     <label class="required">Tenure</label>
                     <select name="tenure" required>
                         <option value="">Select...</option>
-                        <option value="freehold" {{ ($onboarding->tenure ?? '') === 'freehold' ? 'selected' : '' }}>Freehold</option>
-                        <option value="leasehold" {{ ($onboarding->tenure ?? '') === 'leasehold' ? 'selected' : '' }}>Leasehold</option>
-                        <option value="share_freehold" {{ ($onboarding->tenure ?? '') === 'share_freehold' ? 'selected' : '' }}>Share of Freehold</option>
-                        <option value="unknown" {{ ($onboarding->tenure ?? '') === 'unknown' ? 'selected' : '' }}>Unknown</option>
+                        <option value="freehold" {{ old('tenure', $onboarding->tenure ?? '') === 'freehold' ? 'selected' : '' }}>Freehold</option>
+                        <option value="leasehold" {{ old('tenure', $onboarding->tenure ?? '') === 'leasehold' ? 'selected' : '' }}>Leasehold</option>
+                        <option value="share_freehold" {{ old('tenure', $onboarding->tenure ?? '') === 'share_freehold' ? 'selected' : '' }}>Share of Freehold</option>
+                        <option value="unknown" {{ old('tenure', $onboarding->tenure ?? '') === 'unknown' ? 'selected' : '' }}>Unknown</option>
                     </select>
                 </div>
             </div>
-            @if($onboarding->tenure === 'leasehold' || !$onboarding->tenure)
+            @if($onboarding->tenure === 'leasehold' || !$onboarding->tenure || old('tenure') == 'leasehold')
             <div class="form-row" id="leasehold-details">
                 <div class="form-group">
                     <label>Lease Years Remaining</label>
-                    <input type="number" name="lease_years_remaining" value="{{ $onboarding->lease_years_remaining ?? '' }}" min="0">
+                    <input type="number" name="lease_years_remaining" value="{{ old('lease_years_remaining', $onboarding->lease_years_remaining ?? '') }}" min="0">
                 </div>
                 <div class="form-group">
                     <label>Ground Rent (£/year)</label>
-                    <input type="number" name="ground_rent" value="{{ $onboarding->ground_rent ?? '' }}" step="0.01" min="0">
+                    <input type="number" name="ground_rent" value="{{ old('ground_rent', $onboarding->ground_rent ?? '') }}" step="0.01" min="0">
                 </div>
                 <div class="form-group">
                     <label>Service Charge (£/year)</label>
-                    <input type="number" name="service_charge" value="{{ $onboarding->service_charge ?? '' }}" step="0.01" min="0">
+                    <input type="number" name="service_charge" value="{{ old('service_charge', $onboarding->service_charge ?? '') }}" step="0.01" min="0">
                 </div>
                 <div class="form-group">
                     <label>Managing Agent</label>
-                    <input type="text" name="managing_agent" value="{{ $onboarding->managing_agent ?? '' }}">
+                    <input type="text" name="managing_agent" value="{{ old('managing_agent', $onboarding->managing_agent ?? '') }}">
                 </div>
             </div>
             @endif
             <div class="form-row">
                 <div class="form-group">
                     <label>Asking Price (£)</label>
-                    <input type="number" name="asking_price" value="{{ $onboarding->asking_price ?? '' }}" step="0.01" min="0">
+                    <input type="number" name="asking_price" value="{{ old('asking_price', $onboarding->asking_price ?? '') }}" step="0.01" min="0">
                 </div>
                 <div class="form-group">
                     <label>Estimated Value (£)</label>
-                    <input type="number" name="estimated_value" value="{{ $onboarding->estimated_value ?? $valuation->estimated_value ?? '' }}" step="0.01" min="0">
+                    <input type="number" name="estimated_value" value="{{ old('estimated_value', $onboarding->estimated_value ?? $valuation->estimated_value ?? '') }}" step="0.01" min="0">
                 </div>
             </div>
         </div>
@@ -318,51 +318,51 @@
                     <label>Heating Type</label>
                     <select name="heating_type">
                         <option value="">Select...</option>
-                        <option value="gas" {{ ($onboarding->heating_type ?? '') === 'gas' ? 'selected' : '' }}>Gas</option>
-                        <option value="electric" {{ ($onboarding->heating_type ?? '') === 'electric' ? 'selected' : '' }}>Electric</option>
-                        <option value="oil" {{ ($onboarding->heating_type ?? '') === 'oil' ? 'selected' : '' }}>Oil</option>
-                        <option value="underfloor" {{ ($onboarding->heating_type ?? '') === 'underfloor' ? 'selected' : '' }}>Underfloor</option>
-                        <option value="other" {{ ($onboarding->heating_type ?? '') === 'other' ? 'selected' : '' }}>Other</option>
+                        <option value="gas" {{ old('heating_type', $onboarding->heating_type ?? '') === 'gas' ? 'selected' : '' }}>Gas</option>
+                        <option value="electric" {{ old('heating_type', $onboarding->heating_type ?? '') === 'electric' ? 'selected' : '' }}>Electric</option>
+                        <option value="oil" {{ old('heating_type', $onboarding->heating_type ?? '') === 'oil' ? 'selected' : '' }}>Oil</option>
+                        <option value="underfloor" {{ old('heating_type', $onboarding->heating_type ?? '') === 'underfloor' ? 'selected' : '' }}>Underfloor</option>
+                        <option value="other" {{ old('heating_type', $onboarding->heating_type ?? '') === 'other' ? 'selected' : '' }}>Other</option>
                     </select>
                 </div>
                 <div class="form-group">
                     <label>Boiler Age (years)</label>
-                    <input type="number" name="boiler_age_years" value="{{ $onboarding->boiler_age_years ?? '' }}" min="0">
+                    <input type="number" name="boiler_age_years" value="{{ old('boiler_age_years', $onboarding->boiler_age_years ?? '') }}" min="0">
                 </div>
                 <div class="form-group">
                     <label>Last Boiler Service</label>
-                    <input type="date" name="boiler_last_serviced" value="{{ $onboarding->boiler_last_serviced ?? '' }}">
+                    <input type="date" name="boiler_last_serviced" value="{{ old('boiler_last_serviced', $onboarding->boiler_last_serviced ?? '') }}">
                 </div>
                 <div class="form-group">
                     <label>EPC Rating</label>
                     <select name="epc_rating">
                         <option value="">Select...</option>
-                        <option value="A" {{ ($onboarding->epc_rating ?? '') === 'A' ? 'selected' : '' }}>A</option>
-                        <option value="B" {{ ($onboarding->epc_rating ?? '') === 'B' ? 'selected' : '' }}>B</option>
-                        <option value="C" {{ ($onboarding->epc_rating ?? '') === 'C' ? 'selected' : '' }}>C</option>
-                        <option value="D" {{ ($onboarding->epc_rating ?? '') === 'D' ? 'selected' : '' }}>D</option>
-                        <option value="E" {{ ($onboarding->epc_rating ?? '') === 'E' ? 'selected' : '' }}>E</option>
-                        <option value="F" {{ ($onboarding->epc_rating ?? '') === 'F' ? 'selected' : '' }}>F</option>
-                        <option value="G" {{ ($onboarding->epc_rating ?? '') === 'G' ? 'selected' : '' }}>G</option>
+                        <option value="A" {{ old('epc_rating', $onboarding->epc_rating ?? '') === 'A' ? 'selected' : '' }}>A</option>
+                        <option value="B" {{ old('epc_rating', $onboarding->epc_rating ?? '') === 'B' ? 'selected' : '' }}>B</option>
+                        <option value="C" {{ old('epc_rating', $onboarding->epc_rating ?? '') === 'C' ? 'selected' : '' }}>C</option>
+                        <option value="D" {{ old('epc_rating', $onboarding->epc_rating ?? '') === 'D' ? 'selected' : '' }}>D</option>
+                        <option value="E" {{ old('epc_rating', $onboarding->epc_rating ?? '') === 'E' ? 'selected' : '' }}>E</option>
+                        <option value="F" {{ old('epc_rating', $onboarding->epc_rating ?? '') === 'F' ? 'selected' : '' }}>F</option>
+                        <option value="G" {{ old('epc_rating', $onboarding->epc_rating ?? '') === 'G' ? 'selected' : '' }}>G</option>
                     </select>
                 </div>
             </div>
             <div class="form-row">
                 <div class="form-group">
                     <label style="display: flex; align-items: center;">
-                        <input type="checkbox" name="gas_supply" value="1" {{ ($onboarding->gas_supply ?? false) ? 'checked' : '' }} style="width: auto; margin-right: 8px;">
+                        <input type="checkbox" name="gas_supply" value="1" {{ old('gas_supply', $onboarding->gas_supply ?? false) ? 'checked' : '' }} style="width: auto; margin-right: 8px;">
                         Gas Supply
                     </label>
                 </div>
                 <div class="form-group">
                     <label style="display: flex; align-items: center;">
-                        <input type="checkbox" name="electricity_supply" value="1" {{ ($onboarding->electricity_supply ?? false) ? 'checked' : '' }} style="width: auto; margin-right: 8px;">
+                        <input type="checkbox" name="electricity_supply" value="1" {{ old('electricity_supply', $onboarding->electricity_supply ?? false) ? 'checked' : '' }} style="width: auto; margin-right: 8px;">
                         Electricity Supply
                     </label>
                 </div>
                 <div class="form-group">
                     <label style="display: flex; align-items: center;">
-                        <input type="checkbox" name="mains_water" value="1" {{ ($onboarding->mains_water ?? false) ? 'checked' : '' }} style="width: auto; margin-right: 8px;">
+                        <input type="checkbox" name="mains_water" value="1" {{ old('mains_water', $onboarding->mains_water ?? false) ? 'checked' : '' }} style="width: auto; margin-right: 8px;">
                         Mains Water
                     </label>
                 </div>
@@ -370,20 +370,20 @@
                     <label>Drainage</label>
                     <select name="drainage">
                         <option value="">Select...</option>
-                        <option value="mains" {{ ($onboarding->drainage ?? '') === 'mains' ? 'selected' : '' }}>Mains</option>
-                        <option value="septic_tank" {{ ($onboarding->drainage ?? '') === 'septic_tank' ? 'selected' : '' }}>Septic Tank</option>
-                        <option value="private_system" {{ ($onboarding->drainage ?? '') === 'private_system' ? 'selected' : '' }}>Private System</option>
+                        <option value="mains" {{ old('drainage', $onboarding->drainage ?? '') === 'mains' ? 'selected' : '' }}>Mains</option>
+                        <option value="septic_tank" {{ old('drainage', $onboarding->drainage ?? '') === 'septic_tank' ? 'selected' : '' }}>Septic Tank</option>
+                        <option value="private_system" {{ old('drainage', $onboarding->drainage ?? '') === 'private_system' ? 'selected' : '' }}>Private System</option>
                     </select>
                 </div>
             </div>
             <div class="form-group">
                 <label>Known Issues</label>
-                <textarea name="known_issues" rows="4" placeholder="Damp, subsidence, Japanese knotweed, neighbours, disputes, etc.">{{ $onboarding->known_issues ?? '' }}</textarea>
+                <textarea name="known_issues" rows="4" placeholder="Damp, subsidence, Japanese knotweed, neighbours, disputes, etc.">{{ old('known_issues', $onboarding->known_issues ?? '') }}</textarea>
                 <div class="help-text">List any known issues or problems with the property</div>
             </div>
             <div class="form-group">
                 <label>Planning Alterations</label>
-                <textarea name="planning_alterations" rows="4" placeholder="Planning alterations or building control changes">{{ $onboarding->planning_alterations ?? '' }}</textarea>
+                <textarea name="planning_alterations" rows="4" placeholder="Planning alterations or building control changes">{{ old('planning_alterations', $onboarding->planning_alterations ?? '') }}</textarea>
                 <div class="help-text">Note any planning alterations or building control changes</div>
             </div>
         </div>
@@ -393,16 +393,16 @@
             <h3>Access & Viewing Information</h3>
             <div class="form-group">
                 <label>Viewing Contact</label>
-                <input type="text" name="viewing_contact" value="{{ $onboarding->viewing_contact ?? '' }}" placeholder="Contact person for viewings">
+                <input type="text" name="viewing_contact" value="{{ old('viewing_contact', $onboarding->viewing_contact ?? '') }}" placeholder="Contact person for viewings">
                 <div class="help-text">Who should be contacted for viewings? (seller, tenant, etc.)</div>
             </div>
             <div class="form-group">
                 <label>Preferred Viewing Times</label>
-                <textarea name="preferred_viewing_times" rows="3" placeholder="Preferred viewing times (e.g., Weekdays 9am-5pm, Weekends any time)">{{ $onboarding->preferred_viewing_times ?? '' }}</textarea>
+                <textarea name="preferred_viewing_times" rows="3" placeholder="Preferred viewing times (e.g., Weekdays 9am-5pm, Weekends any time)">{{ old('preferred_viewing_times', $onboarding->preferred_viewing_times ?? '') }}</textarea>
             </div>
             <div class="form-group">
                 <label>Access Notes</label>
-                <textarea name="access_notes" rows="4" placeholder="Alarm codes, keys location, access instructions, parking information, etc.">{{ $onboarding->access_notes ?? '' }}</textarea>
+                <textarea name="access_notes" rows="4" placeholder="Alarm codes, keys location, access instructions, parking information, etc.">{{ old('access_notes', $onboarding->access_notes ?? '') }}</textarea>
                 <div class="help-text">Important access information for viewings and photography</div>
             </div>
         </div>
@@ -440,7 +440,7 @@
             <div class="form-row">
                 <div class="form-group">
                     <label>Estimated Value (£)</label>
-                    <input type="number" name="estimated_value" value="{{ $onboarding->estimated_value ?? $valuation->estimated_value ?? '' }}" step="0.01" min="0">
+                    <input type="number" name="estimated_value" value="{{ old('estimated_value', $onboarding->estimated_value ?? $valuation->estimated_value ?? '') }}" step="0.01" min="0">
                 </div>
                 <div class="form-group">
                     <label>Pricing Notes</label>

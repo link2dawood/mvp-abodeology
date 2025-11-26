@@ -116,15 +116,101 @@
         background: #25A29F;
     }
 
+    .filter-card {
+        background: var(--white);
+        padding: 20px;
+        border-radius: 12px;
+        border: 1px solid var(--line-grey);
+        box-shadow: 0px 3px 12px rgba(0,0,0,0.05);
+        margin-bottom: 20px;
+    }
+
+    .filter-form {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        align-items: end;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .form-group label {
+        font-size: 13px;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 6px;
+    }
+
+    .form-group input,
+    .form-group select {
+        padding: 10px 12px;
+        border: 1px solid var(--line-grey);
+        border-radius: 6px;
+        font-size: 14px;
+        transition: border-color 0.3s ease;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+        outline: none;
+        border-color: var(--abodeology-teal);
+    }
+
+    .filter-actions {
+        display: flex;
+        gap: 10px;
+    }
+
+    .btn-reset {
+        background: #6c757d;
+        color: var(--white);
+    }
+
+    .btn-reset:hover {
+        background: #5a6268;
+    }
+
+    .loading-indicator {
+        display: none;
+        text-align: center;
+        padding: 20px;
+        color: var(--abodeology-teal);
+        font-weight: 600;
+    }
+
+    .loading-indicator.active {
+        display: block;
+    }
+
+    .users-table-container {
+        position: relative;
+    }
+
     /* RESPONSIVE DESIGN */
     @media (max-width: 768px) {
         h2 {
             font-size: 24px;
         }
 
-        .card {
+        .card, .filter-card {
             padding: 20px;
             overflow-x: auto;
+        }
+
+        .filter-form {
+            grid-template-columns: 1fr;
+        }
+
+        .filter-actions {
+            flex-direction: column;
+        }
+
+        .filter-actions .btn {
+            width: 100%;
+            text-align: center;
         }
 
         .table {
@@ -189,7 +275,47 @@
         </div>
     @endif
 
-    <div class="card">
+    <!-- SEARCH FILTERS -->
+    <div class="filter-card">
+        <form method="GET" action="{{ route('admin.users.index') }}" class="filter-form">
+            <div class="form-group">
+                <label for="search">Search (Name, Email, Phone)</label>
+                <input type="text" name="search" id="search" value="{{ request('search') }}" placeholder="Search users...">
+            </div>
+
+            <div class="form-group">
+                <label for="role">Filter by Role</label>
+                <select name="role" id="role">
+                    <option value="">All Roles</option>
+                    <option value="admin" {{ request('role') == 'admin' ? 'selected' : '' }}>Admin</option>
+                    <option value="agent" {{ request('role') == 'agent' ? 'selected' : '' }}>Agent</option>
+                    <option value="seller" {{ request('role') == 'seller' ? 'selected' : '' }}>Seller</option>
+                    <option value="buyer" {{ request('role') == 'buyer' ? 'selected' : '' }}>Buyer</option>
+                    <option value="both" {{ request('role') == 'both' ? 'selected' : '' }}>Both (Buyer & Seller)</option>
+                    <option value="pva" {{ request('role') == 'pva' ? 'selected' : '' }}>PVA</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="date_from">Registered From</label>
+                <input type="date" name="date_from" id="date_from" value="{{ request('date_from') }}">
+            </div>
+
+            <div class="form-group">
+                <label for="date_to">Registered To</label>
+                <input type="date" name="date_to" id="date_to" value="{{ request('date_to') }}">
+            </div>
+
+            <div class="filter-actions">
+                <button type="submit" class="btn btn-main" id="applyFiltersBtn">Apply Filters</button>
+                <a href="{{ route('admin.users.index') }}" class="btn btn-reset">Reset</a>
+            </div>
+        </form>
+    </div>
+
+    <div class="card users-table-container">
+        <div class="loading-indicator" id="loadingIndicator">Loading...</div>
+        <div id="usersTableContent">
         <table class="table">
             <thead>
                 <tr>
@@ -199,7 +325,6 @@
                     <th>Phone</th>
                     <th>Role</th>
                     <th>Registered</th>
-                    <th>Email Verified</th>
                 </tr>
             </thead>
             <tbody>
@@ -220,17 +345,10 @@
                             @endif
                         </td>
                         <td>{{ $user->created_at->format('M d, Y') }}</td>
-                        <td>
-                            @if($user->email_verified_at)
-                                <span style="color: #28a745;">✓ Verified</span>
-                            @else
-                                <span style="color: #dc3545;">✗ Not Verified</span>
-                            @endif
-                        </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="7" style="text-align: center; color: #999; padding: 40px;">
+                        <td colspan="6" style="text-align: center; color: #999; padding: 40px;">
                             No users found
                         </td>
                     </tr>
@@ -239,11 +357,159 @@
         </table>
 
         @if($users->hasPages())
-            <div style="margin-top: 20px;">
+            <div style="margin-top: 20px;" id="paginationContainer">
                 {{ $users->links() }}
             </div>
         @endif
+        </div>
     </div>
 </div>
+
+@push('scripts')
+<script>
+(function() {
+    let searchTimeout;
+    const searchInput = document.getElementById('search');
+    const roleSelect = document.getElementById('role');
+    const dateFromInput = document.getElementById('date_from');
+    const dateToInput = document.getElementById('date_to');
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    const usersTableContent = document.getElementById('usersTableContent');
+    const applyFiltersBtn = document.getElementById('applyFiltersBtn');
+
+    // Debounce function
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+
+    // Function to perform live search
+    function performLiveSearch() {
+        const search = searchInput.value;
+        const role = roleSelect.value;
+        const dateFrom = dateFromInput.value;
+        const dateTo = dateToInput.value;
+
+        // Show loading indicator
+        loadingIndicator.classList.add('active');
+        usersTableContent.style.opacity = '0.5';
+
+        // Build query string
+        const params = new URLSearchParams();
+        if (search) params.append('search', search);
+        if (role) params.append('role', role);
+        if (dateFrom) params.append('date_from', dateFrom);
+        if (dateTo) params.append('date_to', dateTo);
+
+        // Make AJAX request
+        fetch(`{{ route('admin.users.index') }}?${params.toString()}`, {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'text/html',
+            }
+        })
+        .then(response => response.text())
+        .then(html => {
+            // Create a temporary container to parse the HTML
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = html;
+            
+            // Extract the table content from the response
+            const responseTableContent = tempDiv.querySelector('#usersTableContent');
+            const responsePagination = tempDiv.querySelector('#paginationContainer');
+            
+            if (responseTableContent) {
+                usersTableContent.innerHTML = responseTableContent.innerHTML;
+            } else {
+                // Fallback: try to find table in the response
+                const responseTable = tempDiv.querySelector('.users-table-container .table');
+                if (responseTable) {
+                    usersTableContent.innerHTML = responseTable.outerHTML;
+                }
+            }
+            
+            // Update pagination
+            const currentPagination = document.getElementById('paginationContainer');
+            if (responsePagination) {
+                if (currentPagination) {
+                    currentPagination.innerHTML = responsePagination.innerHTML;
+                } else {
+                    const paginationDiv = document.createElement('div');
+                    paginationDiv.id = 'paginationContainer';
+                    paginationDiv.style.marginTop = '20px';
+                    paginationDiv.innerHTML = responsePagination.innerHTML;
+                    usersTableContent.appendChild(paginationDiv);
+                }
+            } else if (currentPagination) {
+                currentPagination.remove();
+            }
+
+            // Update URL without page reload
+            const newUrl = `{{ route('admin.users.index') }}?${params.toString()}`;
+            window.history.pushState({path: newUrl}, '', newUrl);
+        })
+        .catch(error => {
+            console.error('Search error:', error);
+        })
+        .finally(() => {
+            loadingIndicator.classList.remove('active');
+            usersTableContent.style.opacity = '1';
+        });
+    }
+
+    // Debounced search function (500ms delay)
+    const debouncedSearch = debounce(performLiveSearch, 500);
+
+    // Event listeners for live search
+    if (searchInput) {
+        searchInput.addEventListener('input', () => {
+            debouncedSearch();
+        });
+    }
+
+    // Event listeners for filters (immediate search on change)
+    if (roleSelect) {
+        roleSelect.addEventListener('change', () => {
+            performLiveSearch();
+        });
+    }
+
+    if (dateFromInput) {
+        dateFromInput.addEventListener('change', () => {
+            performLiveSearch();
+        });
+    }
+
+    if (dateToInput) {
+        dateToInput.addEventListener('change', () => {
+            performLiveSearch();
+        });
+    }
+
+    // Prevent form submission on Enter key in search field
+    if (searchInput) {
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                performLiveSearch();
+            }
+        });
+    }
+
+    // Hide apply button since we're doing live search
+    if (applyFiltersBtn) {
+        applyFiltersBtn.style.display = 'none';
+    }
+})();
+</script>
+@endpush
 @endsection
 

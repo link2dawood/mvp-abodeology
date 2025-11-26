@@ -91,12 +91,12 @@
     }
 
     .btn-secondary {
-        background: #6c757d;
+        background: var(--abodeology-teal);
         color: var(--white);
     }
 
     .btn-secondary:hover {
-        background: #5a6268;
+        background: #25A29F;
     }
 </style>
 @endpush
@@ -301,7 +301,7 @@
                 ->first();
         @endphp
         @if($existingProperty)
-            <a href="{{ route('admin.properties.show', $existingProperty->id) }}" class="btn" style="background: #6c757d; margin-top: 15px; margin-left: 10px;">View Property</a>
+            <a href="{{ route('admin.properties.show', $existingProperty->id) }}" class="btn" style="background: var(--abodeology-teal); margin-top: 15px; margin-left: 10px;">View Property</a>
         @endif
     </div>
     @else

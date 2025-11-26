@@ -119,12 +119,12 @@
     }
 
     .btn-secondary {
-        background: #6c757d;
+        background: var(--abodeology-teal);
         color: var(--white);
     }
 
     .btn-secondary:hover {
-        background: #5a6268;
+        background: #25A29F;
     }
 
     .avatar-preview {
@@ -226,6 +226,24 @@
     <!-- AVATAR -->
     <div class="card">
         <h3>Profile Picture</h3>
+        
+        @if(session('success') && str_contains(request()->url(), 'avatar'))
+            <div style="background: #d4edda; border: 1px solid #c3e6cb; color: #155724; padding: 12px 20px; border-radius: 4px; margin-bottom: 20px;">
+                {{ session('success') }}
+            </div>
+        @endif
+        
+        @if($errors->has('avatar') || (session('errors') && session('errors')->has('avatar')))
+            <div style="background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; padding: 12px 20px; border-radius: 4px; margin-bottom: 20px;">
+                <strong>Error:</strong>
+                @if($errors->has('avatar'))
+                    {{ $errors->first('avatar') }}
+                @elseif(session('errors') && session('errors')->has('avatar'))
+                    {{ session('errors')->first('avatar') }}
+                @endif
+            </div>
+        @endif
+        
         @if($user->avatar)
             <img src="{{ $user->avatar_url }}" alt="Profile Avatar" class="avatar-preview">
         @endif
@@ -238,12 +256,13 @@
                 <input type="file" 
                        id="avatar"
                        name="avatar" 
-                       accept="image/*"
-                       class="{{ $errors->has('avatar') ? 'error' : '' }}">
+                       accept="image/jpeg,image/png,image/jpg,image/gif"
+                       class="{{ $errors->has('avatar') ? 'error' : '' }}"
+                       required>
                 @error('avatar')
                     <div class="error-message">{{ $message }}</div>
                 @enderror
-                <div class="help-text">Accepted formats: JPEG, PNG, GIF. Max size: 2MB</div>
+                <div class="help-text">Accepted formats: JPEG, PNG, JPG, GIF. Max size: 2MB. Dimensions: 50x50 to 2000x2000 pixels</div>
             </div>
             <button type="submit" class="btn">Update Avatar</button>
         </form>

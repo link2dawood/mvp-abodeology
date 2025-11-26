@@ -104,12 +104,12 @@
     }
 
     .btn-main {
-        background: #4A90E2;
+        background: var(--abodeology-teal);
         color: var(--white);
     }
 
     .btn-main:hover {
-        background: #357ABD;
+        background: #25A29F;
     }
 
     /* STATUS BADGES */

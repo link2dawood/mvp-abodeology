@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\ValidationException;
 use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Gd\Driver as GdDriver;
 
@@ -178,8 +179,8 @@ class ProfileController extends Controller
     public function updateAvatar(Request $request)
     {
         try {
-            // Enhanced validation
-            $request->validate([
+            // Enhanced validation with custom error messages
+            $validated = $request->validate([
                 'avatar' => [
                     'required',
                     'image',
@@ -187,10 +188,21 @@ class ProfileController extends Controller
                     'max:2048',
                     'dimensions:min_width=50,min_height=50,max_width=2000,max_height=2000'
                 ],
+            ], [
+                'avatar.required' => 'Please select an image file to upload.',
+                'avatar.image' => 'The uploaded file must be an image (JPEG, PNG, JPG, or GIF).',
+                'avatar.mimes' => 'The image must be in one of the following formats: JPEG, PNG, JPG, or GIF.',
+                'avatar.max' => 'The image size must not exceed 2MB.',
+                'avatar.dimensions' => 'The image dimensions must be between 50x50 and 2000x2000 pixels.',
             ]);
 
             $user = Auth::user();
             $file = $request->file('avatar');
+
+            // Check if file was actually uploaded
+            if (!$file || !$file->isValid()) {
+                return back()->withErrors(['avatar' => 'The file upload failed. Please try again.'])->withInput();
+            }
 
             // Additional security checks
             if (!$this->isSecureImageFile($file)) {
@@ -203,7 +215,7 @@ class ProfileController extends Controller
                 if ($request->expectsJson()) {
                     return response()->json(['error' => 'File failed security validation'], 422);
                 }
-                return back()->withErrors(['avatar' => 'File failed security validation']);
+                return back()->withErrors(['avatar' => 'File failed security validation. Please upload a valid image file.'])->withInput();
             }
 
             // Delete old avatar if exists
@@ -211,7 +223,16 @@ class ProfileController extends Controller
             $disk = config('filesystems.default') === 's3' ? 's3' : 'public';
             
             if ($user->avatar && Storage::disk($disk)->exists('avatars/' . $user->avatar)) {
-                Storage::disk($disk)->delete('avatars/' . $user->avatar);
+                try {
+                    Storage::disk($disk)->delete('avatars/' . $user->avatar);
+                } catch (\Exception $e) {
+                    Log::warning('Failed to delete old avatar', [
+                        'user_id' => $user->id,
+                        'avatar' => $user->avatar,
+                        'error' => $e->getMessage()
+                    ]);
+                    // Continue even if old avatar deletion fails
+                }
             }
 
             // Generate secure filename
@@ -230,22 +251,60 @@ class ProfileController extends Controller
             ]);
 
             if ($request->expectsJson()) {
-                return response()->json(['success' => 'Avatar updated successfully']);
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Avatar updated successfully.',
+                    'avatar_url' => $user->avatar_url
+                ]);
             }
             
             return redirect()->route('profile.show')->with('success', 'Avatar updated successfully.');
             
-        } catch (\Exception $e) {
-            Log::error('Avatar upload failed', [
+        } catch (ValidationException $e) {
+            // Laravel validation errors - these will automatically redirect back with errors
+            // But we'll add a log for debugging
+            Log::warning('Avatar upload validation failed', [
+                'user_id' => auth()->id(),
+                'errors' => $e->errors()
+            ]);
+            
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'error' => 'Validation failed',
+                    'errors' => $e->errors()
+                ], 422);
+            }
+            
+            // ValidationException automatically redirects back with errors
+            throw $e;
+            
+        } catch (\Illuminate\Http\Exceptions\PostTooLargeException $e) {
+            Log::error('Avatar upload failed - file too large', [
                 'user_id' => auth()->id(),
                 'error' => $e->getMessage()
             ]);
             
             if ($request->expectsJson()) {
-                return response()->json(['error' => 'Upload failed'], 500);
+                return response()->json(['error' => 'The uploaded file is too large. Maximum size is 2MB.'], 413);
             }
             
-            return back()->withErrors(['avatar' => 'Upload failed. Please try again.']);
+            return back()->withErrors(['avatar' => 'The uploaded file is too large. Maximum size is 2MB.'])->withInput();
+            
+        } catch (\Exception $e) {
+            Log::error('Avatar upload failed', [
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'error' => 'Upload failed. Please try again.',
+                    'message' => config('app.debug') ? $e->getMessage() : 'An error occurred while uploading your avatar.'
+                ], 500);
+            }
+            
+            return back()->withErrors(['avatar' => 'Upload failed: ' . ($e->getMessage() ?: 'An unexpected error occurred. Please try again.')])->withInput();
         }
     }
 
@@ -269,32 +328,62 @@ class ProfileController extends Controller
             if ($disk === 's3') {
                 // For S3, save to temporary location first, then upload
                 $tempPath = storage_path('app/temp/' . $filename);
-                if (!file_exists(storage_path('app/temp'))) {
-                    mkdir(storage_path('app/temp'), 0755, true);
+                $tempDir = storage_path('app/temp');
+                if (!file_exists($tempDir)) {
+                    if (!mkdir($tempDir, 0755, true)) {
+                        throw new \Exception('Failed to create temporary directory for image processing.');
+                    }
                 }
-                $image->save($tempPath, quality: 85);
+                
+                if (!$image->save($tempPath, quality: 85)) {
+                    throw new \Exception('Failed to save processed image to temporary location.');
+                }
                 
                 // Upload to S3
-                Storage::disk($disk)->put('avatars/' . $filename, file_get_contents($tempPath));
+                $fileContents = file_get_contents($tempPath);
+                if ($fileContents === false) {
+                    throw new \Exception('Failed to read processed image file.');
+                }
+                
+                if (!Storage::disk($disk)->put('avatars/' . $filename, $fileContents)) {
+                    throw new \Exception('Failed to upload image to storage.');
+                }
                 
                 // Delete temporary file
                 @unlink($tempPath);
             } else {
                 // For local storage
-                $path = storage_path('app/public/avatars/' . $filename);
-                if (!file_exists(storage_path('app/public/avatars'))) {
-                    mkdir(storage_path('app/public/avatars'), 0755, true);
+                $avatarDir = storage_path('app/public/avatars');
+                if (!file_exists($avatarDir)) {
+                    if (!mkdir($avatarDir, 0755, true)) {
+                        throw new \Exception('Failed to create avatars directory.');
+                    }
                 }
-                $image->save($path, quality: 85);
+                
+                $path = $avatarDir . '/' . $filename;
+                if (!$image->save($path, quality: 85)) {
+                    throw new \Exception('Failed to save processed image.');
+                }
             }
             
         } catch (\Exception $e) {
-            // Fallback to simple file storage if image processing fails
-            \Log::warning('Image processing failed, using fallback storage', [
+            // Log the error
+            Log::warning('Image processing failed, using fallback storage', [
                 'error' => $e->getMessage(),
-                'filename' => $filename
+                'filename' => $filename,
+                'trace' => $e->getTraceAsString()
             ]);
-            $file->storeAs('avatars', $filename, $disk);
+            
+            // Fallback to simple file storage if image processing fails
+            try {
+                $file->storeAs('avatars', $filename, $disk);
+            } catch (\Exception $fallbackError) {
+                Log::error('Fallback file storage also failed', [
+                    'error' => $fallbackError->getMessage(),
+                    'filename' => $filename
+                ]);
+                throw new \Exception('Failed to store image file. Please try again.');
+            }
         }
     }
 

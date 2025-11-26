@@ -76,12 +76,12 @@
     }
 
     .btn-secondary {
-        background: #6c757d;
+        background: var(--abodeology-teal);
         color: var(--white);
     }
 
     .btn-secondary:hover {
-        background: #5a6268;
+        background: #25A29F;
     }
 
     .status {

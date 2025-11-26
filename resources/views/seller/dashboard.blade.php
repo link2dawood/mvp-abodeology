@@ -38,7 +38,7 @@
     }
 
     .btn {
-        background: #000000;
+        background: #2CB8B4;
         color: #ffffff;
         padding: 10px 20px;
         text-decoration: none;
@@ -47,18 +47,18 @@
         display: inline-block;
         font-size: 14px;
         margin-top: 15px;
-        transition: opacity 0.3s ease;
+        transition: background 0.3s ease;
         border: none;
         cursor: pointer;
     }
 
     .btn:hover {
-        opacity: 0.85;
+        background: #25A29F;
     }
 
     .status {
         padding: 8px 12px;
-        background: #000000;
+        background: #2CB8B4;
         color: #fff;
         display: inline-block;
         margin-bottom: 15px;

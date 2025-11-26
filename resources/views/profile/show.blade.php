@@ -116,11 +116,11 @@
     }
 
     .btn-secondary {
-        background: #6c757d;
+        background: var(--abodeology-teal);
     }
 
     .btn-secondary:hover {
-        background: #5a6268;
+        background: #25A29F;
     }
 
     .success-message {
@@ -334,17 +334,6 @@
             <span class="info-label">Account Created:</span>
             <span class="info-value">{{ $user->created_at->format('F j, Y') }}</span>
         </div>
-        @if($user->email_verified_at)
-        <div class="info-row">
-            <span class="info-label">Email Verified:</span>
-            <span class="info-value" style="color: #28a745;">✓ Verified on {{ $user->email_verified_at->format('F j, Y') }}</span>
-        </div>
-        @else
-        <div class="info-row">
-            <span class="info-label">Email Verified:</span>
-            <span class="info-value" style="color: #dc3545;">✗ Not verified</span>
-        </div>
-        @endif
     </div>
 
     @if($user->role === 'admin')
@@ -501,85 +490,6 @@
                 <a href="{{ route('admin.properties.index') }}" class="quick-link">My Properties</a>
                 <a href="{{ route('admin.valuations.index') }}" class="quick-link">Valuations</a>
                 <a href="{{ route('admin.aml-checks.index') }}" class="quick-link">AML Checks</a>
-            </div>
-        </div>
-    @elseif(in_array($user->role, ['seller', 'both']))
-        <!-- SELLER PROFILE SECTION -->
-        <div class="card" style="background: linear-gradient(135deg, #FFF4E6 0%, #F4F4F4 100%); border-left: 4px solid #FF8C00;">
-            <h3 style="color: #FF8C00; margin-top: 0;">
-                Seller Profile <span class="admin-badge" style="background: linear-gradient(135deg, #FF8C00, #E67E00);">Seller</span>
-            </h3>
-            <p style="color: #666; margin-bottom: 20px;">The Seller Profile is for individuals selling a property. Manage your property listings, viewings, offers, and sale progression.</p>
-
-            @if($sellerStats)
-                <div class="stats-grid">
-                    <div class="stat-box" style="background: linear-gradient(135deg, #FF8C00, #E67E00);">
-                        <div class="stat-number">{{ $sellerStats['total_properties'] ?? 0 }}</div>
-                        <div class="stat-label">My Properties</div>
-                    </div>
-                    <div class="stat-box" style="background: linear-gradient(135deg, #FF8C00, #E67E00);">
-                        <div class="stat-number">{{ $sellerStats['active_listings'] ?? 0 }}</div>
-                        <div class="stat-label">Live Listings</div>
-                    </div>
-                    <div class="stat-box" style="background: linear-gradient(135deg, #FF8C00, #E67E00);">
-                        <div class="stat-number">{{ $sellerStats['completed_valuations'] ?? 0 }}</div>
-                        <div class="stat-label">Valuations</div>
-                    </div>
-                    <div class="stat-box" style="background: linear-gradient(135deg, #FF8C00, #E67E00);">
-                        <div class="stat-number">{{ $sellerStats['pending_offers'] ?? 0 }}</div>
-                        <div class="stat-label">Pending Offers</div>
-                    </div>
-                    <div class="stat-box" style="background: linear-gradient(135deg, #FF8C00, #E67E00);">
-                        <div class="stat-number">{{ $sellerStats['upcoming_viewings'] ?? 0 }}</div>
-                        <div class="stat-label">Upcoming Viewings</div>
-                    </div>
-                    <div class="stat-box" style="background: linear-gradient(135deg, #FF8C00, #E67E00);">
-                        <div class="stat-number">{{ $sellerStats['total_viewings'] ?? 0 }}</div>
-                        <div class="stat-label">Total Viewings</div>
-                    </div>
-                </div>
-            @endif
-
-            <h4 style="margin-top: 30px; margin-bottom: 15px; color: var(--dark-text);">Seller Capabilities</h4>
-            <div class="capabilities-grid">
-                <div class="capability-item" style="border-left-color: #FF8C00;">
-                    <h4 style="color: #FF8C00;">Valuation & Onboarding</h4>
-                    <p>Complete valuation request and seller onboarding forms. Provide property details and second seller information if applicable.</p>
-                </div>
-                <div class="capability-item" style="border-left-color: #FF8C00;">
-                    <h4 style="color: #FF8C00;">Document Management</h4>
-                    <p>Upload AML ID documents and property documents. Manage all required documentation for your property sale.</p>
-                </div>
-                <div class="capability-item" style="border-left-color: #FF8C00;">
-                    <h4 style="color: #FF8C00;">Marketing Approval</h4>
-                    <p>Approve marketing materials and listing content before your property goes live on the market.</p>
-                </div>
-                <div class="capability-item" style="border-left-color: #FF8C00;">
-                    <h4 style="color: #FF8C00;">Viewing Management</h4>
-                    <p>Track viewings, feedback, and manage viewing schedules for your properties.</p>
-                </div>
-                <div class="capability-item" style="border-left-color: #FF8C00;">
-                    <h4 style="color: #FF8C00;">Offer Management</h4>
-                    <p>Track offers and sale progression. Accept or decline offers through your dashboard.</p>
-                </div>
-                <div class="capability-item" style="border-left-color: #FF8C00;">
-                    <h4 style="color: #FF8C00;">Sale Progression</h4>
-                    <p>Monitor the progress of your property sale from listing to completion.</p>
-                </div>
-            </div>
-
-            <h4 style="margin-top: 30px; margin-bottom: 15px; color: var(--dark-text);">Quick Access</h4>
-            <div class="quick-access">
-                <a href="{{ route('seller.dashboard') }}" class="quick-link">My Dashboard</a>
-                <a href="{{ route('seller.properties.index') }}" class="quick-link">My Properties</a>
-                @if($sellerStats && $sellerStats['total_properties'] > 0)
-                    @php
-                        $firstProperty = \App\Models\Property::where('seller_id', $user->id)->first();
-                    @endphp
-                    @if($firstProperty)
-                        <a href="{{ route('seller.aml.upload', $firstProperty->id) }}" class="quick-link">AML Documents</a>
-                    @endif
-                @endif
             </div>
         </div>
     @endif

@@ -70,7 +70,7 @@
     }
 
     .btn {
-        background: #000000;
+        background: #2CB8B4;
         color: #ffffff;
         padding: 12px 30px;
         text-decoration: none;
@@ -80,12 +80,12 @@
         font-weight: 600;
         border: none;
         cursor: pointer;
-        transition: opacity 0.3s ease;
+        transition: background 0.3s ease;
         margin-right: 10px;
     }
 
     .btn:hover {
-        opacity: 0.85;
+        background: #25A29F;
     }
 
     .btn-primary {

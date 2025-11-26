@@ -108,12 +108,12 @@
     }
 
     .btn-dark {
-        background: var(--black);
+        background: var(--abodeology-teal);
         color: var(--white);
     }
 
     .btn-dark:hover {
-        background: #1A1A1A;
+        background: #25A29F;
     }
 
     .btn-danger {

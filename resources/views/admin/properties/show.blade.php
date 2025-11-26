@@ -105,12 +105,12 @@
     }
 
     .btn-secondary {
-        background: #6c757d;
+        background: var(--abodeology-teal);
         color: var(--white);
     }
 
     .btn-secondary:hover {
-        background: #5a6268;
+        background: #25A29F;
     }
 </style>
 @endpush
@@ -293,7 +293,7 @@
                 <p style="font-size: 14px; color: #666; margin-bottom: 10px;">If the seller prefers to sign up later, send them a post-valuation follow-up email with an "Instruct Abodeology" button. They can click the button when they're ready.</p>
                 <form action="{{ route('admin.properties.send-post-valuation-email', $property->id) }}" method="POST" style="display: inline-block;">
                     @csrf
-                    <button type="submit" class="btn" style="background: #6c757d;">Sign Up Later - Send Post-Valuation Email</button>
+                    <button type="submit" class="btn" style="background: var(--abodeology-teal);">Sign Up Later - Send Post-Valuation Email</button>
                 </form>
             </div>
         </div>

@@ -26,7 +26,7 @@
     }
 
     .btn {
-        background: #000000;
+        background: #2CB8B4;
         color: #ffffff;
         padding: 10px 20px;
         text-decoration: none;
@@ -36,12 +36,12 @@
         font-weight: 600;
         border: none;
         cursor: pointer;
-        transition: opacity 0.3s ease;
+        transition: background 0.3s ease;
         margin-right: 10px;
     }
 
     .btn:hover {
-        opacity: 0.85;
+        background: #25A29F;
     }
 
     .btn-primary {
@@ -355,7 +355,7 @@
                 <a href="#" class="btn">View Live Listing</a>
                 <a href="{{ route('seller.homecheck.upload', $property->id) }}" class="btn">Manage HomeCheck</a>
             @endif
-            <a href="{{ route('seller.properties.index') }}" class="btn" style="background: #666;">Back to Properties</a>
+            <a href="{{ route('seller.properties.index') }}" class="btn" style="background: #2CB8B4;">Back to Properties</a>
         </div>
     </div>
 
