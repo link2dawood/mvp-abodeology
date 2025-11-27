@@ -686,9 +686,10 @@ class AdminController extends Controller
     /**
      * List all properties (for agents/admins).
      *
+     * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Contracts\Support\Renderable
      */
-    public function properties()
+    public function properties(Request $request)
     {
         $user = auth()->user();
         
@@ -698,6 +699,11 @@ class AdminController extends Controller
         }
 
         $propertiesQuery = Property::with(['seller', 'instruction']);
+        
+        // Filter by status if provided
+        if ($request->has('status') && $request->status) {
+            $propertiesQuery->where('status', $request->status);
+        }
         
         // For agents, only show their assigned properties
         if ($user->role === 'agent') {

@@ -273,7 +273,7 @@
     @endif
 
     @if(in_array($property->status, ['property_details_captured', 'property_details_completed']) && (!$property->instruction || $property->instruction->status !== 'signed'))
-    <div class="card" style="background: #E8F4F3; border-left: 4px solid var(--abodeology-teal);">
+    <div class="card" style="background: #E8F4F3;">
         <h3 style="color: var(--abodeology-teal); margin-top: 0;">Next Steps</h3>
         <p><strong>Ask the seller if they want to instruct now or later.</strong></p>
         
@@ -362,7 +362,7 @@
             $hasEPC = $property->documents && $property->documents->where('document_type', 'epc')->count() > 0;
         @endphp
 
-        <div class="card" style="background: #E8F4F3; border-left: 4px solid var(--abodeology-teal);">
+        <div class="card" style="background: #E8F4F3;">
             <h3 style="color: var(--abodeology-teal); margin-top: 0;">Listing Preparation</h3>
             
             @if(!$hasPhotos || !$hasFloorplan || !$hasEPC)

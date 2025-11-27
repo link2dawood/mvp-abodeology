@@ -291,7 +291,7 @@
                     <p style="color: #666; margin-top: 10px;">Waiting for instruction request from your agent...</p>
                 @endif
             @elseif($property->status === 'awaiting_aml')
-                <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 20px; margin-top: 20px; border-radius: 4px;">
+                <div style="background: #fff3cd; padding: 20px; margin-top: 20px; border-radius: 4px;">
                     <h4 style="color: #856404; margin-top: 0; font-size: 18px;">⚠️ Action Required: Upload AML Documents</h4>
                     <p style="margin: 10px 0; color: #856404; font-weight: 600;">Your Terms & Conditions have been signed successfully!</p>
                     <p style="margin: 10px 0; color: #856404;">To proceed, please upload your AML documents (Photo ID + Proof of Address).</p>

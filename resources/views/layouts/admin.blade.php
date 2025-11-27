@@ -232,7 +232,7 @@
         <p>
             <a href="#">Privacy Policy</a> | 
             <a href="#">Terms of Service</a> | 
-            <a href="#">Contact Support</a>
+            <a href="mailto:support@abodeology.co.uk">Contact Support</a>
         </p>
     </footer>
 

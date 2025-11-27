@@ -279,7 +279,7 @@
     @endif
 
     @if($valuation->status !== 'completed')
-    <div class="card" style="background: #E8F4F3; border-left: 4px solid var(--abodeology-teal);">
+    <div class="card" style="background: #E8F4F3;">
         <h3 style="color: var(--abodeology-teal); margin-top: 0;">Valuation Form</h3>
         <p>Complete the Valuation Form during the on-site valuation appointment. The form will be pre-filled with seller and property details.</p>
         <p><strong>This form captures:</strong></p>

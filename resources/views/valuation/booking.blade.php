@@ -2,136 +2,106 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Book Valuation | Abodeology®</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Abodeology | Book Your Valuation</title>
     <meta name="csrf-token" content="{{ csrf_token() }}">
     
     <style>
-        /* BRAND COLOURS */
-        :root {
-            --abodeology-teal: #2CB8B4;
-            --black: #0F0F0F;
-            --white: #FFFFFF;
-            --soft-grey: #F4F4F4;
-            --dark-text: #1E1E1E;
-        }
-
-        /* GLOBAL STYLE */
         body {
+            background: #f7f7f7;
+            font-family: "Inter", Arial, sans-serif;
             margin: 0;
-            background: var(--soft-grey);
-            font-family: 'Helvetica Neue', Arial, sans-serif;
-            color: var(--dark-text);
-            min-height: 100vh;
+            padding: 0;
         }
-
-        /* WRAPPER */
-        .wrapper {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 35px 20px;
-            min-height: 100vh;
+        .container {
+            max-width: 650px;
+            background: #fff;
+            margin: 40px auto;
+            padding: 40px;
+            border-radius: 14px;
+            box-shadow: 0 6px 24px rgba(0,0,0,0.1);
         }
-
-        /* CARD */
-        .booking-box {
-            background: var(--white);
-            width: 100%;
-            max-width: 600px;
-            padding: 35px;
-            border-radius: 12px;
-            border: 1px solid #E5E5E5;
-            box-shadow: 0px 4px 20px rgba(0,0,0,0.07);
-        }
-
-        /* LOGO */
         .logo {
             text-align: center;
-            margin-bottom: 25px;
-            background: var(--black);
+            margin-bottom: 30px;
+            background: #0F0F0F;
             padding: 20px;
             border-radius: 8px;
         }
-
         .logo img {
-            width: 160px;
+            width: 230px;
             height: auto;
             object-fit: contain;
+            max-width: 100%;
         }
-
-        /* HEADINGS */
-        h2 {
+        h1 {
+            text-align: center;
             margin-bottom: 10px;
-            font-size: 26px;
+            color: #111;
+            font-size: 28px;
             font-weight: 600;
-            text-align: center;
         }
-
-        .subtext {
-            font-size: 15px;
+        p.sub {
+            text-align: center;
             color: #555;
+            font-size: 15px;
             margin-bottom: 25px;
-            text-align: center;
         }
-
-        /* FORM FIELDS */
-        .form-group {
-            margin-bottom: 20px;
-        }
-
         label {
+            font-weight: 600;
+            margin-bottom: 6px;
             display: block;
-            margin-bottom: 8px;
-            font-size: 14px;
-            font-weight: 500;
-            color: var(--dark-text);
+            color: #111;
         }
-
         input[type="text"],
         input[type="email"],
         input[type="tel"],
-        input[type="date"],
-        input[type="time"],
         input[type="number"],
         select,
         textarea {
             width: 100%;
-            padding: 14px;
-            border: 1px solid #D9D9D9;
+            padding: 12px;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
             border-radius: 6px;
             font-size: 15px;
-            outline: none;
             box-sizing: border-box;
             font-family: inherit;
         }
-
         input:focus,
         select:focus,
         textarea:focus {
-            border-color: var(--abodeology-teal);
-            box-shadow: 0 0 0 3px rgba(44, 184, 180, 0.1);
+            outline: none;
+            border-color: #32b3ac;
+            box-shadow: 0 0 0 3px rgba(50, 179, 172, 0.1);
         }
-
         input.error,
         select.error,
         textarea.error {
             border-color: #dc3545;
         }
-
-        textarea {
-            resize: vertical;
-            min-height: 100px;
+        .radio-group {
+            margin-bottom: 20px;
+            background: #f2f2f2;
+            padding: 18px;
+            border-radius: 8px;
         }
-
-        /* ERROR MESSAGES */
+        .radio-group label {
+            font-weight: 500;
+            margin: 8px 0;
+            cursor: pointer;
+        }
+        .radio-group input[type="radio"] {
+            width: auto;
+            margin-right: 8px;
+            cursor: pointer;
+        }
         .error-message {
             color: #dc3545;
             font-size: 13px;
-            margin-top: 5px;
-            text-align: left;
+            margin-top: -15px;
+            margin-bottom: 15px;
         }
-
         .alert-error {
             background: #fee;
             border: 1px solid #dc3545;
@@ -140,366 +110,226 @@
             margin-bottom: 20px;
             color: #dc3545;
             font-size: 14px;
-            text-align: left;
         }
-
-        /* BUTTON */
-        .btn {
+        button {
             width: 100%;
-            background: var(--abodeology-teal);
-            color: var(--white);
-            padding: 14px;
-            border-radius: 6px;
-            font-size: 16px;
-            font-weight: 600;
+            background: #32b3ac;
+            color: #fff;
+            padding: 15px;
             border: none;
+            border-radius: 8px;
+            font-size: 17px;
             cursor: pointer;
-            margin-top: 10px;
-            transition: background 0.3s ease;
+            font-weight: 600;
+            transition: 0.3s;
         }
-
-        .btn:hover {
-            background: #25A29F;
+        button:hover {
+            background: #289a94;
         }
-
-        .btn:active {
-            transform: scale(0.98);
-        }
-
-        /* FOOTER LINKS */
         .footer-links {
             margin-top: 20px;
             text-align: center;
         }
-
         .footer-links a {
-            color: var(--abodeology-teal);
+            color: #32b3ac;
             text-decoration: none;
             font-size: 14px;
         }
-
         .footer-links a:hover {
             text-decoration: underline;
         }
-
         .footer-links p {
             margin: 10px 0;
         }
-
-        /* FORM ROW */
-        .form-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-        }
-
-        /* RADIO BUTTON GROUP */
-        .role-box {
-            background: var(--soft-grey);
-            border-radius: 8px;
-            padding: 12px 15px;
-            margin-top: 8px;
-            text-align: left;
-            border: 1px solid #E5E5E5;
-        }
-
-        .role-option {
-            margin-bottom: 8px;
-        }
-
-        .role-option:last-child {
-            margin-bottom: 0;
-        }
-
-        .role-option label {
-            margin-left: 8px;
-            font-size: 14px;
-            cursor: pointer;
-            font-weight: normal;
-        }
-
-        .role-option input[type="radio"] {
-            width: auto;
-            margin: 0;
-            cursor: pointer;
-        }
-
         @media (max-width: 600px) {
-            .form-row {
-                grid-template-columns: 1fr;
-            }
-
-            .wrapper {
-                padding: 20px 15px;
-            }
-
-            .booking-box {
+            .container {
+                margin: 20px;
                 padding: 25px 20px;
             }
-
-            h2 {
-                font-size: 22px;
+            h1 {
+                font-size: 24px;
             }
-
-            .subtext {
-                font-size: 14px;
-            }
-
-            input[type="text"],
-            input[type="email"],
-            input[type="tel"],
-            input[type="date"],
-            input[type="time"],
-            select,
-            textarea {
-                padding: 12px;
-                font-size: 14px;
-            }
-
-            .btn {
-                padding: 12px;
-                font-size: 15px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .booking-box {
-                padding: 20px 15px;
-            }
-
-            h2 {
-                font-size: 20px;
-            }
-
             .logo img {
-                width: 140px;
-                height: auto;
-                object-fit: contain;
+                width: 180px;
             }
         }
     </style>
 </head>
 <body>
-    <div class="wrapper">
-        <div class="booking-box">
-            <div class="logo">
-                <img src="{{ asset('media/abodeology-logo.png') }}" alt="Abodeology Logo" onerror="this.onerror=null; this.src='{{ asset('media/abodeology-logo.png') }}'; this.onerror=function(){this.style.display='none'; this.nextElementSibling.style.display='inline-block';};">
-                <span style="display: none; color: #2CB8B4; font-weight: 600; font-size: 24px;">Abodeology®</span>
-            </div>
-            
-            <h2>Book Your Property Valuation</h2>
-            <p class="subtext">Fill in the form below and we'll get in touch to schedule your property valuation.</p>
-            
-            <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin-bottom: 25px; border-radius: 6px;">
-                <p style="margin: 0; font-size: 14px; color: #856404; font-weight: 600;">📋 Important: Please bring your Photo ID to the valuation appointment</p>
-                <p style="margin: 8px 0 0 0; font-size: 13px; color: #856404;">
-                    Our agent will visually check your ID document (Passport, Driving License, or National ID) during the valuation. 
-                    This is required for HMRC and Estate Agents Act compliance.
-                </p>
-                <p style="margin: 8px 0 0 0; font-size: 13px; color: #856404;">
-                    <em>Note: AML documents (ID + Proof of Address) will be collected via your dashboard after signing the Terms & Conditions.</em>
+    <div class="container">
+        <div class="logo">
+            <img src="{{ asset('media/abodeology-logo.png') }}" alt="Abodeology" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+            <h1 style="color: #32b3ac; margin: 0; display: none;">Abodeology®</h1>
+        </div>
+        
+        <h1>Book Your Property Valuation</h1>
+        <p class="sub">Submit your details below and we'll contact you to arrange a suitable time.</p>
+        
+        @auth
+            <div style="background: #E8F4F3; padding: 15px; margin-bottom: 25px; border-radius: 6px;">
+                <p style="margin: 0; font-size: 14px; color: #1E1E1E;">
+                    <strong>Welcome back, {{ auth()->user()->name }}!</strong> Your information will be pre-filled below. 
+                    You can update it if needed.
                 </p>
             </div>
-            
-            @if ($errors->any())
-                <div class="alert-error">
-                    <strong>Please fix the following errors:</strong>
-                    <ul style="margin: 8px 0 0 0; padding-left: 20px;">
-                        @foreach ($errors->all() as $error)
-                            <li>{{ $error }}</li>
-                        @endforeach
-                    </ul>
-                </div>
-            @endif
-
-            @if(session('error'))
-                <div class="alert-error">
-                    {{ session('error') }}
-                </div>
-            @endif
-
-            <form action="{{ route('valuation.booking.store') }}" method="POST">
-                @csrf
-                
-                <div class="form-group">
-                    <label for="name">Full Name <span style="color: #dc3545;">*</span></label>
-                    <input type="text" 
-                           id="name"
-                           name="name" 
-                           placeholder="Enter your full name" 
-                           value="{{ old('name') }}"
-                           required 
-                           autofocus
-                           class="{{ $errors->has('name') ? 'error' : '' }}"
-                           autocomplete="name">
-                    @error('name')
-                        <div class="error-message">{{ $message }}</div>
-                    @enderror
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="email">Email Address <span style="color: #dc3545;">*</span></label>
-                        <input type="email" 
-                               id="email"
-                               name="email" 
-                               placeholder="your@email.com" 
-                               value="{{ old('email') }}"
-                               required
-                               class="{{ $errors->has('email') ? 'error' : '' }}"
-                               autocomplete="email">
-                        @error('email')
-                            <div class="error-message">{{ $message }}</div>
-                        @enderror
-                    </div>
-
-                    <div class="form-group">
-                        <label for="phone">Phone Number</label>
-                        <input type="tel" 
-                               id="phone"
-                               name="phone" 
-                               placeholder="01234 567890" 
-                               value="{{ old('phone') }}"
-                               class="{{ $errors->has('phone') ? 'error' : '' }}"
-                               autocomplete="tel">
-                        @error('phone')
-                            <div class="error-message">{{ $message }}</div>
-                        @enderror
-                    </div>
-                </div>
-
-                <!-- ROLE SELECTION -->
-                <div class="form-group">
-                    <label>I am booking this valuation as: <span style="color: #dc3545;">*</span></label>
-                    <div class="role-box {{ $errors->has('role') ? 'error' : '' }}" style="{{ $errors->has('role') ? 'border-color: #dc3545;' : '' }}">
-                        <div class="role-option">
-                            <input type="radio" id="role_seller" name="role" value="seller" {{ old('role', 'seller') == 'seller' ? 'checked' : '' }} required>
-                            <label for="role_seller">Seller (I want to sell this property)</label>
-                        </div>
-                        <div class="role-option">
-                            <input type="radio" id="role_buyer" name="role" value="buyer" {{ old('role') == 'buyer' ? 'checked' : '' }}>
-                            <label for="role_buyer">Buyer (I'm interested in buying this property)</label>
-                        </div>
-                        <div class="role-option">
-                            <input type="radio" id="role_both" name="role" value="both" {{ old('role') == 'both' ? 'checked' : '' }}>
-                            <label for="role_both">Both (I'm both buying and selling)</label>
-                        </div>
-                    </div>
-                    @error('role')
-                        <div class="error-message">{{ $message }}</div>
-                    @enderror
-                </div>
-
-                <div class="form-group">
-                    <label for="property_address">Property Address <span style="color: #dc3545;">*</span></label>
-                    <input type="text" 
-                           id="property_address"
-                           name="property_address" 
-                           placeholder="Enter the full property address" 
-                           value="{{ old('property_address') }}"
-                           required
-                           class="{{ $errors->has('property_address') ? 'error' : '' }}">
-                    @error('property_address')
-                        <div class="error-message">{{ $message }}</div>
-                    @enderror
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="postcode">Postcode</label>
-                        <input type="text" 
-                               id="postcode"
-                               name="postcode" 
-                               placeholder="SW1A 1AA" 
-                               value="{{ old('postcode') }}"
-                               class="{{ $errors->has('postcode') ? 'error' : '' }}">
-                        @error('postcode')
-                            <div class="error-message">{{ $message }}</div>
-                        @enderror
-                    </div>
-
-                    <div class="form-group">
-                        <label for="property_type">Property Type</label>
-                        <select id="property_type" 
-                                name="property_type" 
-                                class="{{ $errors->has('property_type') ? 'error' : '' }}">
-                            <option value="">Select type</option>
-                            <option value="detached" {{ old('property_type') == 'detached' ? 'selected' : '' }}>Detached</option>
-                            <option value="semi" {{ old('property_type') == 'semi' ? 'selected' : '' }}>Semi-Detached</option>
-                            <option value="terraced" {{ old('property_type') == 'terraced' ? 'selected' : '' }}>Terraced</option>
-                            <option value="flat" {{ old('property_type') == 'flat' ? 'selected' : '' }}>Flat</option>
-                            <option value="maisonette" {{ old('property_type') == 'maisonette' ? 'selected' : '' }}>Maisonette</option>
-                            <option value="bungalow" {{ old('property_type') == 'bungalow' ? 'selected' : '' }}>Bungalow</option>
-                            <option value="other" {{ old('property_type') == 'other' ? 'selected' : '' }}>Other</option>
-                        </select>
-                        @error('property_type')
-                            <div class="error-message">{{ $message }}</div>
-                        @enderror
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="bedrooms">Number of Bedrooms</label>
-                        <input type="number" 
-                               id="bedrooms"
-                               name="bedrooms" 
-                               placeholder="3" 
-                               value="{{ old('bedrooms') }}"
-                               min="0"
-                               max="50"
-                               class="{{ $errors->has('bedrooms') ? 'error' : '' }}">
-                        @error('bedrooms')
-                            <div class="error-message">{{ $message }}</div>
-                        @enderror
-                    </div>
-
-                    <div class="form-group">
-                        <label for="valuation_date">Preferred Valuation Date</label>
-                        <input type="date" 
-                               id="valuation_date"
-                               name="valuation_date" 
-                               value="{{ old('valuation_date') }}"
-                               min="{{ date('Y-m-d', strtotime('+1 day')) }}"
-                               class="{{ $errors->has('valuation_date') ? 'error' : '' }}">
-                        @error('valuation_date')
-                            <div class="error-message">{{ $message }}</div>
-                        @enderror
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="valuation_time">Preferred Valuation Time</label>
-                    <input type="time" 
-                           id="valuation_time"
-                           name="valuation_time" 
-                           value="{{ old('valuation_time') }}"
-                           class="{{ $errors->has('valuation_time') ? 'error' : '' }}">
-                    @error('valuation_time')
-                        <div class="error-message">{{ $message }}</div>
-                    @enderror
-                </div>
-
-                <div class="form-group">
-                    <label for="seller_notes">Additional Notes (Optional)</label>
-                    <textarea id="seller_notes"
-                              name="seller_notes" 
-                              placeholder="Any additional information about your property or requirements..." 
-                              class="{{ $errors->has('seller_notes') ? 'error' : '' }}">{{ old('seller_notes') }}</textarea>
-                    @error('seller_notes')
-                        <div class="error-message">{{ $message }}</div>
-                    @enderror
-                </div>
-
-                <button type="submit" class="btn">Submit Valuation Request</button>
-            </form>
-
-            <div class="footer-links">
-                <p>Already have an account? <a href="{{ route('login') }}">Log in</a></p>
-                <p>Need help? <a href="mailto:support@abodeology.com">Contact Support</a></p>
+        @endauth
+        
+        @if ($errors->any())
+            <div class="alert-error">
+                <strong>Please fix the following errors:</strong>
+                <ul style="margin: 8px 0 0 0; padding-left: 20px;">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
             </div>
+        @endif
+
+        @if(session('error'))
+            <div class="alert-error">
+                {{ session('error') }}
+            </div>
+        @endif
+
+        <form action="{{ route('valuation.booking.store') }}" method="POST">
+            @csrf
+            
+            <label for="name">Full Name *</label>
+            <input type="text" 
+                   id="name"
+                   name="name" 
+                   placeholder="Enter your full name" 
+                   value="{{ old('name', auth()->user()->name ?? '') }}"
+                   required 
+                   autofocus
+                   class="{{ $errors->has('name') ? 'error' : '' }}"
+                   autocomplete="name"
+                   {{ auth()->check() ? 'readonly' : '' }}>
+            @error('name')
+                <div class="error-message">{{ $message }}</div>
+            @enderror
+
+            <label for="email">Email Address *</label>
+            <input type="email" 
+                   id="email"
+                   name="email" 
+                   placeholder="your@email.com" 
+                   value="{{ old('email', auth()->user()->email ?? '') }}"
+                   required
+                   class="{{ $errors->has('email') ? 'error' : '' }}"
+                   autocomplete="email"
+                   {{ auth()->check() ? 'readonly' : '' }}>
+            @error('email')
+                <div class="error-message">{{ $message }}</div>
+            @enderror
+
+            <label for="phone">Phone Number *</label>
+            <input type="tel" 
+                   id="phone"
+                   name="phone" 
+                   placeholder="01234 567890" 
+                   value="{{ old('phone', auth()->user()->phone ?? '') }}"
+                   required
+                   class="{{ $errors->has('phone') ? 'error' : '' }}"
+                   autocomplete="tel">
+            @error('phone')
+                <div class="error-message">{{ $message }}</div>
+            @enderror
+
+            <div class="radio-group {{ $errors->has('role') ? 'error' : '' }}" style="{{ $errors->has('role') ? 'border: 1px solid #dc3545;' : '' }}">
+                <label style="font-weight:600; margin-bottom:10px; display: block;">I am a: *</label>
+                <label style="display: block; margin: 8px 0;">
+                    <input type="radio" 
+                           name="role" 
+                           value="seller" 
+                           {{ old('role', 'seller') == 'seller' ? 'checked' : '' }} 
+                           required>
+                    Homeowner looking to sell
+                </label>
+                <label style="display: block; margin: 8px 0;">
+                    <input type="radio" 
+                           name="role" 
+                           value="both" 
+                           {{ old('role') == 'both' ? 'checked' : '' }}>
+                    Selling and also looking to buy
+                </label>
+            </div>
+            @error('role')
+                <div class="error-message">{{ $message }}</div>
+            @enderror
+
+            <label for="property_address">Property Address *</label>
+            <input type="text" 
+                   id="property_address"
+                   name="property_address" 
+                   placeholder="Enter full property address" 
+                   value="{{ old('property_address') }}"
+                   required
+                   class="{{ $errors->has('property_address') ? 'error' : '' }}">
+            @error('property_address')
+                <div class="error-message">{{ $message }}</div>
+            @enderror
+
+            <label for="postcode">Postcode *</label>
+            <input type="text" 
+                   id="postcode"
+                   name="postcode" 
+                   placeholder="SW1A 1AA" 
+                   value="{{ old('postcode') }}"
+                   required
+                   class="{{ $errors->has('postcode') ? 'error' : '' }}">
+            @error('postcode')
+                <div class="error-message">{{ $message }}</div>
+            @enderror
+
+            <label for="property_type">Property Type *</label>
+            <select id="property_type" 
+                    name="property_type" 
+                    required
+                    class="{{ $errors->has('property_type') ? 'error' : '' }}">
+                <option value="">Select property type</option>
+                <option value="detached" {{ old('property_type') == 'detached' ? 'selected' : '' }}>Detached</option>
+                <option value="semi" {{ old('property_type') == 'semi' ? 'selected' : '' }}>Semi-detached</option>
+                <option value="terraced" {{ old('property_type') == 'terraced' ? 'selected' : '' }}>Terraced</option>
+                <option value="flat" {{ old('property_type') == 'flat' ? 'selected' : '' }}>Flat / Maisonette</option>
+                <option value="bungalow" {{ old('property_type') == 'bungalow' ? 'selected' : '' }}>Bungalow</option>
+                <option value="other" {{ old('property_type') == 'other' ? 'selected' : '' }}>Other</option>
+            </select>
+            @error('property_type')
+                <div class="error-message">{{ $message }}</div>
+            @enderror
+
+            <label for="bedrooms">Number of Bedrooms *</label>
+            <input type="number" 
+                   id="bedrooms"
+                   name="bedrooms" 
+                   min="0" 
+                   max="50"
+                   placeholder="e.g. 3" 
+                   value="{{ old('bedrooms') }}"
+                   required
+                   class="{{ $errors->has('bedrooms') ? 'error' : '' }}">
+            @error('bedrooms')
+                <div class="error-message">{{ $message }}</div>
+            @enderror
+
+            <label for="seller_notes">Additional Notes (optional)</label>
+            <textarea id="seller_notes"
+                      name="seller_notes" 
+                      placeholder="Anything you'd like us to know?"
+                      rows="3"
+                      class="{{ $errors->has('seller_notes') ? 'error' : '' }}">{{ old('seller_notes') }}</textarea>
+            @error('seller_notes')
+                <div class="error-message">{{ $message }}</div>
+            @enderror
+
+            <button type="submit">Submit Valuation Request</button>
+        </form>
+
+        <div class="footer-links">
+            <p>Already have an account? <a href="{{ route('login') }}">Log in</a></p>
+            <p>Need help? <a href="mailto:support@abodeology.co.uk">Contact Support</a></p>
         </div>
     </div>
 </body>
 </html>
-

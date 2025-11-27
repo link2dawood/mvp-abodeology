@@ -63,7 +63,7 @@
         <a href="{{ $dashboardUrl }}" style="background: #2CB8B4; color: #FFFFFF; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600;">View in Dashboard</a>
     </div>
 
-    <p>If you have any questions or need assistance, please don't hesitate to contact us.</p>
+    <p>If you have any questions or need assistance, please don't hesitate to contact us at <a href="mailto:support@abodeology.co.uk" style="color: #2CB8B4; text-decoration: none;">support@abodeology.co.uk</a>.</p>
 
     <p>Best regards,<br>
     The Abodeology Team</p>

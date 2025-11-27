@@ -191,7 +191,7 @@
 
             <div class="footer-links">
                 <p><a href="{{ route('valuation.booking') }}">Book Another Valuation</a></p>
-                <p>Need help? <a href="mailto:support@abodeology.com">Contact Support</a></p>
+                <p>Need help? <a href="mailto:support@abodeology.co.uk">Contact Support</a></p>
             </div>
         </div>
     </div>

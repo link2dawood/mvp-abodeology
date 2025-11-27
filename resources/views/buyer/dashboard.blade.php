@@ -227,6 +227,15 @@
             <a href="#" class="btn">Book a Viewing</a>
         </div>
 
+        <!-- BOOK VALUATION -->
+        <div class="card">
+            <h3>Get Your Property Valued</h3>
+            <p style="margin: 10px 0; font-size: 14px; line-height: 1.6;">
+                Thinking of selling? Book a free property valuation to find out how much your property is worth.
+            </p>
+            <a href="{{ route('valuation.booking') }}" class="btn">Book a Valuation</a>
+        </div>
+
         <!-- OFFERS -->
         <div class="card">
             <h3>Your Offers</h3>

@@ -339,6 +339,47 @@
             <a href="{{ route('admin.valuations.index') }}" class="btn btn-main">View All Valuations</a>
         </div>
 
+        <!-- LIVE PROPERTIES -->
+        <div class="card">
+            <h3>Live Properties</h3>
+            <table class="table">
+                <tr>
+                    <th>Address</th>
+                    <th>Seller</th>
+                    <th>Price</th>
+                    <th>Action</th>
+                </tr>
+                @php
+                    $liveProperties = \App\Models\Property::with('seller')
+                        ->where('status', 'live')
+                        ->orderBy('created_at', 'desc')
+                        ->limit(5)
+                        ->get();
+                @endphp
+                @forelse($liveProperties as $property)
+                    <tr>
+                        <td>{{ Str::limit($property->address, 30) }}</td>
+                        <td>{{ $property->seller->name ?? 'N/A' }}</td>
+                        <td>
+                            @if($property->asking_price)
+                                £{{ number_format($property->asking_price, 0) }}
+                            @else
+                                <span style="color: #999;">N/A</span>
+                            @endif
+                        </td>
+                        <td>
+                            <a href="{{ route('buyer.viewing.request', $property->id) }}" class="btn" style="padding: 6px 12px; font-size: 13px;" target="_blank">View Live Listing</a>
+                        </td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="4" style="text-align: center; color: #999;">No live properties</td>
+                    </tr>
+                @endforelse
+            </table>
+            <a href="{{ route('admin.properties.index', ['status' => 'live']) }}" class="btn btn-main">View All Live Properties</a>
+        </div>
+
         <!-- PROPERTIES -->
         <div class="card">
             <h3>All Properties</h3>

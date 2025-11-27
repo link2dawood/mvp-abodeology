@@ -23,7 +23,7 @@
         </div>
     @elseif($decision === 'counter')
         <h2 style="color: #ffc107;">Counter-Offer Discussion Request</h2>
-        <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; border-radius: 4px;">
+        <div style="background: #fff3cd; padding: 15px; margin: 20px 0; border-radius: 4px;">
             <p style="margin: 0; color: #856404;">The seller has requested a counter-offer discussion regarding your offer of £{{ number_format($offer->offer_amount, 2) }}.</p>
         </div>
     @endif
@@ -69,7 +69,7 @@
         </div>
     @endif
 
-    <p>If you have any questions or need assistance, please don't hesitate to contact us.</p>
+    <p>If you have any questions or need assistance, please don't hesitate to contact us at <a href="mailto:support@abodeology.co.uk" style="color: #2CB8B4; text-decoration: none;">support@abodeology.co.uk</a>.</p>
 
     <p>Best regards,<br>
     <strong>The Abodeology Team</strong></p>

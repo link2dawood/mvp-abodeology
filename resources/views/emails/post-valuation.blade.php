@@ -42,7 +42,7 @@
         <a href="{{ $instructUrl }}" style="background: #2CB8B4; color: #FFFFFF; padding: 15px 40px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 16px;">Instruct Abodeology</a>
     </div>
 
-    <p>If you have any questions or would like to discuss your options further, please don't hesitate to contact us. We're here to help you every step of the way.</p>
+    <p>If you have any questions or would like to discuss your options further, please don't hesitate to contact us at <a href="mailto:support@abodeology.co.uk" style="color: #2CB8B4; text-decoration: none;">support@abodeology.co.uk</a>. We're here to help you every step of the way.</p>
 
     <p>Best regards,<br>
     The Abodeology Team</p>

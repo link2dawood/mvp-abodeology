@@ -56,7 +56,7 @@
         <a href="{{ $dashboardUrl }}" style="color: #2CB8B4; text-decoration: none;">Go to Viewings Dashboard</a>
     </div>
 
-    <p>If you have any questions, please contact the admin team.</p>
+    <p>If you have any questions, please contact us at <a href="mailto:support@abodeology.co.uk" style="color: #2CB8B4; text-decoration: none;">support@abodeology.co.uk</a>.</p>
 
     <p>Best regards,<br>
     The Abodeology Team</p>

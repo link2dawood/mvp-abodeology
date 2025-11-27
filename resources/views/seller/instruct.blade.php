@@ -229,7 +229,7 @@
         </div>
 
         <!-- KEY TERMS SUMMARY -->
-        <div class="card" style="background: #E8F4F3; border-left: 4px solid var(--abodeology-teal);">
+        <div class="card" style="background: #E8F4F3;">
             <h3 style="color: var(--abodeology-teal); margin-top: 0;">Key Terms Summary</h3>
             <div class="text-block">
                 <strong>Important:</strong><br>

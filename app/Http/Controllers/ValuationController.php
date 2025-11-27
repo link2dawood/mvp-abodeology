@@ -40,22 +40,24 @@ class ValuationController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255'],
-            'phone' => ['nullable', 'string', 'max:20'],
-            'role' => ['required', 'string', 'in:buyer,seller,both'],
+            'phone' => ['required', 'string', 'max:20'],
+            'role' => ['required', 'string', 'in:seller,both'],
             'property_address' => ['required', 'string', 'max:1000'],
-            'postcode' => ['nullable', 'string', 'max:20'],
-            'property_type' => ['nullable', 'string', 'in:detached,semi,terraced,flat,maisonette,bungalow,other'],
-            'bedrooms' => ['nullable', 'integer', 'min:0', 'max:50'],
-            'valuation_date' => ['nullable', 'date', 'after:today'],
-            'valuation_time' => ['nullable'],
+            'postcode' => ['required', 'string', 'max:20'],
+            'property_type' => ['required', 'string', 'in:detached,semi,terraced,flat,maisonette,bungalow,other'],
+            'bedrooms' => ['required', 'integer', 'min:0', 'max:50'],
             'seller_notes' => ['nullable', 'string', 'max:5000'],
         ], [
             'name.required' => 'Please provide your full name.',
             'email.required' => 'Please provide your email address.',
             'email.email' => 'Please provide a valid email address.',
-            'role.required' => 'Please select whether you are a buyer, seller, or both.',
-            'role.in' => 'Please select a valid role option.',
+            'phone.required' => 'Please provide your phone number.',
+            'role.required' => 'Please select whether you are selling or selling and buying.',
+            'role.in' => 'Please select a valid option.',
             'property_address.required' => 'Please provide the property address.',
+            'postcode.required' => 'Please provide the postcode.',
+            'property_type.required' => 'Please select the property type.',
+            'bedrooms.required' => 'Please provide the number of bedrooms.',
         ]);
 
         try {
@@ -119,15 +121,16 @@ class ValuationController extends Controller
                 $user->save();
             }
 
-            // Create valuation record (always start as 'pending' - admin/agent will confirm schedule)
+            // Create valuation record (always start as 'pending' - admin/agent will schedule the appointment)
             $valuation = Valuation::create([
                 'seller_id' => $user->id,
                 'property_address' => $validated['property_address'],
                 'postcode' => $validated['postcode'] ?? null,
                 'property_type' => $validated['property_type'] ?? null,
                 'bedrooms' => $validated['bedrooms'] ?? null,
-                'valuation_date' => $validated['valuation_date'] ?? null,
-                'valuation_time' => $validated['valuation_time'] ? date('H:i:s', strtotime($validated['valuation_time'])) : null,
+                // valuation_date and valuation_time will be set by admin/agent when scheduling
+                'valuation_date' => null,
+                'valuation_time' => null,
                 // Status is 'pending' until an admin/agent explicitly schedules the appointment
                 'status' => 'pending',
                 'seller_notes' => $validated['seller_notes'] ?? null,

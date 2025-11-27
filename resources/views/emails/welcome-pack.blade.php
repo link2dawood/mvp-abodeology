@@ -35,7 +35,7 @@
         <p><strong>Status:</strong> Signed</p>
     </div>
 
-    <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 20px; border-radius: 8px; margin: 20px 0;">
+    <div style="background: #fff3cd; padding: 20px; border-radius: 8px; margin: 20px 0;">
         <h3 style="margin-top: 0; color: #856404;">⚠️ Action Required: Upload AML Documents</h3>
         <p style="color: #856404; margin: 10px 0;">To proceed with your property sale, please upload your AML documents:</p>
         <ul style="color: #856404; margin: 10px 0; padding-left: 20px;">
@@ -60,7 +60,7 @@
         <a href="{{ $sellerDashboardUrl }}" style="background: #2CB8B4; color: #FFFFFF; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600;">View Your Dashboard & Upload AML Documents</a>
     </div>
 
-    <p>If you have any questions or need assistance, please don't hesitate to contact us.</p>
+    <p>If you have any questions or need assistance, please don't hesitate to contact us at <a href="mailto:support@abodeology.co.uk" style="color: #2CB8B4; text-decoration: none;">support@abodeology.co.uk</a>.</p>
 
     <p>Best regards,<br>
     The Abodeology Team</p>

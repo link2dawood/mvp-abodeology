@@ -36,7 +36,7 @@
         <p style="margin: 0;"><strong>Attachment:</strong> The Memorandum of Sale document is attached to this email for your records.</p>
     </div>
 
-    <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; border-radius: 4px;">
+    <div style="background: #fff3cd; padding: 15px; margin: 20px 0; border-radius: 4px;">
         <p style="margin: 0; color: #856404;"><strong>Important:</strong> This Memorandum of Sale confirms the agreed terms but does not constitute a legally binding contract. A formal contract will need to be drawn up by the solicitors.</p>
     </div>
 
@@ -48,7 +48,7 @@
         <li>Sales progression workflow has been initiated</li>
     </ul>
 
-    <p>If you have any questions or require any additional information, please don't hesitate to contact us.</p>
+    <p>If you have any questions or require any additional information, please don't hesitate to contact us at <a href="mailto:support@abodeology.co.uk" style="color: #2CB8B4; text-decoration: none;">support@abodeology.co.uk</a>.</p>
 
     <p>Best regards,<br>
     <strong>The Abodeology Team</strong></p>

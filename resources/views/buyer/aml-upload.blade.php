@@ -124,7 +124,6 @@
     @if(isset($amlCheck) && $amlCheck->id_document && $amlCheck->proof_of_address)
     .upload-status {
         background: #fff3cd;
-        border-left: 4px solid #ffc107;
         padding: 15px;
         margin-bottom: 20px;
         border-radius: 4px;

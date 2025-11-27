@@ -59,7 +59,7 @@
         </div>
     @endif
 
-    <p>If you have any questions or need assistance, please don't hesitate to contact us.</p>
+    <p>If you have any questions or need assistance, please don't hesitate to contact us at <a href="mailto:support@abodeology.co.uk" style="color: #2CB8B4; text-decoration: none;">support@abodeology.co.uk</a>.</p>
 
     <p>Best regards,<br>
     <strong>The Abodeology Team</strong></p>

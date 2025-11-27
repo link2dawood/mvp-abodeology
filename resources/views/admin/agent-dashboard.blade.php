@@ -217,7 +217,7 @@
     <div class="grid">
         <!-- TODAY'S APPOINTMENTS -->
         @if(isset($todaysAppointments) && $todaysAppointments->count() > 0)
-        <div class="card" style="background: linear-gradient(135deg, rgba(44, 184, 180, 0.1), rgba(37, 162, 159, 0.1)); border-left: 4px solid var(--abodeology-teal);">
+        <div class="card" style="background: linear-gradient(135deg, rgba(44, 184, 180, 0.1), rgba(37, 162, 159, 0.1));">
             <h3 style="color: var(--abodeology-teal); margin-top: 0;">📅 Today's Appointments</h3>
             <table class="table">
                 <tr>

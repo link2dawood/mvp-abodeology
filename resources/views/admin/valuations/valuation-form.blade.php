@@ -22,7 +22,6 @@
 
     .valuation-info {
         background: #E8F4F3;
-        border-left: 4px solid var(--abodeology-teal);
         padding: 15px 20px;
         margin-bottom: 25px;
         border-radius: 4px;
@@ -408,7 +407,7 @@
         </div>
 
         <!-- ID VISUAL CHECK (HMRC/EA Act Requirement) -->
-        <div class="card" style="background: #fff3cd; border-left: 4px solid #ffc107;">
+        <div class="card" style="background: #fff3cd;">
             <h3>ID Visual Check <span style="font-size: 14px; font-weight: normal; color: #856404;">(Required by HMRC/EA Act)</span></h3>
             <div style="background: #fff; padding: 15px; border-radius: 4px; margin-bottom: 15px;">
                 <p style="margin: 0 0 10px 0; color: #856404; font-weight: 600;">⚠️ IMPORTANT: Seller should have brought ID to the valuation appointment.</p>
