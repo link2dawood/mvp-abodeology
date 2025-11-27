@@ -788,11 +788,23 @@ class SellerController extends Controller
      */
     public function showRoomUpload($id)
     {
-        // In a real application, you would fetch the property from database
-        // For now, we'll just pass the property ID
-        $propertyId = $id;
+        $user = auth()->user();
+        
+        // Verify the property belongs to the seller
+        $property = \App\Models\Property::where('seller_id', $user->id)
+            ->where('id', $id)
+            ->firstOrFail();
 
-        return view('seller.room-upload', compact('propertyId'));
+        $propertyId = $id;
+        
+        // Get existing homecheck data for this property
+        $existingRooms = \App\Models\HomecheckData::where('property_id', $property->id)
+            ->orderBy('room_name')
+            ->orderBy('created_at')
+            ->get()
+            ->groupBy('room_name');
+
+        return view('seller.room-upload', compact('propertyId', 'existingRooms'));
     }
 
     /**
@@ -804,6 +816,13 @@ class SellerController extends Controller
      */
     public function storeRoomUpload(Request $request, $id)
     {
+        $user = auth()->user();
+        
+        // Verify the property belongs to the seller
+        $property = \App\Models\Property::where('seller_id', $user->id)
+            ->where('id', $id)
+            ->firstOrFail();
+
         $validated = $request->validate([
             'rooms' => ['required', 'array', 'min:1'],
             'rooms.*.name' => ['required', 'string', 'max:255'],
@@ -819,33 +838,74 @@ class SellerController extends Controller
             'rooms.*.images.*.max' => 'Image size must not exceed 10MB.',
         ]);
 
-        // In a real application, you would save this to database
-        // Example:
-        // $homeCheck = HomeCheck::create([
-        //     'property_id' => $id,
-        //     'user_id' => auth()->id(),
-        //     'status' => 'submitted',
-        //     'submitted_at' => now(),
-        // ]);
-        //
-        // foreach ($validated['rooms'] as $index => $roomData) {
-        //     $room = Room::create([
-        //         'home_check_id' => $homeCheck->id,
-        //         'name' => $roomData['name'],
-        //         'order' => $index,
-        //     ]);
-        //
-        //     foreach ($roomData['images'] as $image) {
-        //         $imagePath = $image->store('homechecks/' . $homeCheck->id . '/rooms/' . $room->id, 'public');
-        //         RoomImage::create([
-        //             'room_id' => $room->id,
-        //             'image_path' => $imagePath,
-        //             'order' => $room->images()->count(),
-        //         ]);
-        //     }
-        // }
+        try {
+            \DB::beginTransaction();
 
-        return redirect()->route('seller.homecheck.upload', $id)->with('success', 'HomeCheck submitted successfully! Your room images have been uploaded.');
+            // Get or create a HomeCheck report for this property
+            $homecheckReport = \App\Models\HomecheckReport::where('property_id', $property->id)
+                ->whereIn('status', ['scheduled', 'in_progress', 'pending'])
+                ->first();
+
+            if (!$homecheckReport) {
+                // Create a new HomeCheck report for seller uploads
+                $homecheckReport = \App\Models\HomecheckReport::create([
+                    'property_id' => $property->id,
+                    'status' => 'in_progress',
+                    'scheduled_by' => $user->id,
+                    'scheduled_date' => now(),
+                ]);
+            } else {
+                // Update status to in_progress if it was scheduled
+                if ($homecheckReport->status === 'scheduled' || $homecheckReport->status === 'pending') {
+                    $homecheckReport->update([
+                        'status' => 'in_progress',
+                    ]);
+                }
+            }
+
+            // Determine storage disk (S3 if configured, otherwise public)
+            $disk = config('filesystems.default') === 's3' ? 's3' : 'public';
+
+            // Process each room
+            foreach ($validated['rooms'] as $roomIndex => $roomData) {
+                $roomName = $roomData['name'];
+                $is360 = false; // Sellers can't mark as 360 for now, can be added later
+                
+                // Process each image
+                foreach ($roomData['images'] as $imageIndex => $image) {
+                    // Store image in property-specific folder
+                    $imagePath = $image->store('homechecks/' . $property->id . '/rooms/' . $roomName . '/photos', $disk);
+                    
+                    // Create homecheck data record
+                    \App\Models\HomecheckData::create([
+                        'property_id' => $property->id,
+                        'homecheck_report_id' => $homecheckReport->id,
+                        'room_name' => $roomName,
+                        'image_path' => $imagePath,
+                        'is_360' => $is360,
+                    ]);
+                }
+            }
+
+            // Mark HomeCheck as completed
+            $homecheckReport->update([
+                'status' => 'completed',
+                'completed_by' => $user->id,
+                'completed_at' => now(),
+            ]);
+
+            \DB::commit();
+
+            return redirect()->route('seller.homecheck.upload', $id)->with('success', 'HomeCheck submitted successfully! Your room images have been uploaded.');
+
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            \Log::error('HomeCheck upload error: ' . $e->getMessage());
+
+            return back()
+                ->withInput()
+                ->with('error', 'An error occurred while uploading your images. Please try again.');
+        }
     }
 
     /**

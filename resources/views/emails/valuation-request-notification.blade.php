@@ -1,186 +1,76 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
+    <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>New Valuation Request</title>
-    <style>
-        body {
-            font-family: 'Helvetica Neue', Arial, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f4f4f4;
-        }
-        .email-container {
-            background-color: #ffffff;
-            border-radius: 12px;
-            padding: 30px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        .logo {
-            text-align: center;
-            margin-bottom: 30px;
-            background: #0F0F0F;
-            padding: 20px;
-            border-radius: 8px;
-        }
-        .logo-text {
-            color: #2CB8B4;
-            font-size: 28px;
-            font-weight: 600;
-            margin: 0;
-            letter-spacing: 1px;
-        }
-        h1 {
-            color: #2CB8B4;
-            font-size: 24px;
-            margin-bottom: 20px;
-            text-align: center;
-        }
-        h2 {
-            color: #1E1E1E;
-            font-size: 18px;
-            margin-top: 25px;
-            margin-bottom: 15px;
-            border-bottom: 2px solid #2CB8B4;
-            padding-bottom: 8px;
-        }
-        p {
-            margin-bottom: 15px;
-            font-size: 15px;
-        }
-        .info-box {
-            background-color: #E8F4F3;
-            border-left: 4px solid #2CB8B4;
-            padding: 15px;
-            margin: 20px 0;
-            border-radius: 4px;
-        }
-        .info-box p {
-            margin: 5px 0;
-            font-size: 14px;
-        }
-        .info-box strong {
-            color: #1E1E1E;
-            display: inline-block;
-            min-width: 140px;
-        }
-        .button {
-            display: inline-block;
-            background-color: #2CB8B4;
-            color: #ffffff;
-            padding: 14px 30px;
-            text-decoration: none;
-            border-radius: 6px;
-            font-weight: 600;
-            margin: 25px 0;
-            text-align: center;
-        }
-        .button:hover {
-            background-color: #25A29F;
-        }
-        .status-badge {
-            display: inline-block;
-            padding: 6px 12px;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-        .status-pending {
-            background-color: #FFF3CD;
-            color: #856404;
-        }
-        .status-scheduled {
-            background-color: #D1ECF1;
-            color: #0C5460;
-        }
-        .footer {
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid #E5E5E5;
-            text-align: center;
-            font-size: 12px;
-            color: #666;
-        }
-        .footer a {
-            color: #2CB8B4;
-            text-decoration: none;
-        }
-    </style>
+    <title>New Valuation Request - Abodeology</title>
 </head>
-<body>
-    <div class="email-container">
-        <div class="logo">
-            <h1 class="logo-text">Abodeology®</h1>
-        </div>
-
-        <h1>New Valuation Appointment Request</h1>
-
-        <p>Hello,</p>
-
-        <p>A new property valuation request has been submitted and requires your attention.</p>
-
-        <h2>Request Details</h2>
-
-        <div class="info-box">
-            <p><strong>Status:</strong> 
-                <span class="status-badge status-{{ $valuation->status }}">
-                    {{ ucfirst($valuation->status) }}
-                </span>
-            </p>
-            <p><strong>Property Address:</strong> {{ $valuation->property_address }}</p>
-            @if($valuation->postcode)
-                <p><strong>Postcode:</strong> {{ $valuation->postcode }}</p>
-            @endif
-            @if($valuation->property_type)
-                <p><strong>Property Type:</strong> {{ ucfirst(str_replace('_', ' ', $valuation->property_type)) }}</p>
-            @endif
-            @if($valuation->bedrooms)
-                <p><strong>Bedrooms:</strong> {{ $valuation->bedrooms }}</p>
-            @endif
-            @if($valuation->valuation_date)
-                <p><strong>Preferred Date:</strong> {{ \Carbon\Carbon::parse($valuation->valuation_date)->format('l, F j, Y') }}</p>
-            @endif
-            @if($valuation->valuation_time)
-                <p><strong>Preferred Time:</strong> {{ \Carbon\Carbon::parse($valuation->valuation_time)->format('g:i A') }}</p>
-            @endif
-        </div>
-
-        <h2>Client Information</h2>
-
-        <div class="info-box">
-            <p><strong>Name:</strong> {{ $seller->name }}</p>
-            <p><strong>Email:</strong> {{ $seller->email }}</p>
-            @if($seller->phone)
-                <p><strong>Phone:</strong> {{ $seller->phone }}</p>
-            @endif
-            <p><strong>Role:</strong> {{ ucfirst($seller->role) }}</p>
-        </div>
-
-        @if($valuation->seller_notes)
-        <h2>Additional Notes</h2>
-        <div class="info-box">
-            <p>{{ $valuation->seller_notes }}</p>
-        </div>
-        @endif
-
-        <div style="text-align: center;">
-            <a href="{{ $dashboardUrl }}" class="button">View in Dashboard</a>
-        </div>
-
-        <div class="footer">
-            <p>This is an automated notification from Abodeology.</p>
-            <p>
-                <a href="{{ $dashboardUrl }}">Admin Dashboard</a> | 
-                <a href="mailto:support@abodeology.com">Contact Support</a>
-            </p>
-            <p>&copy; {{ date('Y') }} Abodeology. All rights reserved.</p>
-        </div>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <div style="background: #0F0F0F; padding: 20px; text-align: center; margin-bottom: 30px; border-radius: 8px;">
+        <img src="{{ asset('media/abodeology-logo.png') }}" alt="Abodeology Logo" style="width: 160px; height: auto; object-fit: contain; max-width: 100%; display: block; margin: 0 auto;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+        <h1 style="color: #2CB8B4; margin: 0; display: none;">Abodeology®</h1>
     </div>
+
+    <h2 style="color: #2CB8B4;">New Valuation Appointment Request</h2>
+
+    <p>Hello,</p>
+
+    <p>A new property valuation request has been submitted and requires your attention.</p>
+
+    <div style="background: #F4F4F4; padding: 20px; border-radius: 8px; margin: 20px 0;">
+        <h3 style="margin-top: 0; color: #2CB8B4;">Request Details</h3>
+        <p><strong>Status:</strong> 
+            <span style="display: inline-block; padding: 6px 12px; border-radius: 4px; font-size: 12px; font-weight: 600; text-transform: uppercase; background-color: {{ $valuation->status === 'pending' ? '#FFF3CD' : '#D1ECF1' }}; color: {{ $valuation->status === 'pending' ? '#856404' : '#0C5460' }};">
+                {{ ucfirst($valuation->status) }}
+            </span>
+        </p>
+        <p><strong>Property Address:</strong> {{ $valuation->property_address }}</p>
+        @if($valuation->postcode)
+            <p><strong>Postcode:</strong> {{ $valuation->postcode }}</p>
+        @endif
+        @if($valuation->property_type)
+            <p><strong>Property Type:</strong> {{ ucfirst(str_replace('_', ' ', $valuation->property_type)) }}</p>
+        @endif
+        @if($valuation->bedrooms)
+            <p><strong>Bedrooms:</strong> {{ $valuation->bedrooms }}</p>
+        @endif
+        @if($valuation->valuation_date)
+            <p><strong>Preferred Date:</strong> {{ \Carbon\Carbon::parse($valuation->valuation_date)->format('l, F j, Y') }}</p>
+        @endif
+        @if($valuation->valuation_time)
+            <p><strong>Preferred Time:</strong> {{ \Carbon\Carbon::parse($valuation->valuation_time)->format('g:i A') }}</p>
+        @endif
+    </div>
+
+    <div style="background: #F4F4F4; padding: 20px; border-radius: 8px; margin: 20px 0;">
+        <h3 style="margin-top: 0; color: #2CB8B4;">Client Information</h3>
+        <p><strong>Name:</strong> {{ $seller->name }}</p>
+        <p><strong>Email:</strong> {{ $seller->email }}</p>
+        @if($seller->phone)
+            <p><strong>Phone:</strong> {{ $seller->phone }}</p>
+        @endif
+        <p><strong>Role:</strong> {{ ucfirst($seller->role) }}</p>
+    </div>
+
+    @if($valuation->seller_notes)
+    <div style="background: #E8F4F3; border-left: 4px solid #2CB8B4; padding: 15px; margin: 20px 0; border-radius: 4px;">
+        <h3 style="margin-top: 0; color: #2CB8B4;">Additional Notes</h3>
+        <p style="margin: 0;">{{ $valuation->seller_notes }}</p>
+    </div>
+    @endif
+
+    <div style="text-align: center; margin: 30px 0;">
+        <a href="{{ $dashboardUrl }}" style="background: #2CB8B4; color: #FFFFFF; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600;">View in Dashboard</a>
+    </div>
+
+    <p>If you have any questions or need assistance, please don't hesitate to contact us.</p>
+
+    <p>Best regards,<br>
+    The Abodeology Team</p>
+
+    <hr style="border: none; border-top: 1px solid #EAEAEA; margin: 30px 0;">
+    <p style="font-size: 12px; color: #666; text-align: center;">
+        © {{ date('Y') }} Abodeology®. All rights reserved.
+    </p>
 </body>
 </html>
-

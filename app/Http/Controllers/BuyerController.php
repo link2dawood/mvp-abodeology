@@ -277,12 +277,19 @@ class BuyerController extends Controller
     {
         $user = auth()->user();
         
-        if (!in_array($user->role, ['buyer', 'both'])) {
+        // Allow buyers, both role, or sellers viewing their own properties
+        $property = \App\Models\Property::where('status', 'live');
+        
+        if (in_array($user->role, ['buyer', 'both'])) {
+            // Buyers can view any live property
+            $property = $property->findOrFail($id);
+        } elseif ($user->role === 'seller') {
+            // Sellers can view their own live properties
+            $property = $property->where('seller_id', $user->id)->findOrFail($id);
+        } else {
             return redirect()->route($this->getRoleDashboard($user->role))
                 ->with('error', 'You do not have permission to access this page.');
         }
-
-        $property = \App\Models\Property::where('status', 'live')->findOrFail($id);
 
         return view('buyer.viewing-request', compact('property'));
     }

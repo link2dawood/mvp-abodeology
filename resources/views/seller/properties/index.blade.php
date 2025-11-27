@@ -201,7 +201,7 @@
                         @if($property->status === 'draft')
                             <a href="{{ route('seller.onboarding', $property->id) }}" class="btn btn-primary">Start Onboarding</a>
                         @elseif($property->status === 'live')
-                            <a href="#" class="btn">View Live Listing</a>
+                            <a href="{{ route('buyer.viewing.request', $property->id) }}" class="btn">View Live Listing</a>
                         @endif
                     </div>
                 </div>

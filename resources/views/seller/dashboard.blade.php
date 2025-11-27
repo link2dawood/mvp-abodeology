@@ -293,7 +293,7 @@
                 <br>
                 <a href="{{ route('seller.properties.show', $property->id) }}" class="btn">View Full Details</a>
                 @if($property->status === 'live')
-                    <a href="#" class="btn">View Live Listing</a>
+                    <a href="{{ route('buyer.viewing.request', $property->id) }}" class="btn">View Live Listing</a>
                 @endif
             </div>
         @endif

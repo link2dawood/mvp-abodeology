@@ -6,8 +6,9 @@
     <title>New Viewing Request - Abodeology</title>
 </head>
 <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-    <div style="background: #0F0F0F; padding: 20px; text-align: center; margin-bottom: 30px;">
-        <h1 style="color: #2CB8B4; margin: 0;">Abodeology®</h1>
+    <div style="background: #0F0F0F; padding: 20px; text-align: center; margin-bottom: 30px; border-radius: 8px;">
+        <img src="{{ asset('media/abodeology-logo.png') }}" alt="Abodeology Logo" style="width: 160px; height: auto; object-fit: contain; max-width: 100%; display: block; margin: 0 auto;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+        <h1 style="color: #2CB8B4; margin: 0; display: none;">Abodeology®</h1>
     </div>
 
     <h2 style="color: #2CB8B4;">New Viewing Request</h2>
@@ -43,26 +44,26 @@
         @endif
     </div>
 
-    <div style="background: #E8F4F3; padding: 15px; border-radius: 8px; margin: 20px 0;">
+    <div style="background: #E8F4F3; border-left: 4px solid #2CB8B4; padding: 15px; margin: 20px 0; border-radius: 4px;">
         <p style="margin: 0;"><strong>Action Required:</strong> Please contact the buyer to confirm the viewing appointment and complete the viewing feedback form after the viewing.</p>
     </div>
 
     <div style="text-align: center; margin: 30px 0;">
-        <a href="{{ $viewingUrl }}" style="background: #2CB8B4; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: 600;">
-            View Full Details
-        </a>
+        <a href="{{ $viewingUrl }}" style="background: #2CB8B4; color: #FFFFFF; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600;">View Full Details</a>
     </div>
 
     <div style="text-align: center; margin-top: 20px;">
-        <a href="{{ $dashboardUrl }}" style="color: #2CB8B4; text-decoration: underline;">
-            Go to Viewings Dashboard
-        </a>
+        <a href="{{ $dashboardUrl }}" style="color: #2CB8B4; text-decoration: none;">Go to Viewings Dashboard</a>
     </div>
 
-    <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 12px; color: #666;">
-        <p>This is an automated notification from the Abodeology platform.</p>
-        <p>If you have any questions, please contact the admin team.</p>
-    </div>
+    <p>If you have any questions, please contact the admin team.</p>
+
+    <p>Best regards,<br>
+    The Abodeology Team</p>
+
+    <hr style="border: none; border-top: 1px solid #EAEAEA; margin: 30px 0;">
+    <p style="font-size: 12px; color: #666; text-align: center;">
+        © {{ date('Y') }} Abodeology®. All rights reserved.
+    </p>
 </body>
 </html>
-

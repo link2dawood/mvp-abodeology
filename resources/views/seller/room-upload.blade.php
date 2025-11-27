@@ -227,6 +227,24 @@
         </div>
     @endif
 
+    @if(isset($existingRooms) && $existingRooms->count() > 0)
+        <div style="background: #E8F4F3; border-left: 4px solid #2CB8B4; padding: 15px; margin-bottom: 20px; border-radius: 6px;">
+            <h3 style="margin-top: 0; color: #2CB8B4; font-size: 18px;">Previously Uploaded Rooms</h3>
+            @foreach($existingRooms as $roomName => $roomImages)
+                <div style="margin-bottom: 15px;">
+                    <strong style="color: #1E1E1E;">{{ $roomName }}</strong> ({{ $roomImages->count() }} image{{ $roomImages->count() !== 1 ? 's' : '' }})
+                    <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;">
+                        @foreach($roomImages as $image)
+                            <img src="{{ \Storage::url($image->image_path) }}" 
+                                 alt="{{ $roomName }}" 
+                                 style="width: 100px; height: 100px; object-fit: cover; border: 1px solid #ddd; border-radius: 4px;">
+                        @endforeach
+                    </div>
+                </div>
+            @endforeach
+        </div>
+    @endif
+
     <button id="addRoomBtn" type="button">+ Add Room</button>
 
     <form id="homeCheckForm" action="{{ route('seller.homecheck.store', $propertyId ?? 1) }}" method="POST" enctype="multipart/form-data">

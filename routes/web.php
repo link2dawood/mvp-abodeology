@@ -74,6 +74,9 @@ Route::middleware(['auth', 'role.web:admin,agent'])->prefix('admin')->name('admi
     Route::post('/properties/{id}/publish', [App\Http\Controllers\AdminController::class, 'publishListing'])->name('properties.publish');
 });
 
+// Allow sellers to view their own live listings (must be before buyer routes to take precedence)
+Route::middleware(['auth'])->get('/buyer/property/{id}/viewing-request', [App\Http\Controllers\BuyerController::class, 'showViewingRequest'])->name('buyer.viewing.request');
+
 // Buyer Routes
 Route::middleware(['auth', 'role.web:buyer,both'])->prefix('buyer')->name('buyer.')->group(function () {
     Route::get('/dashboard', [App\Http\Controllers\BuyerController::class, 'dashboard'])->name('dashboard');

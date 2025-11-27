@@ -6,8 +6,9 @@
     <title>Sign Terms & Conditions - Abodeology</title>
 </head>
 <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-    <div style="background: #0F0F0F; padding: 20px; text-align: center; margin-bottom: 30px;">
-        <h1 style="color: #2CB8B4; margin: 0;">Abodeology®</h1>
+    <div style="background: #0F0F0F; padding: 20px; text-align: center; margin-bottom: 30px; border-radius: 8px;">
+        <img src="{{ asset('media/abodeology-logo.png') }}" alt="Abodeology Logo" style="width: 160px; height: auto; object-fit: contain; max-width: 100%; display: block; margin: 0 auto;" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+        <h1 style="color: #2CB8B4; margin: 0; display: none;">Abodeology®</h1>
     </div>
 
     <h2 style="color: #2CB8B4;">Action Required: Sign Your Terms & Conditions</h2>
