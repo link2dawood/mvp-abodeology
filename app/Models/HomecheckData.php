@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class HomecheckData extends Model
 {
     protected $table = 'homecheck_data';
+    
+    public $timestamps = false; // Table only has created_at, not updated_at
 
     protected $fillable = [
         'property_id',
@@ -18,6 +20,7 @@ class HomecheckData extends Model
         'moisture_reading',
         'ai_rating',
         'ai_comments',
+        'created_at',
     ];
 
     protected function casts(): array
@@ -26,7 +29,6 @@ class HomecheckData extends Model
             'is_360' => 'boolean',
             'moisture_reading' => 'decimal:2',
             'created_at' => 'datetime',
-            'updated_at' => 'datetime',
         ];
     }
 

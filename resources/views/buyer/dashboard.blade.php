@@ -202,7 +202,7 @@
                 </span>
             </p>
             <p>To submit offers without delay, please complete your AML checks.</p>
-            <a href="#" class="btn">Complete Verification</a>
+            <a href="{{ route('buyer.aml.upload') }}" class="btn">Complete Verification</a>
         </div>
 
         <!-- UPCOMING VIEWINGS -->

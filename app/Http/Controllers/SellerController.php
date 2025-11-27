@@ -868,21 +868,25 @@ class SellerController extends Controller
 
             // Process each room
             foreach ($validated['rooms'] as $roomIndex => $roomData) {
-                $roomName = $roomData['name'];
+                $roomName = trim($roomData['name']);
                 $is360 = false; // Sellers can't mark as 360 for now, can be added later
+                
+                // Sanitize room name for file path (remove special characters)
+                $sanitizedRoomName = preg_replace('/[^a-zA-Z0-9_-]/', '_', $roomName);
                 
                 // Process each image
                 foreach ($roomData['images'] as $imageIndex => $image) {
                     // Store image in property-specific folder
-                    $imagePath = $image->store('homechecks/' . $property->id . '/rooms/' . $roomName . '/photos', $disk);
+                    $imagePath = $image->store('homechecks/' . $property->id . '/rooms/' . $sanitizedRoomName . '/photos', $disk);
                     
                     // Create homecheck data record
                     \App\Models\HomecheckData::create([
                         'property_id' => $property->id,
                         'homecheck_report_id' => $homecheckReport->id,
-                        'room_name' => $roomName,
+                        'room_name' => $roomName, // Store original room name in database
                         'image_path' => $imagePath,
                         'is_360' => $is360,
+                        'created_at' => now(),
                     ]);
                 }
             }
@@ -901,10 +905,12 @@ class SellerController extends Controller
         } catch (\Exception $e) {
             \DB::rollBack();
             \Log::error('HomeCheck upload error: ' . $e->getMessage());
+            \Log::error('HomeCheck upload error trace: ' . $e->getTraceAsString());
+            \Log::error('HomeCheck upload error file: ' . $e->getFile() . ':' . $e->getLine());
 
             return back()
                 ->withInput()
-                ->with('error', 'An error occurred while uploading your images. Please try again.');
+                ->with('error', 'An error occurred while uploading your images: ' . $e->getMessage() . '. Please try again.');
         }
     }
 

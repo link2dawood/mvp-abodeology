@@ -85,6 +85,10 @@ Route::middleware(['auth', 'role.web:buyer,both'])->prefix('buyer')->name('buyer
     Route::get('/property/{id}/offer', [App\Http\Controllers\BuyerController::class, 'makeOffer'])->name('make-offer');
     Route::post('/property/{id}/offer', [App\Http\Controllers\BuyerController::class, 'storeOffer'])->name('offer.store');
     
+    // AML Document Upload Routes
+    Route::get('/aml-upload', [App\Http\Controllers\BuyerController::class, 'showAmlUpload'])->name('aml.upload');
+    Route::post('/aml-upload', [App\Http\Controllers\BuyerController::class, 'storeAmlUpload'])->name('aml.upload.store');
+    
     // Viewing Request Routes
     Route::get('/property/{id}/viewing-request', [App\Http\Controllers\BuyerController::class, 'showViewingRequest'])->name('viewing.request');
     Route::post('/property/{id}/viewing-request', [App\Http\Controllers\BuyerController::class, 'storeViewingRequest'])->name('viewing.request.store');

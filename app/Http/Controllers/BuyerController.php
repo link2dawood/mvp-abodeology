@@ -34,9 +34,16 @@ class BuyerController extends Controller
         // Buyer name from authenticated user
         $buyerName = $user->name;
         
-        // AML verification status (sample data - replace with actual logic)
-        $amlStatusClass = 'pending'; // 'verified', 'pending', or 'failed'
-        $amlStatusText = 'Pending';
+        // Get AML verification status
+        $amlCheck = \App\Models\AmlCheck::where('user_id', $user->id)->first();
+        
+        if ($amlCheck) {
+            $amlStatusClass = $amlCheck->verification_status === 'verified' ? 'verified' : ($amlCheck->verification_status === 'rejected' ? 'failed' : 'pending');
+            $amlStatusText = ucfirst($amlCheck->verification_status);
+        } else {
+            $amlStatusClass = 'pending';
+            $amlStatusText = 'Pending';
+        }
         
         // Sample data for demonstration
         // In a real application, you would fetch this from your database
@@ -378,6 +385,136 @@ class BuyerController extends Controller
             return back()
                 ->withInput()
                 ->with('error', 'An error occurred while submitting your viewing request. Please try again.');
+        }
+    }
+
+    /**
+     * Show AML document upload form for buyers.
+     *
+     * @return \Illuminate\Contracts\Support\Renderable
+     */
+    public function showAmlUpload()
+    {
+        $user = auth()->user();
+        
+        if (!in_array($user->role, ['buyer', 'both'])) {
+            return redirect()->route($this->getRoleDashboard($user->role))
+                ->with('error', 'You do not have permission to access this page.');
+        }
+
+        $amlCheck = \App\Models\AmlCheck::where('user_id', $user->id)->first();
+
+        return view('buyer.aml-upload', compact('amlCheck'));
+    }
+
+    /**
+     * Store AML documents for buyers.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function storeAmlUpload(Request $request)
+    {
+        $user = auth()->user();
+        
+        if (!in_array($user->role, ['buyer', 'both'])) {
+            return redirect()->route($this->getRoleDashboard($user->role))
+                ->with('error', 'You do not have permission to perform this action.');
+        }
+
+        $validated = $request->validate([
+            'id_documents' => ['required', 'array', 'min:1'],
+            'id_documents.*' => ['file', 'mimes:jpeg,png,jpg,pdf', 'max:5120'],
+            'proof_of_address_documents' => ['required', 'array', 'min:1'],
+            'proof_of_address_documents.*' => ['file', 'mimes:jpeg,png,jpg,pdf', 'max:5120'],
+            'additional_documents' => ['nullable', 'array'],
+            'additional_documents.*' => ['file', 'mimes:jpeg,png,jpg,pdf', 'max:5120'],
+        ], [
+            'id_documents.required' => 'Please upload at least one ID document (Photo ID, Passport, or Driving License).',
+            'id_documents.min' => 'Please upload at least one ID document.',
+            'proof_of_address_documents.required' => 'Please upload at least one proof of address document.',
+            'proof_of_address_documents.min' => 'Please upload at least one proof of address document.',
+        ]);
+
+        try {
+            \DB::beginTransaction();
+
+            // Get or create AML check
+            $amlCheck = \App\Models\AmlCheck::firstOrCreate(
+                ['user_id' => $user->id],
+                ['verification_status' => 'pending']
+            );
+
+            // Determine storage disk (S3 if configured, otherwise public)
+            $disk = config('filesystems.default') === 's3' ? 's3' : 'public';
+
+            // Store ID documents
+            foreach ($request->file('id_documents') as $file) {
+                $filePath = $file->store('aml-documents/' . $user->id . '/id', $disk);
+                \App\Models\AmlDocument::create([
+                    'aml_check_id' => $amlCheck->id,
+                    'document_type' => 'id_document',
+                    'file_path' => $filePath,
+                    'file_name' => $file->getClientOriginalName(),
+                    'mime_type' => $file->getMimeType(),
+                    'file_size' => $file->getSize(),
+                ]);
+            }
+
+            // Store proof of address documents
+            foreach ($request->file('proof_of_address_documents') as $file) {
+                $filePath = $file->store('aml-documents/' . $user->id . '/proof-of-address', $disk);
+                \App\Models\AmlDocument::create([
+                    'aml_check_id' => $amlCheck->id,
+                    'document_type' => 'proof_of_address',
+                    'file_path' => $filePath,
+                    'file_name' => $file->getClientOriginalName(),
+                    'mime_type' => $file->getMimeType(),
+                    'file_size' => $file->getSize(),
+                ]);
+            }
+
+            // Store additional documents if provided
+            if ($request->hasFile('additional_documents')) {
+                foreach ($request->file('additional_documents') as $file) {
+                    $filePath = $file->store('aml-documents/' . $user->id . '/additional', $disk);
+                    \App\Models\AmlDocument::create([
+                        'aml_check_id' => $amlCheck->id,
+                        'document_type' => 'additional',
+                        'file_path' => $filePath,
+                        'file_name' => $file->getClientOriginalName(),
+                        'mime_type' => $file->getMimeType(),
+                        'file_size' => $file->getSize(),
+                    ]);
+                }
+            }
+
+            // Update legacy fields for backward compatibility
+            $firstIdDoc = \App\Models\AmlDocument::where('aml_check_id', $amlCheck->id)
+                ->where('document_type', 'id_document')
+                ->first();
+            $firstProofDoc = \App\Models\AmlDocument::where('aml_check_id', $amlCheck->id)
+                ->where('document_type', 'proof_of_address')
+                ->first();
+
+            $amlCheck->update([
+                'id_document' => $firstIdDoc ? $firstIdDoc->file_path : null,
+                'proof_of_address' => $firstProofDoc ? $firstProofDoc->file_path : null,
+                'verification_status' => 'pending',
+            ]);
+
+            \DB::commit();
+
+            return redirect()->route('buyer.dashboard')
+                ->with('success', 'AML documents uploaded successfully! Your documents are being reviewed and you will be notified once verification is complete.');
+
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            \Log::error('Buyer AML document upload error: ' . $e->getMessage());
+
+            return back()
+                ->withInput()
+                ->with('error', 'An error occurred while uploading your documents. Please try again.');
         }
     }
 
