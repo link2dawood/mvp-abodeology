@@ -156,16 +156,6 @@
         </div>
     @endif
 
-    <div class="info-box">
-        <p><strong>Property:</strong> {{ $property->address }}</p>
-        <p>As part of our Anti-Money Laundering (AML) compliance, we require you to provide the following documents:</p>
-        <ul style="margin: 10px 0; padding-left: 20px;">
-            <li><strong>Photo ID:</strong> Passport, Driving License, or National ID Card</li>
-            <li><strong>Proof of Address:</strong> Utility bill, Bank statement, or Council tax bill (dated within the last 3 months)</li>
-        </ul>
-        <p style="font-size: 13px; color: #666; margin-top: 10px;">All documents must be clear, legible, and in JPEG, PNG, or PDF format (max 5MB each).</p>
-    </div>
-
     @if(isset($amlCheck) && $amlCheck->id_document && $amlCheck->proof_of_address)
         <div class="upload-status">
             <p><strong>Documents Previously Uploaded</strong></p>
