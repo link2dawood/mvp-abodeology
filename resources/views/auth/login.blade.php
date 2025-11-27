@@ -55,6 +55,8 @@
 
         .logo img {
             width: 160px;
+            height: auto;
+            object-fit: contain;
         }
 
         /* HEADING */
@@ -152,6 +154,8 @@
 
             .logo img {
                 width: 140px;
+                height: auto;
+                object-fit: contain;
             }
 
             h2 {
@@ -175,7 +179,7 @@
     <div class="wrapper">
         <div class="login-box">
             <div class="logo">
-                <img src="{{ asset('media/abodeology-logo.png') }}" alt="Abodeology Logo" height="40" style="max-height: 40px;" onerror="this.onerror=null; this.src='{{ asset('media/abodeology-logo.png') }}'; this.onerror=function(){this.style.display='none'; this.nextElementSibling.style.display='inline-block';};">
+                <img src="{{ asset('media/abodeology-logo.png') }}" alt="Abodeology Logo" onerror="this.onerror=null; this.src='{{ asset('media/abodeology-logo.png') }}'; this.onerror=function(){this.style.display='none'; this.nextElementSibling.style.display='inline-block';};">
                 <span style="display: none; color: #2CB8B4; font-weight: 600; font-size: 24px;">Abodeology®</span>
             </div>
             

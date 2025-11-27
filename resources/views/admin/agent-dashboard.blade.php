@@ -36,17 +36,17 @@
         margin-top: 0;
         margin-bottom: 15px;
         font-size: 20px;
-        color: #4A90E2;
+        color: var(--abodeology-teal);
     }
 
     /* KPI BOXES */
     .kpi-box {
-        background: linear-gradient(135deg, #4A90E2, #357ABD);
+        background: linear-gradient(135deg, var(--abodeology-teal), #25A29F);
         color: var(--white);
         padding: 25px;
         border-radius: 10px;
         text-align: center;
-        box-shadow: 0px 2px 10px rgba(74, 144, 226, 0.3);
+        box-shadow: 0px 2px 10px rgba(44, 184, 180, 0.3);
     }
 
     .kpi-number {
@@ -68,7 +68,7 @@
     }
 
     .table th {
-        background: #4A90E2;
+        background: var(--abodeology-teal);
         color: var(--white);
         padding: 10px;
         text-align: left;
@@ -143,8 +143,8 @@
 
     /* INFO MESSAGE */
     .info-message {
-        background: linear-gradient(135deg, rgba(74, 144, 226, 0.1), rgba(53, 122, 189, 0.1));
-        border: 1px solid #4A90E2;
+        background: linear-gradient(135deg, rgba(44, 184, 180, 0.1), rgba(37, 162, 159, 0.1));
+        border: 1px solid var(--abodeology-teal);
         border-radius: 6px;
         padding: 15px 20px;
         margin-bottom: 25px;
@@ -217,8 +217,8 @@
     <div class="grid">
         <!-- TODAY'S APPOINTMENTS -->
         @if(isset($todaysAppointments) && $todaysAppointments->count() > 0)
-        <div class="card" style="background: linear-gradient(135deg, rgba(74, 144, 226, 0.1), rgba(53, 122, 189, 0.1)); border-left: 4px solid #4A90E2;">
-            <h3 style="color: #4A90E2; margin-top: 0;">📅 Today's Appointments</h3>
+        <div class="card" style="background: linear-gradient(135deg, rgba(44, 184, 180, 0.1), rgba(37, 162, 159, 0.1)); border-left: 4px solid var(--abodeology-teal);">
+            <h3 style="color: var(--abodeology-teal); margin-top: 0;">📅 Today's Appointments</h3>
             <table class="table">
                 <tr>
                     <th>Time</th>
