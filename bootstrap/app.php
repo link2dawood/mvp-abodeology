@@ -14,6 +14,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web([
             \App\Http\Middleware\SecurityHeaders::class,
+            \App\Http\Middleware\ForceHttps::class,
         ]);
 
         // Register API middleware aliases
@@ -24,6 +25,12 @@ return Application::configure(basePath: dirname(__DIR__))
             'ownership' => \App\Http\Middleware\CheckOwnership::class,
             'user.ownership' => \App\Http\Middleware\CheckUserOwnership::class,
             'api.ratelimit' => \App\Http\Middleware\ApiRateLimit::class,
+            'api.response.validation' => \App\Http\Middleware\ApiResponseValidation::class,
+        ]);
+
+        // Add API response validation to API routes
+        $middleware->api([
+            \App\Http\Middleware\ApiResponseValidation::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

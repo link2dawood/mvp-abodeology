@@ -54,58 +54,34 @@ class AdminController extends Controller
                 ->with('error', 'You do not have permission to access the admin dashboard.');
         }
         
-        // Fetch real data from database
-        $valuationsQuery = Valuation::with('seller');
-        if ($user->role === 'agent' && $agentPropertyIds) {
-            // Filter valuations for agent's assigned properties
-            $valuationsQuery->whereHas('seller', function($q) use ($agentPropertyIds) {
-                $q->whereHas('properties', function($query) use ($agentPropertyIds) {
-                    $query->whereIn('properties.id', $agentPropertyIds);
-                });
-            });
-        }
-        $valuations = $valuationsQuery->orderBy('created_at', 'desc')->limit(10)->get();
+        // ============================================
+        // ADMIN DASHBOARD DATA AGGREGATION
+        // SECURITY: Admin has full system access - no filtering
+        // ============================================
+        
+        // Fetch all valuations (admin sees all)
+        $valuations = Valuation::with('seller')
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get();
 
         // Get today's scheduled valuations (appointments)
-        $todaysAppointmentsQuery = Valuation::with('seller')
+        $todaysAppointments = Valuation::with('seller')
             ->where('status', 'scheduled')
-            ->whereDate('valuation_date', today());
-        if ($user->role === 'agent' && $agentPropertyIds) {
-            $todaysAppointmentsQuery->whereHas('seller', function($q) use ($agentPropertyIds) {
-                $q->whereHas('properties', function($query) use ($agentPropertyIds) {
-                    $query->whereIn('properties.id', $agentPropertyIds);
-                });
-            });
-        }
-        $todaysAppointments = $todaysAppointmentsQuery->orderBy('valuation_time', 'asc')->get();
+            ->whereDate('valuation_date', today())
+            ->orderBy('valuation_time', 'asc')
+            ->get();
 
-        // Dashboard statistics
-        $valuationsCountQuery = Valuation::query();
-        $propertiesQuery = Property::query();
-        $offersQuery = Offer::query();
-        
-        if ($user->role === 'agent' && $agentPropertyIds) {
-            // Filter valuations
-            $valuationsCountQuery->whereHas('seller', function($q) use ($agentPropertyIds) {
-                $q->whereHas('properties', function($query) use ($agentPropertyIds) {
-                    $query->whereIn('properties.id', $agentPropertyIds);
-                });
-            });
-            // Filter properties
-            $propertiesQuery->whereIn('id', $agentPropertyIds);
-            // Filter offers
-            $offersQuery->whereIn('property_id', $agentPropertyIds);
-        }
-        
-        $pendingValuations = (clone $valuationsCountQuery)->where('status', 'pending')->count();
-        $scheduledValuations = (clone $valuationsCountQuery)->where('status', 'scheduled')->count();
-        $activeListings = (clone $propertiesQuery)->where('status', 'live')->count();
-        $offersReceived = (clone $offersQuery)->where('status', 'pending')->count();
-        $salesInProgress = (clone $propertiesQuery)->where('status', 'sold')->count();
+        // Dashboard statistics (admin sees all)
+        $pendingValuations = Valuation::where('status', 'pending')->count();
+        $scheduledValuations = Valuation::where('status', 'scheduled')->count();
+        $activeListings = Property::where('status', 'live')->count();
+        $offersReceived = Offer::where('status', 'pending')->count();
+        $salesInProgress = Property::where('status', 'sold')->count();
         $pvasActive = User::where('role', 'pva')->count();
 
         $stats = [
-            'total_valuations' => $valuationsCountQuery->count(),
+            'total_valuations' => Valuation::count(),
             'pending_valuations' => $pendingValuations,
             'scheduled_valuations' => $scheduledValuations,
             'active_listings' => $activeListings,
@@ -114,44 +90,163 @@ class AdminController extends Controller
             'pvas_active' => $pvasActive,
         ];
 
-        // Get recent data - filtered for agents
-        $sellersQuery = User::whereIn('role', ['seller', 'both']);
-        if ($user->role === 'agent' && $agentPropertyIds) {
-            $sellersQuery->whereHas('properties', function($q) use ($agentPropertyIds) {
-                $q->whereIn('properties.id', $agentPropertyIds);
-            });
-        }
-        $sellers = $sellersQuery->orderBy('created_at', 'desc')->limit(5)->get();
+        // Get recent data (admin sees all)
+        $sellers = User::whereIn('role', ['seller', 'both'])
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get();
 
         $buyers = User::whereIn('role', ['buyer', 'both'])
             ->orderBy('created_at', 'desc')
             ->limit(5)
             ->get();
 
-        $offersQuery = Offer::with(['buyer', 'property']);
-        if ($user->role === 'agent' && $agentPropertyIds) {
-            $offersQuery->whereIn('property_id', $agentPropertyIds);
-        }
-        $offers = $offersQuery->orderBy('created_at', 'desc')->limit(5)->get();
+        $offers = Offer::with(['buyer', 'property'])
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get();
 
-        $salesQuery = Property::where('status', 'sold')->with('seller');
-        if ($user->role === 'agent' && $agentPropertyIds) {
-            $salesQuery->whereIn('id', $agentPropertyIds);
-        }
-        $sales = $salesQuery->orderBy('updated_at', 'desc')->limit(5)->get();
+        $sales = Property::where('status', 'sold')
+            ->with('seller')
+            ->orderBy('updated_at', 'desc')
+            ->limit(5)
+            ->get();
 
         $pvas = User::where('role', 'pva')
             ->orderBy('created_at', 'desc')
             ->limit(5)
             ->get();
 
+        // ============================================
+        // COMPREHENSIVE DATA AGGREGATION
+        // ============================================
+        
+        // 1. NEW LISTINGS - Recently created properties (last 7 days)
+        $newListings = Property::where('created_at', '>=', now()->subDays(7))
+            ->with(['seller'])
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get();
+        
+        // 2. AML PENDING - AML checks awaiting verification
+        $amlPending = AmlCheck::where('verification_status', 'pending')
+            ->with(['user'])
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get();
+        
+        // 3. OFFERS PENDING SELLER RESPONSE - Offers with pending/countered status
+        $offersPendingResponse = Offer::whereIn('status', ['pending', 'countered'])
+            ->with(['buyer', 'property.seller'])
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get();
+        
+        // 4. HOMECHECK PENDING - HomeCheck reports awaiting completion
+        $homecheckPending = \App\Models\HomecheckReport::whereIn('status', ['pending', 'in_progress'])
+            ->with(['property.seller'])
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get();
+        
+        // 5. RECENT ACTIVITY - Comprehensive activity log
+        $recentActivity = collect();
+        
+        // Add recent valuations
+        $recentValuations = Valuation::with('seller')
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get()
+            ->map(function($item) {
+                return [
+                    'type' => 'valuation',
+                    'id' => $item->id,
+                    'title' => 'New Valuation Request',
+                    'description' => $item->property_address ?? 'N/A',
+                    'user' => $item->seller->name ?? 'N/A',
+                    'date' => $item->created_at,
+                    'status' => $item->status,
+                    'route' => route('admin.valuations.show', $item->id),
+                ];
+            });
+        $recentActivity = $recentActivity->merge($recentValuations);
+        
+        // Add recent offers
+        $recentOffers = Offer::with(['buyer', 'property'])
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get()
+            ->map(function($item) {
+                return [
+                    'type' => 'offer',
+                    'id' => $item->id,
+                    'title' => 'New Offer Received',
+                    'description' => '£' . number_format($item->offer_amount, 0) . ' on ' . ($item->property->address ?? 'N/A'),
+                    'user' => $item->buyer->name ?? 'N/A',
+                    'date' => $item->created_at,
+                    'status' => $item->status,
+                    'route' => route('admin.properties.show', $item->property_id),
+                ];
+            });
+        $recentActivity = $recentActivity->merge($recentOffers);
+        
+        // Add recent properties
+        $recentProperties = Property::with('seller')
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get()
+            ->map(function($item) {
+                return [
+                    'type' => 'property',
+                    'id' => $item->id,
+                    'title' => 'New Property Listing',
+                    'description' => $item->address ?? 'N/A',
+                    'user' => $item->seller->name ?? 'N/A',
+                    'date' => $item->created_at,
+                    'status' => $item->status,
+                    'route' => route('admin.properties.show', $item->id),
+                ];
+            });
+        $recentActivity = $recentActivity->merge($recentProperties);
+        
+        // Add recent viewings
+        $recentViewings = \App\Models\Viewing::with(['buyer', 'property'])
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get()
+            ->map(function($item) {
+                return [
+                    'type' => 'viewing',
+                    'id' => $item->id,
+                    'title' => 'New Viewing Request',
+                    'description' => $item->property->address ?? 'N/A',
+                    'user' => $item->buyer->name ?? 'N/A',
+                    'date' => $item->created_at,
+                    'status' => $item->status,
+                    'route' => route('admin.properties.show', $item->property_id),
+                ];
+            });
+        $recentActivity = $recentActivity->merge($recentViewings);
+        
+        // Sort by date and limit to 15 most recent
+        $recentActivity = $recentActivity->sortByDesc('date')->take(15);
+        
         // Generate alerts based on pending items
         $alerts = [];
         if ($pendingValuations > 0) {
             $alerts[] = "You have {$pendingValuations} pending valuation request(s) that need attention.";
         }
         if ($offersReceived > 0) {
-            $alerts[] = "You have {$offersReceived} pending offer(s) awaiting response.";
+            $alerts[] = "You have {$offersReceived} pending offer(s) awaiting seller response.";
+        }
+        if ($amlPending->count() > 0) {
+            $alerts[] = "You have {$amlPending->count()} AML check(s) pending verification.";
+        }
+        if ($homecheckPending->count() > 0) {
+            $alerts[] = "You have {$homecheckPending->count()} HomeCheck(s) pending completion.";
+        }
+        if ($newListings->count() > 0) {
+            $alerts[] = "You have {$newListings->count()} new listing(s) in the last 7 days.";
         }
         if (empty($alerts)) {
             $alerts[] = 'System running normally';
@@ -159,7 +254,22 @@ class AdminController extends Controller
             $alerts[] = 'All services operational';
         }
 
-        return view('admin.dashboard', compact('stats', 'valuations', 'todaysAppointments', 'sellers', 'buyers', 'offers', 'sales', 'pvas', 'alerts'));
+        return view('admin.dashboard', compact(
+            'stats', 
+            'valuations', 
+            'todaysAppointments', 
+            'sellers', 
+            'buyers', 
+            'offers', 
+            'sales', 
+            'pvas', 
+            'alerts',
+            'newListings',
+            'amlPending',
+            'offersPendingResponse',
+            'homecheckPending',
+            'recentActivity'
+        ));
     }
 
     /**
@@ -735,7 +845,7 @@ class AdminController extends Controller
                 ->with('error', 'You do not have permission to access this page.');
         }
 
-        $property = Property::with(['seller', 'instruction', 'materialInformation', 'homecheckReports', 'photos', 'documents'])->findOrFail($id);
+        $property = Property::with(['seller', 'instruction', 'materialInformation', 'homecheckReports', 'homecheckData', 'photos', 'documents', 'offers.buyer', 'offers.latestDecision'])->findOrFail($id);
         
         // For agents, verify they have access to this property
         if ($user->role === 'agent') {
@@ -998,7 +1108,7 @@ class AdminController extends Controller
 
         // Get the active HomeCheck report
         $homecheckReport = \App\Models\HomecheckReport::where('property_id', $property->id)
-            ->whereIn('status', ['scheduled', 'in_progress'])
+            ->whereIn('status', ['pending', 'scheduled', 'in_progress'])
             ->first();
 
         if (!$homecheckReport) {
@@ -1044,7 +1154,7 @@ class AdminController extends Controller
 
         // Get the active HomeCheck report
         $homecheckReport = \App\Models\HomecheckReport::where('property_id', $property->id)
-            ->whereIn('status', ['scheduled', 'in_progress'])
+            ->whereIn('status', ['pending', 'scheduled', 'in_progress'])
             ->first();
 
         if (!$homecheckReport) {
@@ -1058,6 +1168,7 @@ class AdminController extends Controller
             'rooms.*.images' => ['required', 'array', 'min:1'],
             'rooms.*.images.*' => ['required', 'image', 'mimes:jpeg,png,jpg', 'max:10240'], // 10MB max
             'rooms.*.is_360' => ['nullable', 'boolean'], // Flag for 360 images
+            'rooms.*.moisture_reading' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'notes' => ['nullable', 'string', 'max:1000'],
         ], [
             'rooms.required' => 'Please add at least one room.',
@@ -1067,6 +1178,9 @@ class AdminController extends Controller
             'rooms.*.images.min' => 'Please upload at least one image for each room.',
             'rooms.*.images.*.image' => 'All files must be images.',
             'rooms.*.images.*.max' => 'Image size must not exceed 10MB.',
+            'rooms.*.moisture_reading.numeric' => 'Moisture reading must be a number.',
+            'rooms.*.moisture_reading.min' => 'Moisture reading must be between 0 and 100.',
+            'rooms.*.moisture_reading.max' => 'Moisture reading must be between 0 and 100.',
         ]);
 
         try {
@@ -1081,22 +1195,40 @@ class AdminController extends Controller
             foreach ($validated['rooms'] as $roomIndex => $roomData) {
                 $roomName = $roomData['name'];
                 $is360 = isset($roomData['is_360']) && $roomData['is_360'];
+                $moistureReading = isset($roomData['moisture_reading']) && $roomData['moisture_reading'] !== '' 
+                    ? (float) $roomData['moisture_reading'] 
+                    : null;
                 
                 // Determine storage disk (S3 if configured, otherwise public)
                 $disk = config('filesystems.default') === 's3' ? 's3' : 'public';
                 
-                // Process each image
+                // Process each image with optimization
+                $imageOptimizer = new \App\Services\ImageOptimizationService();
                 foreach ($roomData['images'] as $imageIndex => $image) {
                     // Store image in property-specific folder
                     $imagePath = $image->store('homechecks/' . $property->id . '/rooms/' . $roomName . '/' . ($is360 ? '360' : 'photos'), $disk);
                     
-                    // Create homecheck data record
+                    // Optimize the image (max width 1920px, quality 85%)
+                    try {
+                        $imageOptimizer->optimizeExisting($imagePath, $disk, 1920, 85);
+                    } catch (\Exception $e) {
+                        \Log::warning('Image optimization failed for homecheck image: ' . $e->getMessage());
+                        // Continue even if optimization fails
+                    }
+                    
+                    // Get image metadata
+                    $imageSize = $image->getSize();
+                    $imageMimeType = $image->getMimeType();
+                    
+                    // Create homecheck data record with moisture reading and metadata
                     \App\Models\HomecheckData::create([
                         'property_id' => $property->id,
                         'homecheck_report_id' => $homecheckReport->id,
                         'room_name' => $roomName,
                         'image_path' => $imagePath,
                         'is_360' => $is360, // Store if it's a 360 image
+                        'moisture_reading' => $moistureReading, // Save moisture reading per room
+                        'created_at' => now(),
                         // AI analysis can be added later
                     ]);
                 }
@@ -1223,10 +1355,20 @@ class AdminController extends Controller
             // Determine storage disk (S3 if configured, otherwise public)
             $disk = config('filesystems.default') === 's3' ? 's3' : 'public';
 
-            // Upload and save photos
+            // Upload and save photos with optimization
+            $imageOptimizer = new \App\Services\ImageOptimizationService();
             $primaryPhotoIndex = $validated['primary_photo_index'] ?? 0;
             foreach ($validated['photos'] as $index => $photo) {
+                // Store original path first
                 $photoPath = $photo->store('properties/' . $property->id . '/photos', $disk);
+                
+                // Optimize the image (max width 1920px, quality 85%)
+                try {
+                    $imageOptimizer->optimizeExisting($photoPath, $disk, 1920, 85);
+                } catch (\Exception $e) {
+                    \Log::warning('Image optimization failed for property photo: ' . $e->getMessage());
+                    // Continue even if optimization fails
+                }
                 
                 \App\Models\PropertyPhoto::create([
                     'property_id' => $property->id,
@@ -1389,30 +1531,97 @@ class AdminController extends Controller
      */
     protected function publishToPortals(Property $property): array
     {
-        // Simulate portal publishing
-        // In production, this would:
-        // 1. Connect to Rightmove API
-        // 2. Connect to Zoopla API
-        // 3. Connect to OnTheMarket API
-        // 4. Send property data and images
-        // 5. Handle responses and errors
-
         $portals = ['Rightmove', 'Zoopla', 'OnTheMarket'];
         $results = [];
 
         foreach ($portals as $portal) {
-            // Simulate API call
             \Log::info("Publishing property {$property->id} to {$portal}");
             
-            // In production, make actual API calls here:
-            // $response = Http::post("{$portalApiUrl}/properties", [...]);
-            // $results[$portal] = $response->successful();
-            
-            // For now, simulate success
-            $results[$portal] = true;
+            if ($portal === 'Rightmove') {
+                // Generate RTDF file for Rightmove
+                try {
+                    $rtdfService = new \App\Services\RTDFGeneratorService();
+                    $rtdfFilePath = $rtdfService->generateForProperty($property);
+                    
+                    // Upload to FTP (stub - ready for production)
+                    $ftpConnector = new \App\Services\RTDFFTPConnector();
+                    $fileName = 'property_' . $property->id . '.txt';
+                    
+                    // Get full local file path
+                    $disk = config('filesystems.default') === 's3' ? 's3' : 'public';
+                    $localFilePath = $disk === 's3' 
+                        ? Storage::disk($disk)->url($rtdfFilePath) 
+                        : Storage::disk($disk)->path($rtdfFilePath);
+                    
+                    $uploaded = $ftpConnector->uploadFile($localFilePath, $fileName);
+                    
+                    $results[$portal] = $uploaded;
+                    \Log::info("RTDF file generated and uploaded for property {$property->id}", [
+                        'file_path' => $rtdfFilePath,
+                        'uploaded' => $uploaded,
+                    ]);
+                } catch (\Exception $e) {
+                    \Log::error("RTDF generation failed for property {$property->id}: " . $e->getMessage());
+                    $results[$portal] = false;
+                }
+            } else {
+                // For other portals, simulate API call
+                // In production, make actual API calls here:
+                // $response = Http::post("{$portalApiUrl}/properties", [...]);
+                // $results[$portal] = $response->successful();
+                
+                // For now, simulate success
+                $results[$portal] = true;
+            }
         }
 
         return $results;
+    }
+    
+    /**
+     * Generate RTDF file for a property.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function generateRTDF($id)
+    {
+        $user = auth()->user();
+        
+        if (!in_array($user->role, ['admin', 'agent'])) {
+            return redirect()->route($this->getRoleDashboard($user->role))
+                ->with('error', 'You do not have permission to access this page.');
+        }
+        
+        try {
+            $property = Property::with(['seller', 'photos', 'materialInformation', 'documents'])
+                ->findOrFail($id);
+            
+            // Generate RTDF file
+            $rtdfService = new \App\Services\RTDFGeneratorService();
+            $rtdfFilePath = $rtdfService->generateForProperty($property);
+            
+            // Get full file path
+            $disk = config('filesystems.default') === 's3' ? 's3' : 'public';
+            
+            // If S3, get URL instead
+            if ($disk === 's3') {
+                $fileUrl = Storage::disk($disk)->url($rtdfFilePath);
+                return redirect($fileUrl);
+            }
+            
+            // For local storage, get the full path
+            $fullPath = Storage::disk($disk)->path($rtdfFilePath);
+            
+            // Return file download
+            return response()->download($fullPath, 'property_' . $property->id . '.txt', [
+                'Content-Type' => 'text/plain',
+            ]);
+            
+        } catch (\Exception $e) {
+            \Log::error('RTDF generation error: ' . $e->getMessage());
+            return back()->with('error', 'Failed to generate RTDF file: ' . $e->getMessage());
+        }
     }
 
     /**

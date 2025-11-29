@@ -391,6 +391,19 @@ function addRoomBlock() {
         <input type="hidden" name="rooms[${roomIndex}][is_360]" id="is360_${roomId}" value="0">
         
         <div class="preview-grid" id="preview_${roomId}"></div>
+        
+        <div style="margin-top: 15px;">
+            <label style="display: block; font-weight: 600; margin-bottom: 6px; color: #1E1E1E;">Moisture Reading (%)</label>
+            <input type="number" 
+                   name="rooms[${roomIndex}][moisture_reading]" 
+                   step="0.1" 
+                   min="0" 
+                   max="100"
+                   placeholder="e.g., 45.5"
+                   style="width: 100%; padding: 10px; border: 1px solid #D9D9D9; border-radius: 6px; font-size: 15px; box-sizing: border-box;">
+            <p style="font-size: 12px; color: #666; margin-top: 5px;">Optional: Enter moisture reading for this room (0-100%)</p>
+        </div>
+        
         <div class="error-message" id="error_${roomId}" style="display: none;"></div>
     `;
     

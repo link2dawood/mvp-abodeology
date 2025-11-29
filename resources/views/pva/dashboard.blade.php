@@ -225,8 +225,14 @@
                 </tr>
                 @forelse($upcomingViewings ?? [] as $viewing)
                     <tr>
-                        <td>{{ $viewing['date'] ?? 'N/A' }}</td>
-                        <td>{{ $viewing['property'] ?? 'N/A' }}</td>
+                        <td>
+                            <strong>{{ $viewing['date'] ?? 'N/A' }}</strong>
+                            <br><span style="font-size: 12px; color: #666;">{{ $viewing['time'] ?? '' }}</span>
+                        </td>
+                        <td>
+                            <strong>{{ $viewing['property'] ?? 'N/A' }}</strong>
+                            <br><span style="font-size: 12px; color: #666;">Buyer: {{ $viewing['buyer'] ?? 'N/A' }}</span>
+                        </td>
                         <td>
                             <span class="status status-upcoming">{{ $viewing['status'] ?? 'Upcoming' }}</span>
                         </td>
@@ -237,7 +243,7 @@
                     </tr>
                 @endforelse
             </table>
-            <a href="#" class="btn btn-main">View All</a>
+            <a href="{{ route('pva.viewings.index') }}" class="btn btn-main">View All Viewings</a>
         </div>
 
         <!-- TODAY'S TASKS -->
@@ -250,29 +256,71 @@
                 </tr>
                 @forelse($todaysTasks ?? [] as $task)
                     <tr>
-                        <td>{{ $task['time'] ?? 'N/A' }}</td>
-                        <td>{{ $task['property'] ?? 'N/A' }}</td>
+                        <td>
+                            <strong>{{ $task['time'] ?? 'N/A' }}</strong>
+                        </td>
+                        <td>
+                            <strong>{{ $task['property'] ?? 'N/A' }}</strong>
+                            <br><span style="font-size: 12px; color: #666;">{{ $task['buyer'] ?? 'N/A' }}</span>
+                        </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="2" style="text-align: center; color: #999;">No tasks for today</td>
+                        <td colspan="2" style="text-align: center; color: #999;">No viewings scheduled for today</td>
                     </tr>
                 @endforelse
             </table>
-            <a href="#" class="btn btn-dark">Download Day Sheet</a>
+            @if(isset($todaysTasks) && $todaysTasks->count() > 0)
+                <a href="{{ route('pva.viewings.index') }}" class="btn btn-dark">View Today's Schedule</a>
+            @endif
         </div>
+
+        <!-- UNASSIGNED VIEWINGS -->
+        @if(isset($unassignedViewings) && $unassignedViewings->count() > 0)
+            <div class="card" style="grid-column: 1 / -1; background: #fff3cd; border: 2px solid #ffc107;">
+                <h3 style="color: #856404;">Available Viewings to Claim</h3>
+                <p style="color: #856404; margin-bottom: 15px;">You can claim these unassigned viewings:</p>
+                <table class="table">
+                    <tr>
+                        <th>Date & Time</th>
+                        <th>Property</th>
+                        <th>Buyer</th>
+                        <th>Action</th>
+                    </tr>
+                    @foreach($unassignedViewings as $viewing)
+                        <tr>
+                            <td>
+                                <strong>{{ $viewing->viewing_date ? $viewing->viewing_date->format('M j, Y g:i A') : 'N/A' }}</strong>
+                            </td>
+                            <td>{{ $viewing->property->address ?? 'N/A' }}</td>
+                            <td>{{ $viewing->buyer->name ?? 'N/A' }}</td>
+                            <td>
+                                <form action="{{ route('pva.viewings.confirm', $viewing->id) }}" method="POST" style="display: inline;">
+                                    @csrf
+                                    <button type="submit" class="btn btn-main" style="padding: 6px 12px; font-size: 13px;">Claim Viewing</button>
+                                </form>
+                            </td>
+                        </tr>
+                    @endforeach
+                </table>
+            </div>
+        @endif
 
         <!-- VIEWING DETAILS / FORM LINK -->
         <div class="card">
             <h3>Submit Viewing Feedback</h3>
             <p>After completing a viewing, please submit the buyer's:</p>
             <ul>
-                <li>Name</li>
                 <li>Interest Level</li>
-                <li>Offer Intentions</li>
-                <li>Viewing Feedback</li>
+                <li>Buyer Feedback</li>
+                <li>Property Condition</li>
+                <li>PVA Notes</li>
             </ul>
-            <a href="#" class="btn btn-main">Open Feedback Form</a>
+            @if(isset($completedViewings) && $completedViewings->count() > 0)
+                <p style="margin-top: 15px; font-size: 13px; color: #666;">
+                    <strong>Quick Access:</strong> Select a completed viewing below to submit feedback.
+                </p>
+            @endif
         </div>
 
         <!-- COMPLETED VIEWINGS -->
@@ -287,12 +335,15 @@
                 @forelse($completedViewings ?? [] as $viewing)
                     <tr>
                         <td>{{ $viewing['date'] ?? 'N/A' }}</td>
-                        <td>{{ $viewing['property'] ?? 'N/A' }}</td>
+                        <td>
+                            <strong>{{ $viewing['property'] ?? 'N/A' }}</strong>
+                            <br><span style="font-size: 12px; color: #666;">{{ $viewing['buyer'] ?? 'N/A' }}</span>
+                        </td>
                         <td>
                             @if(isset($viewing['report']) && $viewing['report'])
-                                <a href="#" style="color: var(--abodeology-teal);">View</a>
+                                <a href="{{ route('pva.viewings.show', $viewing['id']) }}" style="color: var(--abodeology-teal); font-weight: 600;">View Feedback</a>
                             @else
-                                <span style="color: #999;">Pending</span>
+                                <a href="{{ route('pva.viewings.feedback', $viewing['id']) }}" class="btn btn-main" style="padding: 6px 12px; font-size: 13px;">Submit Feedback</a>
                             @endif
                         </td>
                     </tr>
@@ -302,7 +353,7 @@
                     </tr>
                 @endforelse
             </table>
-            <a href="#" class="btn btn-main">View All Completed</a>
+            <a href="{{ route('pva.viewings.index') }}" class="btn btn-main">View All Viewings</a>
         </div>
 
         <!-- PROFILE SUMMARY -->

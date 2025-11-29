@@ -197,8 +197,30 @@
         <!-- PROPERTY SUMMARY -->
         <div class="card">
             <h3>Property</h3>
-            <p><strong>Address:</strong> {{ $property->address ?? '123 Main Street, London, SW1A 1AA' }}</p>
-            <p><strong>Asking Price:</strong> £{{ number_format($property->asking_price ?? 500000, 2) }}</p>
+            <p><strong>Address:</strong> {{ $property->address }}</p>
+            @if($property->postcode)
+                <p><strong>Postcode:</strong> {{ $property->postcode }}</p>
+            @endif
+            <p><strong>Asking Price:</strong> £{{ number_format($property->asking_price, 2) }}</p>
+            @if($property->property_type)
+                <p><strong>Type:</strong> {{ ucfirst(str_replace('_', ' ', $property->property_type)) }}</p>
+            @endif
+            @if($property->bedrooms)
+                <p><strong>Bedrooms:</strong> {{ $property->bedrooms }}</p>
+            @endif
+        </div>
+
+        <!-- BUYER INFORMATION (Auto-filled) -->
+        <div class="card" style="background: #E8F4F3;">
+            <h3>Your Information</h3>
+            <p><strong>Name:</strong> {{ $user->name ?? auth()->user()->name }}</p>
+            <p><strong>Email:</strong> {{ $user->email ?? auth()->user()->email }}</p>
+            @if($user->phone ?? auth()->user()->phone)
+                <p><strong>Phone:</strong> {{ $user->phone ?? auth()->user()->phone }}</p>
+            @endif
+            <p style="font-size: 13px; color: #666; margin-top: 10px;">
+                This information will be shared with the seller when you submit your offer.
+            </p>
         </div>
 
         <!-- OFFER DETAILS -->

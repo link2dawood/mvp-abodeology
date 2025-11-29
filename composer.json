@@ -9,7 +9,6 @@
         "php": "^8.2",
         "intervention/image": "*",
         "laravel/framework": "^12.0",
-        "laravel/socialite": "^5.23",
         "laravel/tinker": "^2.10.1",
         "laravel/ui": "*",
         "league/flysystem-aws-s3-v3": "^3.30",

@@ -17,6 +17,16 @@ use App\Http\Controllers\Api\ViewingController;
 |
 */
 
+// Public health check endpoint
+Route::get('/health', function () {
+    return response()->json([
+        'status' => 'ok',
+        'timestamp' => now()->toIso8601String(),
+        'environment' => app()->environment(),
+        'version' => '1.0.0',
+    ]);
+});
+
 // Public routes
 Route::prefix('auth')->group(function () {
     // /auth/login: 5 per 10 minutes

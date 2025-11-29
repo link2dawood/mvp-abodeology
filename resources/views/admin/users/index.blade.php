@@ -457,7 +457,10 @@
             window.history.pushState({path: newUrl}, '', newUrl);
         })
         .catch(error => {
-            console.error('Search error:', error);
+            // Log error silently in production
+            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                console.error('Search error:', error);
+            }
         })
         .finally(() => {
             loadingIndicator.classList.remove('active');

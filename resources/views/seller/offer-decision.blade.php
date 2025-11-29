@@ -244,76 +244,105 @@
             <table class="table">
                 <tr>
                     <th>Buyer</th>
-                    <td>{{ $offer->buyer_name ?? 'John Doe' }}</td>
+                    <td>
+                        <strong>{{ $offer->buyer->name ?? 'N/A' }}</strong>
+                        @if($offer->buyer)
+                            <br><span style="font-size: 12px; color: #666;">{{ $offer->buyer->email }}</span>
+                            @if($offer->buyer->phone)
+                                <br><span style="font-size: 12px; color: #666;">{{ $offer->buyer->phone }}</span>
+                            @endif
+                        @endif
+                    </td>
+                </tr>
+                <tr>
+                    <th>Property Address</th>
+                    <td>{{ $offer->property->address ?? 'N/A' }}</td>
+                </tr>
+                <tr>
+                    <th>Asking Price</th>
+                    <td>£{{ number_format($offer->property->asking_price ?? 0, 2) }}</td>
                 </tr>
                 <tr>
                     <th>Offer Amount</th>
-                    <td><strong>£{{ number_format($offer->offer_amount ?? $offer->amount ?? 450000, 0) }}</strong></td>
+                    <td><strong style="color: var(--abodeology-teal); font-size: 18px;">£{{ number_format($offer->offer_amount, 2) }}</strong></td>
                 </tr>
                 <tr>
                     <th>Offer Date</th>
-                    <td>{{ $offer->offer_date ?? date('d M Y') }}</td>
+                    <td>{{ $offer->created_at->format('l, F j, Y g:i A') }}</td>
                 </tr>
                 <tr>
-                    <th>Position</th>
-                    <td>{{ $offer->buyer_position_text ?? 'First-time buyer' }}</td>
+                    <th>Buying Position</th>
+                    <td>{{ $offer->chain_position ? ucfirst(str_replace('-', ' ', $offer->chain_position)) : 'N/A' }}</td>
                 </tr>
                 <tr>
-                    <th>Funding</th>
-                    <td>{{ $offer->funding_type ?? 'Mortgage' }}</td>
+                    <th>Funding Type</th>
+                    <td>{{ ucfirst(str_replace('_', ' ', $offer->funding_type ?? 'N/A')) }}</td>
                 </tr>
-                <tr>
-                    <th>Deposit</th>
-                    <td>£{{ number_format($offer->deposit_amount ?? 45000, 2) }}</td>
-                </tr>
-                <tr>
-                    <th>Conditions</th>
-                    <td>{{ $offer->conditions ?? 'Subject to survey and mortgage approval' }}</td>
-                </tr>
+                @if($offer->deposit_amount)
+                    <tr>
+                        <th>Deposit Amount</th>
+                        <td>£{{ number_format($offer->deposit_amount, 2) }}</td>
+                    </tr>
+                @endif
+                @if($offer->conditions)
+                    <tr>
+                        <th>Conditions</th>
+                        <td style="white-space: pre-wrap;">{{ $offer->conditions }}</td>
+                    </tr>
+                @endif
             </table>
         </div>
 
-        <!-- VERIFICATION -->
-        <div class="card">
-            <h3>Buyer Verification</h3>
-            <p><strong>AML Status:</strong>
-                <span class="badge badge-{{ $offer->aml_badge_class ?? 'good' }}">
-                    {{ $offer->aml_status_text ?? 'Verified' }}
-                </span>
-            </p>
-            <p><strong>Proof of Funds:</strong>
-                <span class="badge badge-{{ $offer->pof_badge_class ?? 'good' }}">
-                    {{ $offer->pof_status_text ?? 'Verified' }}
-                </span>
-            </p>
-            <p><strong>Documents Provided:</strong></p>
-            <ul>
-                <li>Photo ID — {{ $offer->photo_id_status ?? 'Verified' }}</li>
-                <li>Proof of Address — {{ $offer->address_proof_status ?? 'Verified' }}</li>
-                <li>Proof of Funds — {{ $offer->pof_documents_status ?? 'Verified' }}</li>
-                <li>Mortgage AIP — {{ $offer->aip_status ?? 'Provided' }}</li>
-            </ul>
-        </div>
+        @php
+            $buyerAmlCheck = $offer->buyer ? \App\Models\AmlCheck::where('user_id', $offer->buyer->id)->first() : null;
+        @endphp
 
-        <!-- SOLICITOR -->
-        <div class="card">
-            <h3>Buyer's Solicitor</h3>
-            <p><strong>Name:</strong> {{ $offer->solicitor_name ?? 'Jane Smith' }}</p>
-            <p><strong>Firm:</strong> {{ $offer->solicitor_firm ?? 'Smith & Partners Solicitors' }}</p>
-            <p><strong>Email:</strong> {{ $offer->solicitor_email ?? 'jane.smith@smithpartners.co.uk' }}</p>
-            <p><strong>Phone:</strong> {{ $offer->solicitor_phone ?? '020 1234 5678' }}</p>
-        </div>
+        @if($buyerAmlCheck)
+            <!-- VERIFICATION -->
+            <div class="card">
+                <h3>Buyer Verification</h3>
+                <p><strong>AML Status:</strong>
+                    @if($buyerAmlCheck->verification_status === 'verified')
+                        <span class="badge badge-good">Verified</span>
+                    @elseif($buyerAmlCheck->verification_status === 'rejected')
+                        <span class="badge badge-bad">Rejected</span>
+                    @else
+                        <span class="badge badge-warn">Pending</span>
+                    @endif
+                </p>
+                @if($buyerAmlCheck->id_document && $buyerAmlCheck->proof_of_address)
+                    <p style="color: #28a745; font-size: 13px; margin-top: 10px;">✓ AML documents provided</p>
+                @else
+                    <p style="color: #ffc107; font-size: 13px; margin-top: 10px;">⚠ AML documents pending</p>
+                @endif
+            </div>
+        @endif
 
         <!-- DECISION -->
         <div class="card">
             <h3>Your Decision</h3>
             <p>Select how you wish to proceed. Your choice will notify the buyer immediately.</p>
             
+            <div id="counterOfferSection" style="display: none; margin-bottom: 15px; padding: 15px; background: #F9F9F9; border-radius: 6px;">
+                <label style="display: block; font-weight: 600; margin-bottom: 8px;">Counter-Offer Amount (£)</label>
+                <input type="number" 
+                       name="counter_amount" 
+                       id="counterAmount"
+                       placeholder="Enter counter-offer amount"
+                       min="0"
+                       step="1000"
+                       style="width: 100%; padding: 12px; border: 1px solid #D9D9D9; border-radius: 6px; font-size: 15px; box-sizing: border-box;">
+                <p style="font-size: 12px; color: #666; margin-top: 5px;">Enter the amount you would like to counter-offer.</p>
+            </div>
+            
             <textarea 
                 name="notes" 
                 id="decisionNotes"
-                placeholder="Add notes or conditions (optional)">{{ old('notes') }}</textarea>
+                placeholder="Add notes or comments for the buyer (optional)">{{ old('notes') }}</textarea>
             @error('notes')
+                <div class="error-message">{{ $message }}</div>
+            @enderror
+            @error('counter_amount')
                 <div class="error-message">{{ $message }}</div>
             @enderror
 
@@ -321,20 +350,43 @@
 
             <br>
 
-            <button type="button" class="btn btn-accept" onclick="submitDecision('accepted')">Accept Offer</button>
-            <button type="button" class="btn btn-decline" onclick="submitDecision('declined')">Decline Offer</button>
-            <button type="button" class="btn btn-counter" onclick="submitDecision('counter')">Discuss / Counter-Offer</button>
+            <button type="button" class="btn btn-accept" onclick="submitDecision('accepted')">✓ Accept Offer</button>
+            <button type="button" class="btn btn-decline" onclick="submitDecision('declined')">✗ Decline Offer</button>
+            <button type="button" class="btn btn-counter" onclick="showCounterOffer()">💬 Counter-Offer</button>
         </div>
     </form>
 </div>
 
 @push('scripts')
 <script>
+    function showCounterOffer() {
+        const counterSection = document.getElementById('counterOfferSection');
+        const counterAmount = document.getElementById('counterAmount');
+        
+        if (counterSection.style.display === 'none') {
+            counterSection.style.display = 'block';
+            counterAmount.focus();
+        } else {
+            counterSection.style.display = 'none';
+            counterAmount.value = '';
+        }
+    }
+
     function submitDecision(decision) {
         // Validate that a decision has been made
         if (!decision) {
             alert('Please select a decision.');
             return false;
+        }
+
+        // If counter-offer, validate counter amount
+        if (decision === 'counter') {
+            const counterAmount = document.getElementById('counterAmount').value;
+            if (!counterAmount || parseFloat(counterAmount) <= 0) {
+                alert('Please enter a valid counter-offer amount.');
+                document.getElementById('counterAmount').focus();
+                return false;
+            }
         }
 
         // Set the decision value
@@ -344,13 +396,14 @@
         let confirmMessage = '';
         switch(decision) {
             case 'accepted':
-                confirmMessage = 'Are you sure you want to accept this offer? The buyer will be notified immediately.';
+                confirmMessage = 'Are you sure you want to accept this offer? The property status will be updated to "Sold Subject to Contract" and a Memorandum of Sale will be generated. The buyer will be notified immediately.';
                 break;
             case 'declined':
                 confirmMessage = 'Are you sure you want to decline this offer? The buyer will be notified immediately.';
                 break;
             case 'counter':
-                confirmMessage = 'Are you sure you want to request a counter-offer discussion? The buyer will be notified.';
+                const counterAmount = document.getElementById('counterAmount').value;
+                confirmMessage = 'Are you sure you want to send a counter-offer of £' + parseFloat(counterAmount).toLocaleString('en-GB', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '? The buyer will be notified.';
                 break;
         }
 

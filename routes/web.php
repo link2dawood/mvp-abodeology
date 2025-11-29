@@ -1,7 +1,6 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Auth\GoogleController;
 use App\Http\Controllers\ProfileController;
 
 Route::get('/', function () {
@@ -66,6 +65,9 @@ Route::middleware(['auth', 'role.web:admin,agent'])->prefix('admin')->name('admi
     Route::get('/properties/{id}/listing-upload', [App\Http\Controllers\AdminController::class, 'showListingUpload'])->name('properties.listing-upload');
     Route::post('/properties/{id}/listing-upload', [App\Http\Controllers\AdminController::class, 'storeListingUpload'])->name('properties.listing-upload.store');
     
+    // RTDF Generation Routes
+    Route::get('/properties/{id}/generate-rtdf', [App\Http\Controllers\AdminController::class, 'generateRTDF'])->name('properties.generate-rtdf');
+    
     // AML Document Management Routes
     Route::get('/aml-checks', [App\Http\Controllers\AdminController::class, 'amlChecks'])->name('aml-checks.index');
     Route::get('/aml-checks/{id}', [App\Http\Controllers\AdminController::class, 'showAmlCheck'])->name('aml-checks.show');
@@ -84,6 +86,7 @@ Route::middleware(['auth', 'role.web:buyer,both'])->prefix('buyer')->name('buyer
     Route::put('/profile', [App\Http\Controllers\BuyerController::class, 'updateProfile'])->name('profile.update');
     Route::get('/property/{id}/offer', [App\Http\Controllers\BuyerController::class, 'makeOffer'])->name('make-offer');
     Route::post('/property/{id}/offer', [App\Http\Controllers\BuyerController::class, 'storeOffer'])->name('offer.store');
+    Route::get('/offer/{id}/confirmation', [App\Http\Controllers\BuyerController::class, 'offerConfirmation'])->name('offer.confirmation');
     
     // AML Document Upload Routes
     Route::get('/aml-upload', [App\Http\Controllers\BuyerController::class, 'showAmlUpload'])->name('aml.upload');
@@ -112,7 +115,9 @@ Route::middleware(['auth', 'role.web:seller,both'])->prefix('seller')->name('sel
     Route::post('/instruct', [App\Http\Controllers\SellerController::class, 'storeInstruct'])->name('instruct.store.general'); // Fallback
     Route::get('/offer/{id}/decision', [App\Http\Controllers\SellerController::class, 'showOfferDecision'])->name('offer.decision');
     Route::put('/offer/{id}/decision', [App\Http\Controllers\SellerController::class, 'handleOfferDecision'])->name('offer.decision');
+    Route::get('/offer/{id}/decision/success', [App\Http\Controllers\SellerController::class, 'showOfferDecisionSuccess'])->name('offer.decision.success');
     Route::get('/property/{id}/homecheck', [App\Http\Controllers\SellerController::class, 'showRoomUpload'])->name('homecheck.upload');
+    Route::get('/property/{id}/homecheck-report', [App\Http\Controllers\SellerController::class, 'showHomecheckReport'])->name('homecheck.report');
     Route::post('/property/{id}/homecheck', [App\Http\Controllers\SellerController::class, 'storeRoomUpload'])->name('homecheck.store');
     
     // AML Documents & Solicitor Details Routes

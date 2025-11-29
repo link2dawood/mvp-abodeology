@@ -45,28 +45,139 @@ class BuyerController extends Controller
             $amlStatusText = 'Pending';
         }
         
-        // Sample data for demonstration
-        // In a real application, you would fetch this from your database
-        $upcomingViewings = [];
-        $offers = [];
-        $notifications = [
-            'Your offer on 123 Main Street has been received',
-            'New property matching your criteria is available',
-        ];
+        // ============================================
+        // DATA AGGREGATION - All buyer activity
+        // ============================================
         
-        // Solicitor details (sample data - replace with actual data)
+        // ============================================
+        // SECURITY: All queries scoped to authenticated user
+        // ============================================
+        
+        // 1. VIEWINGS - Upcoming and past
+        // SECURITY: Only fetch viewings belonging to this buyer
+        $upcomingViewings = \App\Models\Viewing::where('buyer_id', $user->id)
+            ->where('viewing_date', '>=', now())
+            ->where('status', '!=', 'cancelled')
+            ->with(['property' => function($query) {
+                // SECURITY: Only load property details for live properties
+                $query->where('status', 'live');
+            }])
+            ->orderBy('viewing_date', 'asc')
+            ->get();
+
+        $pastViewings = \App\Models\Viewing::where('buyer_id', $user->id)
+            ->where('viewing_date', '<', now())
+            ->with(['property' => function($query) {
+                // SECURITY: Only load property details for live properties
+                $query->where('status', 'live');
+            }])
+            ->orderBy('viewing_date', 'desc')
+            ->limit(5)
+            ->get();
+
+        // 2. OFFERS - All offers with full details
+        // SECURITY: Only fetch offers belonging to this buyer
+        $buyerOffers = \App\Models\Offer::where('buyer_id', $user->id)
+            ->with(['property' => function($query) {
+                // SECURITY: Ensure property data is accessible
+                // Note: Offers can be on any status property, but we'll filter in view
+            }, 'latestDecision'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $offers = $buyerOffers->map(function($offer) {
+            $outcome = null;
+            if ($offer->latestDecision) {
+                if ($offer->latestDecision->decision === 'accepted') {
+                    $outcome = 'Accepted';
+                } elseif ($offer->latestDecision->decision === 'declined') {
+                    $outcome = 'Declined';
+                } elseif ($offer->latestDecision->decision === 'counter') {
+                    $outcome = 'Counter-Offer: £' . number_format($offer->latestDecision->counter_amount ?? 0, 2);
+                }
+            }
+            
+            return [
+                'id' => $offer->id,
+                'property_id' => $offer->property_id,
+                'property' => $offer->property->address ?? 'N/A',
+                'amount' => $offer->offer_amount,
+                'status' => $offer->status,
+                'outcome' => $outcome,
+                'decision' => $offer->latestDecision ? $offer->latestDecision->decision : null,
+                'counter_amount' => $offer->latestDecision && $offer->latestDecision->decision === 'counter' ? $offer->latestDecision->counter_amount : null,
+                'created_at' => $offer->created_at,
+            ];
+        });
+
+        // 3. METRICS - Dashboard statistics
+        $metrics = [
+            'total_offers' => $buyerOffers->count(),
+            'pending_offers' => $buyerOffers->where('status', 'pending')->count(),
+            'accepted_offers' => $buyerOffers->where('status', 'accepted')->count(),
+            'upcoming_viewings' => $upcomingViewings->count(),
+            'total_viewings' => \App\Models\Viewing::where('buyer_id', $user->id)->count(),
+        ];
+
+        // 4. NOTIFICATIONS - Activity alerts
+        $notifications = [];
+        // Add notifications for offer decisions
+        foreach ($buyerOffers as $offer) {
+            if ($offer->latestDecision) {
+                if ($offer->latestDecision->decision === 'accepted') {
+                    $notifications[] = [
+                        'type' => 'success',
+                        'message' => "Your offer of £" . number_format($offer->offer_amount, 2) . " on " . ($offer->property->address ?? 'property') . " has been accepted!",
+                        'date' => $offer->latestDecision->decided_at,
+                    ];
+                } elseif ($offer->latestDecision->decision === 'declined') {
+                    $notifications[] = [
+                        'type' => 'info',
+                        'message' => "Your offer on " . ($offer->property->address ?? 'property') . " was declined.",
+                        'date' => $offer->latestDecision->decided_at,
+                    ];
+                } elseif ($offer->latestDecision->decision === 'counter') {
+                    $notifications[] = [
+                        'type' => 'warning',
+                        'message' => "The seller has made a counter-offer of £" . number_format($offer->latestDecision->counter_amount ?? 0, 2) . " on " . ($offer->property->address ?? 'property') . ".",
+                        'date' => $offer->latestDecision->decided_at,
+                    ];
+                }
+            }
+        }
+        
+        // Sort notifications by date (newest first)
+        usort($notifications, function($a, $b) {
+            return $b['date'] <=> $a['date'];
+        });
+        $notifications = array_slice($notifications, 0, 5); // Limit to 5 most recent
+
+        // 5. RECOMMENDED PROPERTIES - Based on buyer's offer history and preferences
+        $recommendedProperties = $this->getRecommendedProperties($user, $buyerOffers);
+
+        // 6. SOLICITOR DETAILS - From user profile or offers
         $solicitorName = null;
         $solicitorFirm = null;
         $solicitorEmail = null;
         $solicitorPhone = null;
+        
+        // Try to get solicitor details from most recent offer
+        $recentOffer = $buyerOffers->first();
+        if ($recentOffer && $recentOffer->property) {
+            // Note: Solicitor details might be stored in offer or property
+            // For now, we'll leave as null if not available
+        }
 
         return view('buyer.dashboard', compact(
             'buyerName',
             'amlStatusClass',
             'amlStatusText',
             'upcomingViewings',
+            'pastViewings',
             'offers',
+            'metrics',
             'notifications',
+            'recommendedProperties',
             'solicitorName',
             'solicitorFirm',
             'solicitorEmail',
@@ -165,15 +276,26 @@ class BuyerController extends Controller
      */
     public function makeOffer($id)
     {
-        // In a real application, you would fetch the property from database
-        // For now, we'll use sample data
-        $property = (object) [
-            'id' => $id,
-            'address' => '123 Main Street, London, SW1A 1AA',
-            'asking_price' => 500000,
-        ];
+        $user = auth()->user();
+        
+        // Only buyers can make offers
+        if (!in_array($user->role, ['buyer', 'both'])) {
+            return redirect()->route('buyer.dashboard')
+                ->with('error', 'You must be logged in as a buyer to make an offer.');
+        }
 
-        return view('buyer.make-offer', compact('property'));
+        // Fetch the actual property from database
+        $property = \App\Models\Property::where('status', 'live')
+            ->with(['seller', 'photos'])
+            ->findOrFail($id);
+
+        // Prevent buyers from making offers on their own properties
+        if ($property->seller_id === $user->id) {
+            return redirect()->route('buyer.dashboard')
+                ->with('error', 'You cannot make an offer on your own property.');
+        }
+
+        return view('buyer.make-offer', compact('property', 'user'));
     }
 
     /**
@@ -240,6 +362,14 @@ class BuyerController extends Controller
 
             \DB::commit();
 
+            // Trigger Keap automation for new offer submitted
+            try {
+                $keapService = new \App\Services\KeapService();
+                $keapService->triggerOfferSubmitted($offer);
+            } catch (\Exception $e) {
+                \Log::error('Keap trigger error for offer submission: ' . $e->getMessage());
+            }
+
             // Send notification to seller
             try {
                 \Mail::to($property->seller->email)->send(
@@ -261,8 +391,8 @@ class BuyerController extends Controller
                 }
             }
 
-            return redirect()->route('buyer.dashboard')
-                ->with('success', 'Your offer has been submitted successfully! The seller and agent have been notified and will respond shortly.');
+            return redirect()->route('buyer.offer.confirmation', $offer->id)
+                ->with('success', 'Your offer has been submitted successfully!');
 
         } catch (\Exception $e) {
             \DB::rollBack();
@@ -505,6 +635,14 @@ class BuyerController extends Controller
 
             \DB::commit();
 
+            // Trigger Keap automation for buyer AML uploaded
+            try {
+                $keapService = new \App\Services\KeapService();
+                $keapService->triggerAmlUploaded($amlCheck);
+            } catch (\Exception $e) {
+                \Log::error('Keap trigger error for AML upload: ' . $e->getMessage());
+            }
+
             return redirect()->route('buyer.dashboard')
                 ->with('success', 'AML documents uploaded successfully! Your documents are being reviewed and you will be notified once verification is complete.');
 
@@ -536,5 +674,81 @@ class BuyerController extends Controller
         ];
 
         return $dashboards[$role] ?? 'home';
+    }
+
+    /**
+     * Get recommended properties for buyer based on their activity.
+     * 
+     * SECURITY: Only returns live properties, excludes buyer's own properties,
+     * and excludes properties buyer has already viewed/offered on.
+     *
+     * @param  \App\Models\User  $user
+     * @param  \Illuminate\Support\Collection  $buyerOffers
+     * @return \Illuminate\Support\Collection
+     */
+    private function getRecommendedProperties($user, $buyerOffers)
+    {
+        // SECURITY CHECK: Only show live properties to buyers
+        // Buyers should never see draft, pending, or other non-live properties
+        $query = \App\Models\Property::where('status', 'live')
+            ->where('seller_id', '!=', $user->id); // Don't recommend buyer's own properties
+
+        // If buyer has made offers, recommend similar properties
+        if ($buyerOffers->count() > 0) {
+            $avgOfferAmount = $buyerOffers->avg('offer_amount');
+            $propertyTypes = $buyerOffers->pluck('property.property_type')->filter()->unique();
+            
+            // Find properties in similar price range (±20%)
+            if ($avgOfferAmount) {
+                $minPrice = $avgOfferAmount * 0.8;
+                $maxPrice = $avgOfferAmount * 1.2;
+                $query->whereBetween('asking_price', [$minPrice, $maxPrice]);
+            }
+            
+            // Prefer same property types if available
+            if ($propertyTypes->count() > 0) {
+                $query->whereIn('property_type', $propertyTypes->toArray());
+            }
+        }
+
+        // Exclude properties buyer has already viewed or made offers on
+        $viewedPropertyIds = \App\Models\Viewing::where('buyer_id', $user->id)
+            ->pluck('property_id')
+            ->toArray();
+        $offeredPropertyIds = $buyerOffers->pluck('property_id')->toArray();
+        $excludedIds = array_unique(array_merge($viewedPropertyIds, $offeredPropertyIds));
+        
+        if (count($excludedIds) > 0) {
+            $query->whereNotIn('id', $excludedIds);
+        }
+
+        // Return 6 recommended properties
+        return $query->with(['photos'])
+            ->orderBy('created_at', 'desc')
+            ->limit(6)
+            ->get();
+    }
+
+    /**
+     * Show offer confirmation page.
+     *
+     * @param  int  $id  Offer ID
+     * @return \Illuminate\Contracts\Support\Renderable
+     */
+    public function offerConfirmation($id)
+    {
+        $user = auth()->user();
+        
+        // Only buyers can view their own offer confirmations
+        if (!in_array($user->role, ['buyer', 'both'])) {
+            return redirect()->route('buyer.dashboard')
+                ->with('error', 'You must be logged in as a buyer to view this page.');
+        }
+
+        $offer = \App\Models\Offer::with(['property', 'buyer'])
+            ->where('buyer_id', $user->id)
+            ->findOrFail($id);
+
+        return view('buyer.offer-confirmation', compact('offer'));
     }
 }

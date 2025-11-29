@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class HomecheckData extends Model
 {
     protected $table = 'homecheck_data';
-    
+
     public $timestamps = false; // Table only has created_at, not updated_at
 
     protected $fillable = [

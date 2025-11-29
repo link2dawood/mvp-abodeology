@@ -315,8 +315,9 @@
         <p><strong>Signed Date:</strong> {{ \Carbon\Carbon::parse($property->instruction->signed_at)->format('l, F j, Y g:i A') }}</p>
         
         @php
-            $activeHomeCheck = $property->homecheckReports->whereIn('status', ['scheduled', 'in_progress'])->first();
+            $activeHomeCheck = $property->homecheckReports->whereIn('status', ['pending', 'scheduled', 'in_progress'])->first();
             $completedHomeCheck = $property->homecheckReports->where('status', 'completed')->first();
+            $homecheckData = $property->homecheckData ?? collect();
         @endphp
 
         <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #c3e6cb;">
@@ -331,6 +332,37 @@
                         <br><strong>By:</strong> {{ $completedHomeCheck->completer->name ?? 'Agent' }}
                     @endif
                 </p>
+                @if($homecheckData->count() > 0)
+                    <div style="margin-top: 15px; padding: 15px; background: #F9F9F9; border-radius: 6px;">
+                        <h5 style="margin-top: 0; color: #1E1E1E;">Uploaded Data Summary</h5>
+                        <p style="font-size: 13px; color: #666; margin-bottom: 10px;">
+                            <strong>Total Images:</strong> {{ $homecheckData->count() }}
+                            <br><strong>Rooms:</strong> {{ $homecheckData->groupBy('room_name')->count() }}
+                            @if($homecheckData->whereNotNull('moisture_reading')->count() > 0)
+                                <br><strong>Rooms with Moisture Readings:</strong> {{ $homecheckData->whereNotNull('moisture_reading')->groupBy('room_name')->count() }}
+                            @endif
+                        </p>
+                        <details style="margin-top: 10px;">
+                            <summary style="cursor: pointer; color: #2CB8B4; font-weight: 600; font-size: 13px;">View Room Details</summary>
+                            <div style="margin-top: 10px;">
+                                @foreach($homecheckData->groupBy('room_name') as $roomName => $roomImages)
+                                    <div style="margin-bottom: 10px; padding: 10px; background: white; border-radius: 4px;">
+                                        <strong>{{ $roomName }}</strong>
+                                        <br><span style="font-size: 12px; color: #666;">
+                                            {{ $roomImages->count() }} image(s)
+                                            @if($roomImages->first()->moisture_reading)
+                                                | Moisture: {{ $roomImages->first()->moisture_reading }}%
+                                            @endif
+                                            @if($roomImages->where('is_360', true)->count() > 0)
+                                                | {{ $roomImages->where('is_360', true)->count() }} 360° image(s)
+                                            @endif
+                                        </span>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </details>
+                    </div>
+                @endif
             @elseif($activeHomeCheck)
                 <p style="color: #ffc107; font-weight: 600;">
                     ⏳ HomeCheck {{ ucfirst(str_replace('_', ' ', $activeHomeCheck->status)) }}
@@ -339,7 +371,9 @@
                     @if($activeHomeCheck->scheduled_date)
                         <strong>Scheduled:</strong> {{ \Carbon\Carbon::parse($activeHomeCheck->scheduled_date)->format('l, F j, Y') }}
                     @endif
-                    @if($activeHomeCheck->status === 'scheduled')
+                    @if($activeHomeCheck->status === 'pending')
+                        <br><a href="{{ route('admin.properties.complete-homecheck', $property->id) }}" class="btn btn-main" style="margin-top: 10px;">Start HomeCheck Upload</a>
+                    @elseif($activeHomeCheck->status === 'scheduled')
                         <br><a href="{{ route('admin.properties.complete-homecheck', $property->id) }}" class="btn btn-main" style="margin-top: 10px;">Complete HomeCheck</a>
                     @elseif($activeHomeCheck->status === 'in_progress')
                         <br><a href="{{ route('admin.properties.complete-homecheck', $property->id) }}" class="btn btn-main" style="margin-top: 10px;">Continue HomeCheck Upload</a>
@@ -405,6 +439,7 @@
                         @csrf
                         <button type="submit" class="btn btn-main">Publish Listing to Portals</button>
                     </form>
+                    <a href="{{ route('admin.properties.generate-rtdf', $property->id) }}" class="btn" style="background: #28a745; color: #fff; margin-left: 10px;">Generate RTDF File</a>
                     <a href="{{ route('admin.properties.listing-upload', $property->id) }}" class="btn btn-secondary">Update Materials</a>
                 </div>
             @endif
@@ -421,6 +456,101 @@
                 <strong>Status:</strong> Live on Market<br>
                 <strong>Published:</strong> {{ $property->updated_at->format('l, F j, Y g:i A') }}
             </p>
+        </div>
+    @endif
+
+    <!-- OFFERS SECTION -->
+    @if($property->offers && $property->offers->count() > 0)
+        <div class="card">
+            <h3 style="color: var(--abodeology-teal); margin-top: 0;">Offers Received ({{ $property->offers->count() }})</h3>
+            <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+                <thead>
+                    <tr style="background: #F4F4F4;">
+                        <th style="padding: 12px; border: 1px solid #dcdcdc; text-align: left;">Buyer</th>
+                        <th style="padding: 12px; border: 1px solid #dcdcdc; text-align: left;">Offer Amount</th>
+                        <th style="padding: 12px; border: 1px solid #dcdcdc; text-align: left;">Funding Type</th>
+                        <th style="padding: 12px; border: 1px solid #dcdcdc; text-align: left;">Status</th>
+                        <th style="padding: 12px; border: 1px solid #dcdcdc; text-align: left;">Submitted</th>
+                        <th style="padding: 12px; border: 1px solid #dcdcdc; text-align: left;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($property->offers->sortByDesc('created_at') as $offer)
+                        <tr>
+                            <td style="padding: 12px; border: 1px solid #dcdcdc;">
+                                <strong>{{ $offer->buyer->name ?? 'N/A' }}</strong>
+                                @if($offer->buyer)
+                                    <br><span style="font-size: 12px; color: #666;">{{ $offer->buyer->email }}</span>
+                                    @if($offer->buyer->phone)
+                                        <br><span style="font-size: 12px; color: #666;">{{ $offer->buyer->phone }}</span>
+                                    @endif
+                                @endif
+                            </td>
+                            <td style="padding: 12px; border: 1px solid #dcdcdc;">
+                                <strong style="color: var(--abodeology-teal); font-size: 16px;">
+                                    £{{ number_format($offer->offer_amount, 2) }}
+                                </strong>
+                                @if($offer->deposit_amount)
+                                    <br><span style="font-size: 12px; color: #666;">Deposit: £{{ number_format($offer->deposit_amount, 2) }}</span>
+                                @endif
+                            </td>
+                            <td style="padding: 12px; border: 1px solid #dcdcdc;">
+                                {{ ucfirst(str_replace('_', ' ', $offer->funding_type ?? 'N/A')) }}
+                                @if($offer->chain_position)
+                                    <br><span style="font-size: 12px; color: #666;">{{ ucfirst(str_replace('-', ' ', $offer->chain_position)) }}</span>
+                                @endif
+                            </td>
+                            <td style="padding: 12px; border: 1px solid #dcdcdc;">
+                                @if($offer->status === 'pending')
+                                    <span style="background: #ffc107; color: #000; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">Pending</span>
+                                @elseif($offer->status === 'accepted')
+                                    <span style="background: #28a745; color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">Accepted</span>
+                                @elseif($offer->status === 'rejected')
+                                    <span style="background: #dc3545; color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">Rejected</span>
+                                @elseif($offer->status === 'countered')
+                                    <span style="background: #17a2b8; color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">Countered</span>
+                                @else
+                                    <span style="background: #6c757d; color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">{{ ucfirst($offer->status) }}</span>
+                                @endif
+                            </td>
+                            <td style="padding: 12px; border: 1px solid #dcdcdc; font-size: 13px; color: #666;">
+                                {{ $offer->created_at->format('M j, Y') }}
+                                <br>{{ $offer->created_at->format('g:i A') }}
+                            </td>
+                            <td style="padding: 12px; border: 1px solid #dcdcdc;">
+                                @if($offer->status === 'pending')
+                                    <a href="{{ route('seller.offer.decision', $offer->id) }}" class="btn btn-main" style="padding: 6px 12px; font-size: 13px;">Review Offer</a>
+                                @elseif($offer->latestDecision)
+                                    <div style="font-size: 12px;">
+                                        <strong style="color: #1E1E1E;">Decision:</strong> {{ ucfirst($offer->latestDecision->decision) }}
+                                        @if($offer->latestDecision->decision === 'counter' && $offer->latestDecision->counter_amount)
+                                            <br><strong>Counter Amount:</strong> £{{ number_format($offer->latestDecision->counter_amount, 2) }}
+                                        @endif
+                                        @if($offer->latestDecision->comments)
+                                            <br><strong>Comments:</strong> {{ Str::limit($offer->latestDecision->comments, 50) }}
+                                        @endif
+                                        @if($offer->latestDecision->decided_at)
+                                            <br><strong>Date:</strong> {{ $offer->latestDecision->decided_at->format('M j, Y g:i A') }}
+                                        @endif
+                                    </div>
+                                @endif
+                            </td>
+                        </tr>
+                        @if($offer->conditions)
+                            <tr>
+                                <td colspan="6" style="padding: 8px 12px; border: 1px solid #dcdcdc; background: #F9F9F9; font-size: 13px;">
+                                    <strong>Conditions:</strong> {{ $offer->conditions }}
+                                </td>
+                            </tr>
+                        @endif
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    @elseif($property->status === 'live')
+        <div class="card" style="background: #F9F9F9;">
+            <h3 style="color: var(--abodeology-teal); margin-top: 0;">Offers</h3>
+            <p style="font-size: 14px; color: #666;">No offers received yet for this property.</p>
         </div>
     @endif
 </div>

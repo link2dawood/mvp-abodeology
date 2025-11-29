@@ -105,12 +105,32 @@ class RegisterController extends Controller
      */
     protected function create(array $data)
     {
-        return User::create([
+        $user = User::create([
             'name' => $data['name'],
             'email' => $data['email'],
             'phone' => $data['phone'],
             'role' => $data['role'],
             'password' => Hash::make($data['password']),
         ]);
+        
+        // Trigger Keap automation based on role
+        try {
+            $keapService = new \App\Services\KeapService();
+            
+            if (in_array($user->role, ['seller', 'both'])) {
+                // New seller onboarded
+                $keapService->triggerSellerOnboarded($user);
+            }
+            
+            if (in_array($user->role, ['buyer', 'both'])) {
+                // New buyer registered
+                $keapService->triggerBuyerRegistered($user);
+            }
+        } catch (\Exception $e) {
+            // Log error but don't fail registration
+            \Log::error('Keap trigger error during registration: ' . $e->getMessage());
+        }
+        
+        return $user;
     }
 }

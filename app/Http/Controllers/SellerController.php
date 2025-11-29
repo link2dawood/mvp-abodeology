@@ -36,6 +36,39 @@ class SellerController extends Controller
             ->with(['seller', 'instruction'])
             ->orderBy('created_at', 'desc')
             ->get();
+        
+        // Check if seller is in pre-valuation/awaiting valuation state
+        // Show pre-valuation dashboard if:
+        // 1. No properties exist, OR
+        // 2. All properties are in draft/awaiting_aml status with no completed valuations/homechecks
+        $hasActiveProperties = $properties->whereIn('status', ['live', 'sstc', 'sold', 'property_details_captured', 'property_details_completed'])->count() > 0;
+        $hasCompletedValuations = \App\Models\Valuation::where('seller_id', $user->id)
+            ->whereIn('status', ['completed', 'scheduled'])
+            ->count() > 0;
+        $hasCompletedHomechecks = \App\Models\HomecheckReport::whereHas('property', function($q) use ($user) {
+                $q->where('seller_id', $user->id);
+            })
+            ->whereIn('status', ['completed', 'in_progress'])
+            ->count() > 0;
+        
+        // If no active properties and no completed valuations/homechecks, show pre-valuation dashboard
+        if (!$hasActiveProperties && !$hasCompletedValuations && !$hasCompletedHomechecks) {
+            // Get upcoming valuations for display
+            $upcomingValuations = \App\Models\Valuation::where('seller_id', $user->id)
+                ->where(function($q) {
+                    $q->where('status', 'scheduled')
+                      ->orWhere('status', 'pending');
+                })
+                ->where(function($q) {
+                    $q->whereNull('valuation_date')
+                      ->orWhere('valuation_date', '>=', now());
+                })
+                ->orderBy('valuation_date', 'asc')
+                ->orderBy('valuation_time', 'asc')
+                ->get();
+            
+            return view('seller.pre-valuation-dashboard', compact('upcomingValuations'));
+        }
 
         // Get AML check for the seller
         $amlCheck = \App\Models\AmlCheck::where('user_id', $user->id)->first();
@@ -83,14 +116,22 @@ class SellerController extends Controller
         // Get the primary property (most recent or first one)
         $property = $properties->first();
         
-        // If we have properties, fetch related data for all of them
+        // ============================================
+        // COMPREHENSIVE DATA AGGREGATION
+        // ============================================
+        
         $upcomingViewings = collect();
+        $allViewings = collect();
         $offers = collect();
+        $allOffers = collect();
+        $materialInfo = collect();
+        $homecheckReports = collect();
+        $salesProgression = collect();
         
         if ($properties->count() > 0) {
             $propertyIds = $properties->pluck('id');
             
-            // Fetch upcoming viewings for all seller's properties
+            // 1. VIEWINGS - Upcoming and all
             $upcomingViewings = \App\Models\Viewing::whereIn('property_id', $propertyIds)
                 ->where('viewing_date', '>=', now())
                 ->where('status', '!=', 'cancelled')
@@ -98,24 +139,89 @@ class SellerController extends Controller
                 ->orderBy('viewing_date', 'asc')
                 ->get();
             
-            // Fetch pending offers for all seller's properties
+            $allViewings = \App\Models\Viewing::whereIn('property_id', $propertyIds)
+                ->with(['buyer', 'property'])
+                ->orderBy('viewing_date', 'desc')
+                ->get();
+            
+            // 2. OFFERS - Pending and all offers
             $offers = \App\Models\Offer::whereIn('property_id', $propertyIds)
                 ->whereIn('status', ['pending', 'countered'])
-                ->with(['buyer', 'property'])
+                ->with(['buyer', 'property', 'latestDecision'])
                 ->orderBy('created_at', 'desc')
                 ->get();
             
-            // Load material information and homecheck data for the primary property if it exists
+            $allOffers = \App\Models\Offer::whereIn('property_id', $propertyIds)
+                ->with(['buyer', 'property', 'latestDecision'])
+                ->orderBy('created_at', 'desc')
+                ->get();
+            
+            // 3. MATERIAL INFORMATION - For all properties
+            $materialInfo = \App\Models\PropertyMaterialInformation::whereIn('property_id', $propertyIds)
+                ->with(['property'])
+                ->get();
+            
+            // 4. HOMECHECK REPORTS - For all properties
+            $homecheckReports = \App\Models\HomecheckReport::whereIn('property_id', $propertyIds)
+                ->with(['property', 'homecheckData'])
+                ->orderBy('created_at', 'desc')
+                ->get();
+            
+            // 5. SALES PROGRESSION - For properties in SSTC or sold status
+            $salesProgression = \App\Models\SalesProgression::whereIn('property_id', $propertyIds)
+                ->with(['property', 'buyer', 'offer'])
+                ->orderBy('created_at', 'desc')
+                ->get();
+            
+            // Load relationships for the primary property if it exists
             if ($property) {
-                $property->load(['materialInformation', 'homecheckData']);
+                $property->load([
+                    'materialInformation', 
+                    'homecheckData', 
+                    'homecheckReports',
+                    'salesProgression.buyer',
+                    'salesProgression.offer',
+                    'viewings.feedback',
+                    'viewings.buyer'
+                ]);
             }
+        }
+        
+        // 7. VIEWING FEEDBACK SUMMARY - Aggregate feedback for seller's properties
+        $viewingFeedbackSummary = collect();
+        if ($properties->count() > 0) {
+            $propertyIds = $properties->pluck('id');
+            $viewingsWithFeedback = \App\Models\Viewing::whereIn('property_id', $propertyIds)
+                ->whereHas('feedback')
+                ->with(['feedback', 'buyer', 'property', 'pva'])
+                ->orderBy('viewing_date', 'desc')
+                ->get();
+            
+            $viewingFeedbackSummary = $viewingsWithFeedback->map(function($viewing) {
+                return [
+                    'viewing_id' => $viewing->id,
+                    'property_address' => $viewing->property->address ?? 'N/A',
+                    'buyer_name' => $viewing->buyer->name ?? 'N/A',
+                    'viewing_date' => $viewing->viewing_date,
+                    'buyer_interested' => $viewing->feedback->buyer_interested ?? null,
+                    'buyer_feedback' => $viewing->feedback->buyer_feedback ?? null,
+                    'property_condition' => $viewing->feedback->property_condition ?? null,
+                    'pva_name' => $viewing->pva->name ?? 'N/A',
+                ];
+            });
         }
 
         return view('seller.dashboard', compact(
             'properties',
             'property',
             'upcomingViewings',
+            'allViewings',
             'offers',
+            'allOffers',
+            'materialInfo',
+            'homecheckReports',
+            'salesProgression',
+            'viewingFeedbackSummary',
             'amlCheck',
             'valuations'
         ));
@@ -600,6 +706,23 @@ class SellerController extends Controller
 
             \DB::commit();
 
+            // Trigger Keap automation for seller onboarding completion (instruction signed)
+            try {
+                $keapService = new \App\Services\KeapService();
+                $keapService->triggerSellerOnboarded($user, [
+                    'property_id' => $property->id,
+                    'property_address' => $property->address ?? '',
+                    'instruction_signed_at' => $instruction->signed_at->toIso8601String(),
+                    'custom_fields' => [
+                        'property_id' => $property->id,
+                        'instruction_status' => $instruction->status,
+                        'instruction_signed_date' => $instruction->signed_at->format('Y-m-d'),
+                    ],
+                ]);
+            } catch (\Exception $e) {
+                \Log::error('Keap trigger error for seller onboarding: ' . $e->getMessage());
+            }
+
             // Send Welcome Pack email
             try {
                 \Mail::to($user->email)->send(
@@ -675,7 +798,14 @@ class SellerController extends Controller
 
         $validated = $request->validate([
             'decision' => ['required', 'string', 'in:accepted,declined,counter'],
+            'counter_amount' => ['nullable', 'required_if:decision,counter', 'numeric', 'min:0'],
             'notes' => ['nullable', 'string', 'max:1000'],
+        ], [
+            'decision.required' => 'Please select a decision.',
+            'decision.in' => 'Invalid decision selected.',
+            'counter_amount.required_if' => 'Please enter a counter-offer amount.',
+            'counter_amount.numeric' => 'Counter-offer amount must be a valid number.',
+            'counter_amount.min' => 'Counter-offer amount must be greater than zero.',
         ]);
 
         try {
@@ -696,11 +826,12 @@ class SellerController extends Controller
             ]);
 
             // Create offer decision record
-            \App\Models\OfferDecision::create([
+            $offerDecision = \App\Models\OfferDecision::create([
                 'offer_id' => $offer->id,
                 'seller_id' => $user->id,
                 'decision' => $validated['decision'],
                 'comments' => $validated['notes'] ?? null,
+                'counter_amount' => ($validated['decision'] === 'counter' && isset($validated['counter_amount'])) ? $validated['counter_amount'] : null,
                 'decided_at' => now(),
             ]);
 
@@ -752,6 +883,16 @@ class SellerController extends Controller
 
             \DB::commit();
 
+            // Trigger Keap automation if offer was accepted
+            if ($validated['decision'] === 'accepted') {
+                try {
+                    $keapService = new \App\Services\KeapService();
+                    $keapService->triggerOfferAccepted($offer, $offerDecision);
+                } catch (\Exception $e) {
+                    \Log::error('Keap trigger error for offer acceptance: ' . $e->getMessage());
+                }
+            }
+
             // Send notification to buyer
             try {
                 \Mail::to($offer->buyer->email)->send(
@@ -764,10 +905,10 @@ class SellerController extends Controller
             $decisionMessages = [
                 'accepted' => 'You have accepted the offer! A Memorandum of Sale has been generated and sent to both solicitors.',
                 'declined' => 'You have declined the offer. The buyer has been notified.',
-                'counter' => 'You have requested a counter-offer discussion. The buyer has been notified.',
+                'counter' => 'You have sent a counter-offer of £' . number_format($validated['counter_amount'] ?? 0, 2) . '. The buyer has been notified.',
             ];
 
-            return redirect()->route('seller.properties.show', $offer->property_id)
+            return redirect()->route('seller.offer.decision.success', $offer->id)
                 ->with('success', $decisionMessages[$validated['decision']] ?? 'Your decision has been recorded.');
 
         } catch (\Exception $e) {
@@ -778,6 +919,66 @@ class SellerController extends Controller
                 ->withInput()
                 ->with('error', 'An error occurred while processing your decision. Please try again.');
         }
+    }
+
+    /**
+     * Show offer decision success page.
+     *
+     * @param  int  $id  Offer ID
+     * @return \Illuminate\Contracts\Support\Renderable
+     */
+    public function showOfferDecisionSuccess($id)
+    {
+        $user = auth()->user();
+        
+        $offer = \App\Models\Offer::with(['buyer', 'property', 'latestDecision'])->findOrFail($id);
+
+        // Check if user owns the property
+        if ($offer->property->seller_id !== $user->id && !in_array($user->role, ['admin', 'agent'])) {
+            return redirect()->route('seller.dashboard')
+                ->with('error', 'You do not have permission to view this page.');
+        }
+
+        return view('seller.offer-decision-success', compact('offer'));
+    }
+
+    /**
+     * Show HomeCheck report for vendor.
+     *
+     * @param  int  $propertyId
+     * @return \Illuminate\Contracts\Support\Renderable
+     */
+    public function showHomecheckReport($propertyId)
+    {
+        $user = auth()->user();
+        
+        // Verify seller owns this property
+        $property = \App\Models\Property::where('seller_id', $user->id)
+            ->findOrFail($propertyId);
+        
+        // Get the completed HomeCheck report
+        $homecheckReport = \App\Models\HomecheckReport::where('property_id', $propertyId)
+            ->where('status', 'completed')
+            ->with(['property', 'homecheckData'])
+            ->orderBy('completed_at', 'desc')
+            ->first();
+        
+        if (!$homecheckReport) {
+            return redirect()->route('seller.dashboard')
+                ->with('error', 'HomeCheck report not found or not yet completed.');
+        }
+        
+        // Get all HomeCheck data grouped by room
+        $homecheckData = \App\Models\HomecheckData::where('homecheck_report_id', $homecheckReport->id)
+            ->orWhere('property_id', $propertyId)
+            ->orderBy('room_name')
+            ->orderBy('created_at')
+            ->get();
+        
+        // Load property relationships
+        $property->load(['seller']);
+        
+        return view('seller.homecheck-report', compact('property', 'homecheckReport', 'homecheckData'));
     }
 
     /**
@@ -796,7 +997,7 @@ class SellerController extends Controller
             ->firstOrFail();
 
         $propertyId = $id;
-        
+
         // Get existing homecheck data for this property
         $existingRooms = \App\Models\HomecheckData::where('property_id', $property->id)
             ->orderBy('room_name')
@@ -828,6 +1029,7 @@ class SellerController extends Controller
             'rooms.*.name' => ['required', 'string', 'max:255'],
             'rooms.*.images' => ['required', 'array', 'min:1'],
             'rooms.*.images.*' => ['required', 'image', 'mimes:jpeg,png,jpg', 'max:10240'], // 10MB max
+            'rooms.*.moisture_reading' => ['nullable', 'numeric', 'min:0', 'max:100'],
         ], [
             'rooms.required' => 'Please add at least one room.',
             'rooms.min' => 'Please add at least one room.',
@@ -836,6 +1038,9 @@ class SellerController extends Controller
             'rooms.*.images.min' => 'Please upload at least one image for each room.',
             'rooms.*.images.*.image' => 'All files must be images.',
             'rooms.*.images.*.max' => 'Image size must not exceed 10MB.',
+            'rooms.*.moisture_reading.numeric' => 'Moisture reading must be a number.',
+            'rooms.*.moisture_reading.min' => 'Moisture reading must be between 0 and 100.',
+            'rooms.*.moisture_reading.max' => 'Moisture reading must be between 0 and 100.',
         ]);
 
         try {
@@ -847,15 +1052,15 @@ class SellerController extends Controller
                 ->first();
 
             if (!$homecheckReport) {
-                // Create a new HomeCheck report for seller uploads
+                // Create a new HomeCheck report for seller uploads with 'pending' status
                 $homecheckReport = \App\Models\HomecheckReport::create([
                     'property_id' => $property->id,
-                    'status' => 'in_progress',
+                    'status' => 'pending',
                     'scheduled_by' => $user->id,
                     'scheduled_date' => now(),
                 ]);
             } else {
-                // Update status to in_progress if it was scheduled
+                // Update status to in_progress if it was scheduled or pending
                 if ($homecheckReport->status === 'scheduled' || $homecheckReport->status === 'pending') {
                     $homecheckReport->update([
                         'status' => 'in_progress',
@@ -870,22 +1075,39 @@ class SellerController extends Controller
             foreach ($validated['rooms'] as $roomIndex => $roomData) {
                 $roomName = trim($roomData['name']);
                 $is360 = false; // Sellers can't mark as 360 for now, can be added later
+                $moistureReading = isset($roomData['moisture_reading']) && $roomData['moisture_reading'] !== '' 
+                    ? (float) $roomData['moisture_reading'] 
+                    : null;
                 
                 // Sanitize room name for file path (remove special characters)
                 $sanitizedRoomName = preg_replace('/[^a-zA-Z0-9_-]/', '_', $roomName);
                 
-                // Process each image
+                // Process each image with optimization
+                $imageOptimizer = new \App\Services\ImageOptimizationService();
                 foreach ($roomData['images'] as $imageIndex => $image) {
                     // Store image in property-specific folder
                     $imagePath = $image->store('homechecks/' . $property->id . '/rooms/' . $sanitizedRoomName . '/photos', $disk);
                     
-                    // Create homecheck data record
+                    // Optimize the image (max width 1920px, quality 85%)
+                    try {
+                        $imageOptimizer->optimizeExisting($imagePath, $disk, 1920, 85);
+                    } catch (\Exception $e) {
+                        \Log::warning('Image optimization failed for seller homecheck image: ' . $e->getMessage());
+                        // Continue even if optimization fails
+                    }
+                    
+                    // Get image metadata
+                    $imageSize = $image->getSize();
+                    $imageMimeType = $image->getMimeType();
+                    
+                    // Create homecheck data record with moisture reading and metadata
                     \App\Models\HomecheckData::create([
                         'property_id' => $property->id,
                         'homecheck_report_id' => $homecheckReport->id,
                         'room_name' => $roomName, // Store original room name in database
                         'image_path' => $imagePath,
                         'is_360' => $is360,
+                        'moisture_reading' => $moistureReading, // Save moisture reading per room
                         'created_at' => now(),
                     ]);
                 }
@@ -900,7 +1122,7 @@ class SellerController extends Controller
 
             \DB::commit();
 
-            return redirect()->route('seller.homecheck.upload', $id)->with('success', 'HomeCheck submitted successfully! Your room images have been uploaded.');
+        return redirect()->route('seller.homecheck.upload', $id)->with('success', 'HomeCheck submitted successfully! Your room images have been uploaded.');
 
         } catch (\Exception $e) {
             \DB::rollBack();

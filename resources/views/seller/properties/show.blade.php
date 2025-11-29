@@ -398,7 +398,7 @@
                     <p><strong>Completed By:</strong> {{ $completedHomeCheck->completer->name ?? 'Agent' }}</p>
                 @endif
             </div>
-            <a href="{{ Storage::url($completedHomeCheck->report_path) }}" target="_blank" class="btn btn-primary">View HomeCheck Report</a>
+            <a href="{{ route('seller.homecheck.report', $property->id) }}" target="_blank" class="btn btn-primary">View HomeCheck Report</a>
             <p style="font-size: 13px; color: #666; margin-top: 10px;">
                 This AI-generated report analyzes your property's condition based on the HomeCheck images.
             </p>

@@ -14,12 +14,14 @@ class OfferDecision extends Model
         'seller_id',
         'decision',
         'comments',
+        'counter_amount',
         'decided_at',
     ];
 
     protected function casts(): array
     {
         return [
+            'counter_amount' => 'decimal:2',
             'decided_at' => 'datetime',
         ];
     }

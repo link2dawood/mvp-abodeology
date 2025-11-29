@@ -192,6 +192,36 @@
     <h2>Welcome back, {{ $buyerName ?? auth()->user()->name }}</h2>
     <div class="page-subtitle">Your activity, offers, viewings and verification all in one place.</div>
 
+    <!-- METRICS SECTION -->
+    @if(isset($metrics))
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px;">
+            <div class="card" style="text-align: center; background: linear-gradient(135deg, #E8F4F3 0%, #F4F4F4 100%);">
+                <div style="font-size: 32px; font-weight: 700; color: var(--abodeology-teal); margin-bottom: 5px;">
+                    {{ $metrics['total_offers'] ?? 0 }}
+                </div>
+                <div style="font-size: 14px; color: #666;">Total Offers</div>
+            </div>
+            <div class="card" style="text-align: center; background: linear-gradient(135deg, #fff3cd 0%, #F4F4F4 100%);">
+                <div style="font-size: 32px; font-weight: 700; color: #ffc107; margin-bottom: 5px;">
+                    {{ $metrics['pending_offers'] ?? 0 }}
+                </div>
+                <div style="font-size: 14px; color: #666;">Pending Offers</div>
+            </div>
+            <div class="card" style="text-align: center; background: linear-gradient(135deg, #d4edda 0%, #F4F4F4 100%);">
+                <div style="font-size: 32px; font-weight: 700; color: #28a745; margin-bottom: 5px;">
+                    {{ $metrics['accepted_offers'] ?? 0 }}
+                </div>
+                <div style="font-size: 14px; color: #666;">Accepted Offers</div>
+            </div>
+            <div class="card" style="text-align: center; background: linear-gradient(135deg, #E8F4F3 0%, #F4F4F4 100%);">
+                <div style="font-size: 32px; font-weight: 700; color: var(--abodeology-teal); margin-bottom: 5px;">
+                    {{ $metrics['upcoming_viewings'] ?? 0 }}
+                </div>
+                <div style="font-size: 14px; color: #666;">Upcoming Viewings</div>
+            </div>
+        </div>
+    @endif
+
     <div class="grid">
         <!-- VERIFICATION STATUS -->
         <div class="card">
@@ -208,23 +238,43 @@
         <!-- UPCOMING VIEWINGS -->
         <div class="card">
             <h3>Upcoming Viewings</h3>
-            <table class="table">
-                <tr>
-                    <th>Property</th>
-                    <th>Date</th>
-                </tr>
-                @forelse($upcomingViewings ?? [] as $viewing)
+            @if(isset($upcomingViewings) && $upcomingViewings->count() > 0)
+                <table class="table">
                     <tr>
-                        <td>{{ $viewing['property'] ?? 'N/A' }}</td>
-                        <td>{{ $viewing['date'] ?? 'N/A' }}</td>
+                        <th>Property</th>
+                        <th>Date & Time</th>
+                        <th>Status</th>
+                        <th>Action</th>
                     </tr>
-                @empty
-                    <tr>
-                        <td colspan="2" style="text-align: center; color: #999;">No upcoming viewings</td>
-                    </tr>
-                @endforelse
-            </table>
-            <a href="#" class="btn">Book a Viewing</a>
+                    @foreach($upcomingViewings as $viewing)
+                        <tr>
+                            <td>
+                                <strong>{{ $viewing->property->address ?? 'N/A' }}</strong>
+                                @if($viewing->property->asking_price)
+                                    <br><span style="font-size: 12px; color: #666;">£{{ number_format($viewing->property->asking_price, 0) }}</span>
+                                @endif
+                            </td>
+                            <td>
+                                {{ $viewing->viewing_date ? $viewing->viewing_date->format('M j, Y') : 'N/A' }}
+                                <br><span style="font-size: 12px; color: #666;">{{ $viewing->viewing_date ? $viewing->viewing_date->format('g:i A') : '' }}</span>
+                            </td>
+                            <td>
+                                <span class="status status-{{ strtolower($viewing->status ?? 'scheduled') }}">
+                                    {{ ucfirst($viewing->status ?? 'Scheduled') }}
+                                </span>
+                            </td>
+                            <td>
+                                @if($viewing->property)
+                                    <a href="{{ route('buyer.viewing.request', $viewing->property->id) }}" class="btn" style="padding: 6px 12px; font-size: 13px;">View</a>
+                                @endif
+                            </td>
+                        </tr>
+                    @endforeach
+                </table>
+            @else
+                <p style="text-align: center; color: #999; padding: 20px;">No upcoming viewings</p>
+                <a href="#" class="btn">Book a Viewing</a>
+            @endif
         </div>
 
         <!-- BOOK VALUATION -->
@@ -239,43 +289,136 @@
         <!-- OFFERS -->
         <div class="card">
             <h3>Your Offers</h3>
-            <table class="table">
-                <tr>
-                    <th>Property</th>
-                    <th>Offer (£)</th>
-                    <th>Status</th>
-                </tr>
-                @forelse($offers ?? [] as $offer)
+            @if(isset($offers) && count($offers) > 0)
+                <table class="table">
                     <tr>
-                        <td>{{ $offer['property'] ?? 'N/A' }}</td>
-                        <td>£{{ number_format($offer['amount'] ?? 0, 2) }}</td>
-                        <td>
-                            <span class="status status-{{ strtolower($offer['status'] ?? 'pending') }}">
-                                {{ $offer['status'] ?? 'Pending' }}
-                            </span>
-                        </td>
+                        <th>Property</th>
+                        <th>Offer (£)</th>
+                        <th>Status</th>
+                        <th>Outcome</th>
+                        <th>Date</th>
                     </tr>
-                @empty
-                    <tr>
-                        <td colspan="3" style="text-align: center; color: #999;">No offers submitted</td>
-                    </tr>
-                @endforelse
-            </table>
-            <a href="#" class="btn">Make an Offer</a>
+                    @foreach($offers as $offer)
+                        <tr>
+                            <td>
+                                <strong>{{ $offer['property'] ?? 'N/A' }}</strong>
+                                @if(isset($offer['property_id']))
+                                    <br><a href="{{ route('buyer.viewing.request', $offer['property_id']) }}" style="font-size: 12px; color: var(--abodeology-teal);">View Property</a>
+                                @endif
+                            </td>
+                            <td>£{{ number_format($offer['amount'] ?? 0, 2) }}</td>
+                            <td>
+                                @if($offer['status'] === 'pending')
+                                    <span class="status status-pending">Pending</span>
+                                @elseif($offer['status'] === 'accepted')
+                                    <span class="status" style="background: #28a745; color: #fff;">Accepted</span>
+                                @elseif($offer['status'] === 'declined')
+                                    <span class="status" style="background: #dc3545; color: #fff;">Declined</span>
+                                @elseif($offer['status'] === 'countered')
+                                    <span class="status" style="background: #17a2b8; color: #fff;">Countered</span>
+                                @else
+                                    <span class="status status-pending">{{ ucfirst($offer['status'] ?? 'Pending') }}</span>
+                                @endif
+                            </td>
+                            <td>
+                                @if($offer['outcome'])
+                                    @if($offer['decision'] === 'accepted')
+                                        <strong style="color: #28a745;">✓ Accepted</strong>
+                                    @elseif($offer['decision'] === 'declined')
+                                        <strong style="color: #dc3545;">✗ Declined</strong>
+                                    @elseif($offer['decision'] === 'counter')
+                                        <strong style="color: #17a2b8;">Counter: £{{ number_format($offer['counter_amount'] ?? 0, 2) }}</strong>
+                                    @endif
+                                @else
+                                    <span style="color: #999;">Awaiting response</span>
+                                @endif
+                            </td>
+                            <td style="font-size: 12px; color: #666;">
+                                @if(isset($offer['created_at']))
+                                    {{ $offer['created_at']->format('M j, Y') }}
+                                @endif
+                            </td>
+                        </tr>
+                    @endforeach
+                </table>
+            @else
+                <p style="text-align: center; color: #999; padding: 20px;">No offers submitted yet</p>
+            @endif
         </div>
 
         <!-- NOTIFICATIONS -->
         <div class="card">
-            <h3>Notifications</h3>
-            <ul>
-                @forelse($notifications ?? [] as $notification)
-                    <li>{{ $notification }}</li>
-                @empty
-                    <li style="color: #999;">No new notifications</li>
-                @endforelse
-            </ul>
-            <a href="#" class="btn">View All Notifications</a>
+            <h3>Recent Activity</h3>
+            @if(isset($notifications) && count($notifications) > 0)
+                <ul>
+                    @foreach($notifications as $notification)
+                        <li style="margin-bottom: 12px; padding: 10px; background: #F9F9F9; border-radius: 6px;">
+                            <div style="font-size: 13px; color: #666; margin-bottom: 4px;">
+                                @if(isset($notification['date']))
+                                    {{ $notification['date']->format('M j, Y g:i A') }}
+                                @endif
+                            </div>
+                            <div style="font-size: 14px;">
+                                @if(isset($notification['type']) && $notification['type'] === 'success')
+                                    <span style="color: #28a745;">✓</span>
+                                @elseif(isset($notification['type']) && $notification['type'] === 'warning')
+                                    <span style="color: #ffc107;">⚠</span>
+                                @else
+                                    <span style="color: #17a2b8;">ℹ</span>
+                                @endif
+                                {{ $notification['message'] ?? $notification }}
+                            </div>
+                        </li>
+                    @endforeach
+                </ul>
+            @else
+                <p style="text-align: center; color: #999; padding: 20px;">No recent activity</p>
+            @endif
         </div>
+
+        <!-- RECOMMENDED PROPERTIES -->
+        @if(isset($recommendedProperties) && $recommendedProperties->count() > 0)
+            <div class="card" style="grid-column: 1 / -1;">
+                <h3>Recommended Properties for You</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; margin-top: 15px;">
+                    @foreach($recommendedProperties as $property)
+                        <div style="border: 1px solid var(--line-grey); border-radius: 8px; overflow: hidden; background: var(--white);">
+                            @if($property->photos && $property->photos->count() > 0)
+                                <div style="width: 100%; height: 180px; background: #F4F4F4; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+                                    <img src="{{ \Storage::url($property->photos->first()->file_path) }}" 
+                                         alt="{{ $property->address }}" 
+                                         style="width: 100%; height: 100%; object-fit: cover;">
+                                </div>
+                            @else
+                                <div style="width: 100%; height: 180px; background: #E8F4F3; display: flex; align-items: center; justify-content: center; color: #666;">
+                                    No Image
+                                </div>
+                            @endif
+                            <div style="padding: 15px;">
+                                <h4 style="margin: 0 0 8px 0; font-size: 16px; font-weight: 600;">{{ Str::limit($property->address, 40) }}</h4>
+                                @if($property->asking_price)
+                                    <div style="font-size: 18px; font-weight: 700; color: var(--abodeology-teal); margin-bottom: 8px;">
+                                        £{{ number_format($property->asking_price, 0) }}
+                                    </div>
+                                @endif
+                                <div style="font-size: 13px; color: #666; margin-bottom: 12px;">
+                                    @if($property->bedrooms)
+                                        <span>{{ $property->bedrooms }} bed</span>
+                                    @endif
+                                    @if($property->bathrooms)
+                                        <span> • {{ $property->bathrooms }} bath</span>
+                                    @endif
+                                    @if($property->property_type)
+                                        <span> • {{ ucfirst(str_replace('_', ' ', $property->property_type)) }}</span>
+                                    @endif
+                                </div>
+                                <a href="{{ route('buyer.viewing.request', $property->id) }}" class="btn" style="width: 100%; text-align: center; padding: 10px; font-size: 14px;">View Details</a>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        @endif
 
         <!-- SOLICITOR DETAILS -->
         <div class="card">
