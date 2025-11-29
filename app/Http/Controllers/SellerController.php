@@ -264,57 +264,29 @@ class SellerController extends Controller
      *
      * @return \Illuminate\Contracts\Support\Renderable
      */
+    /**
+     * Create property - DISABLED: Sellers cannot create properties.
+     * Properties are created by agents after valuation.
+     *
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function createProperty()
     {
-        return view('seller.properties.create');
+        return redirect()->route('seller.dashboard')
+            ->with('error', 'Properties are created by agents after your valuation appointment. You cannot create properties directly.');
     }
 
     /**
-     * Store a newly created property.
+     * Store property - DISABLED: Sellers cannot create properties.
+     * Properties are created by agents after valuation.
      *
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\RedirectResponse
      */
     public function storeProperty(Request $request)
     {
-        $validated = $request->validate([
-            'address' => ['required', 'string', 'max:1000'],
-            'postcode' => ['nullable', 'string', 'max:20'],
-            'property_type' => ['nullable', 'string', 'in:detached,semi,terraced,flat,maisonette,bungalow,other'],
-            'bedrooms' => ['nullable', 'integer', 'min:0', 'max:50'],
-            'bathrooms' => ['nullable', 'integer', 'min:0', 'max:50'],
-            'parking' => ['nullable', 'string', 'in:none,on_street,driveway,garage,allocated,permit'],
-            'tenure' => ['nullable', 'string', 'in:freehold,leasehold,share_freehold,unknown'],
-            'lease_years_remaining' => ['nullable', 'integer', 'min:0'],
-            'ground_rent' => ['nullable', 'numeric', 'min:0'],
-            'service_charge' => ['nullable', 'numeric', 'min:0'],
-            'managing_agent' => ['nullable', 'string', 'max:255'],
-            'asking_price' => ['nullable', 'numeric', 'min:0'],
-        ], [
-            'address.required' => 'Property address is required.',
-        ]);
-
-        $user = auth()->user();
-        
-        $property = \App\Models\Property::create([
-            'seller_id' => $user->id,
-            'address' => $validated['address'],
-            'postcode' => $validated['postcode'] ?? null,
-            'property_type' => $validated['property_type'] ?? null,
-            'bedrooms' => $validated['bedrooms'] ?? null,
-            'bathrooms' => $validated['bathrooms'] ?? null,
-            'parking' => $validated['parking'] ?? null,
-            'tenure' => $validated['tenure'] ?? null,
-            'lease_years_remaining' => $validated['lease_years_remaining'] ?? null,
-            'ground_rent' => $validated['ground_rent'] ?? null,
-            'service_charge' => $validated['service_charge'] ?? null,
-            'managing_agent' => $validated['managing_agent'] ?? null,
-            'asking_price' => $validated['asking_price'] ?? null,
-            'status' => 'draft',
-        ]);
-
         return redirect()->route('seller.dashboard')
-            ->with('success', 'Property created successfully! You can now proceed with onboarding.');
+            ->with('error', 'Properties are created by agents after your valuation appointment. You cannot create properties directly.');
     }
 
     /**

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use App\Models\Valuation;
 use App\Models\Property;
 use App\Models\PropertyMaterialInformation;
@@ -1496,7 +1497,13 @@ class AdminController extends Controller
             \DB::beginTransaction();
 
             // Publish to portals (simulated - in production, this would call Rightmove/other portal APIs)
-            $portalResults = $this->publishToPortals($property);
+            try {
+                $portalResults = $this->publishToPortals($property);
+            } catch (\Exception $portalError) {
+                // Log portal error but don't fail the entire publish operation
+                \Log::warning('Portal publishing error (continuing anyway): ' . $portalError->getMessage());
+                $portalResults = [];
+            }
 
             // Update property status to 'live'
             $property->update([
@@ -1507,7 +1514,10 @@ class AdminController extends Controller
 
             $successMessage = 'Listing published successfully! Status updated to "Live on Market".';
             if (!empty($portalResults)) {
-                $successMessage .= ' Published to: ' . implode(', ', array_keys($portalResults));
+                $publishedPortals = array_filter($portalResults);
+                if (!empty($publishedPortals)) {
+                    $successMessage .= ' Published to: ' . implode(', ', array_keys($publishedPortals));
+                }
             }
 
             return redirect()->route('admin.properties.show', $property->id)
@@ -1516,9 +1526,10 @@ class AdminController extends Controller
         } catch (\Exception $e) {
             \DB::rollBack();
             \Log::error('Listing publish error: ' . $e->getMessage());
+            \Log::error('Listing publish error trace: ' . $e->getTraceAsString());
 
             return back()
-                ->with('error', 'An error occurred while publishing the listing. Please try again.');
+                ->with('error', 'An error occurred while publishing the listing: ' . $e->getMessage());
         }
     }
 
@@ -1601,17 +1612,30 @@ class AdminController extends Controller
             $rtdfService = new \App\Services\RTDFGeneratorService();
             $rtdfFilePath = $rtdfService->generateForProperty($property);
             
+            if (!$rtdfFilePath) {
+                throw new \Exception('RTDF file generation returned empty path');
+            }
+            
             // Get full file path
             $disk = config('filesystems.default') === 's3' ? 's3' : 'public';
             
-            // If S3, get URL instead
+            // Check if file exists
+            if (!Storage::disk($disk)->exists($rtdfFilePath)) {
+                throw new \Exception('RTDF file was not created at: ' . $rtdfFilePath);
+            }
+            
+            // If S3, get temporary URL for download
             if ($disk === 's3') {
-                $fileUrl = Storage::disk($disk)->url($rtdfFilePath);
+                $fileUrl = Storage::disk($disk)->temporaryUrl($rtdfFilePath, now()->addMinutes(5));
                 return redirect($fileUrl);
             }
             
             // For local storage, get the full path
             $fullPath = Storage::disk($disk)->path($rtdfFilePath);
+            
+            if (!file_exists($fullPath)) {
+                throw new \Exception('RTDF file does not exist at: ' . $fullPath);
+            }
             
             // Return file download
             return response()->download($fullPath, 'property_' . $property->id . '.txt', [
@@ -1620,6 +1644,7 @@ class AdminController extends Controller
             
         } catch (\Exception $e) {
             \Log::error('RTDF generation error: ' . $e->getMessage());
+            \Log::error('RTDF generation error trace: ' . $e->getTraceAsString());
             return back()->with('error', 'Failed to generate RTDF file: ' . $e->getMessage());
         }
     }

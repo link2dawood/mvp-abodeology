@@ -156,7 +156,6 @@
 <div class="container">
     <div class="page-header">
         <h2>My Properties</h2>
-        <a href="{{ route('seller.properties.create') }}" class="btn btn-primary">+ Create New Property</a>
     </div>
 
     @if(session('success'))
@@ -210,8 +209,7 @@
     @else
         <div class="empty-state">
             <h3>No properties yet</h3>
-            <p>Create your first property listing to get started with selling.</p>
-            <a href="{{ route('seller.properties.create') }}" class="btn btn-primary">Create Your First Property</a>
+            <p>Properties are created by agents after your valuation appointment. If you've booked a valuation, your property will appear here once the agent completes the onboarding process.</p>
         </div>
     @endif
 </div>

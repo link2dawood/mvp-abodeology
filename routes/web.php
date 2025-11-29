@@ -101,10 +101,8 @@ Route::middleware(['auth', 'role.web:buyer,both'])->prefix('buyer')->name('buyer
 Route::middleware(['auth', 'role.web:seller,both'])->prefix('seller')->name('seller.')->group(function () {
     Route::get('/dashboard', [App\Http\Controllers\SellerController::class, 'dashboard'])->name('dashboard');
     
-    // Property Management Routes
+    // Property Management Routes (sellers can only view, not create - creation is done by agents)
     Route::get('/properties', [App\Http\Controllers\SellerController::class, 'index'])->name('properties.index');
-    Route::get('/properties/create', [App\Http\Controllers\SellerController::class, 'createProperty'])->name('properties.create');
-    Route::post('/properties', [App\Http\Controllers\SellerController::class, 'storeProperty'])->name('properties.store');
     Route::get('/properties/{id}', [App\Http\Controllers\SellerController::class, 'showProperty'])->name('properties.show');
     
     Route::get('/property/{id}/onboarding', [App\Http\Controllers\SellerController::class, 'showOnboarding'])->name('onboarding'); //signup

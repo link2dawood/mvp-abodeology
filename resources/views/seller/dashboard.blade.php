@@ -201,9 +201,8 @@
         </div>
     @endif
 
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <div style="margin-bottom: 20px;">
         <h2 style="margin: 0; border: none; padding: 0;">Your Properties</h2>
-        <a href="{{ route('seller.properties.create') }}" class="btn" style="margin: 0;">+ Create New Property</a>
     </div>
 
     @if(session('success'))
@@ -299,8 +298,7 @@
         @endif
     @else
         <div class="card">
-            <p style="margin: 0 0 20px 0; color: #666;">You haven't created any properties yet.</p>
-            <a href="{{ route('seller.properties.create') }}" class="btn">Create Your First Property</a>
+            <p style="margin: 0 0 20px 0; color: #666;">You don't have any properties yet. Properties are created by agents after your valuation appointment.</p>
         </div>
     @endif
 
@@ -760,8 +758,7 @@
         <div style="margin-top: 40px;">
             <h2>Get Started</h2>
             <div class="card">
-                <p style="margin: 0 0 15px 0; color: #666;">Create your first property to start the selling process.</p>
-                <a href="{{ route('seller.properties.create') }}" class="btn">Create Your First Property</a>
+                <p style="margin: 0 0 15px 0; color: #666;">Properties are created by agents after your valuation appointment. If you've booked a valuation, your property will appear here once the agent completes the onboarding process.</p>
             </div>
         </div>
     @endif
