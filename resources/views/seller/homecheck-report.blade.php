@@ -232,6 +232,9 @@
 
 @section('content')
 <div class="container">
+    <!-- PAGE TITLE -->
+    <h2 style="border-bottom: 2px solid #000000; padding-bottom: 8px; margin-bottom: 30px; font-size: 24px; font-weight: 600;">Abodeology HomeCheck Report</h2>
+
     <!-- PROPERTY INFO -->
     <div class="top-info">
         <div class="value-label">Estimated Market Value</div>
