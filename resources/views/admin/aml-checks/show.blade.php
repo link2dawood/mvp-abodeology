@@ -392,7 +392,7 @@
             </form>
         </div>
     @else
-        <div class="card" style="background: #d4edda; border-left: 4px solid #28a745;">
+        <div class="card" style="background: #d4edda;">
             <h3 style="color: #155724;">✓ Documents Verified</h3>
             <p style="color: #155724;">This AML check has been verified. Documents were checked by {{ $amlCheck->checker->name ?? 'N/A' }} on {{ $amlCheck->checked_at ? $amlCheck->checked_at->format('F j, Y') : 'N/A' }}.</p>
         </div>
