@@ -688,14 +688,14 @@
                             </td>
                             <td>
                                 @if($offer->status === 'pending')
-                                    <a href="{{ route('seller.offer.decision', $offer->id) }}" class="btn" style="padding: 8px 16px; font-size: 14px; background: #28a745; margin-bottom: 5px; display: block; text-align: center;">
+                                    <a href="{{ route('seller.offer.decision.show', $offer->id) }}" class="btn" style="padding: 8px 16px; font-size: 14px; background: #28a745; margin-bottom: 5px; display: block; text-align: center;">
                                         ✓ Accept Offer
                                     </a>
-                                    <a href="{{ route('seller.offer.decision', $offer->id) }}" class="btn" style="padding: 6px 12px; font-size: 13px; background: var(--abodeology-teal); display: block; text-align: center;">
+                                    <a href="{{ route('seller.offer.decision.show', $offer->id) }}" class="btn" style="padding: 6px 12px; font-size: 13px; background: var(--abodeology-teal); display: block; text-align: center;">
                                         Review Details
                                     </a>
                                 @elseif($offer->status === 'countered')
-                                    <a href="{{ route('seller.offer.decision', $offer->id) }}" class="btn" style="padding: 6px 12px; font-size: 13px;">View Response</a>
+                                    <a href="{{ route('seller.offer.decision.show', $offer->id) }}" class="btn" style="padding: 6px 12px; font-size: 13px;">View Response</a>
                                 @else
                                     <span style="color: #666; font-size: 13px;">{{ ucfirst($offer->status) }}</span>
                                 @endif

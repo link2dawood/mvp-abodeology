@@ -519,7 +519,7 @@
                             </td>
                             <td style="padding: 12px; border: 1px solid #dcdcdc;">
                                 @if($offer->status === 'pending')
-                                    <a href="{{ route('seller.offer.decision', $offer->id) }}" class="btn btn-main" style="padding: 6px 12px; font-size: 13px;">Review Offer</a>
+                                    <a href="{{ route('seller.offer.decision.show', $offer->id) }}" class="btn btn-main" style="padding: 6px 12px; font-size: 13px;">Review Offer</a>
                                 @elseif($offer->latestDecision)
                                     <div style="font-size: 12px;">
                                         <strong style="color: #1E1E1E;">Decision:</strong> {{ ucfirst($offer->latestDecision->decision) }}

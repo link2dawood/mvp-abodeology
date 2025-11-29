@@ -376,7 +376,7 @@
                         <td style="padding: 12px; border-bottom: 1px solid #dcdcdc;">{{ ucfirst($offer->status ?? 'Pending') }}</td>
                         <td style="padding: 12px; border-bottom: 1px solid #dcdcdc;">
                             @if($offer->status === 'pending')
-                                <a href="{{ route('seller.offer.decision', $offer->id) }}" class="btn" style="padding: 6px 12px; font-size: 13px;">Review Offer</a>
+                                <a href="{{ route('seller.offer.decision.show', $offer->id) }}" class="btn" style="padding: 6px 12px; font-size: 13px;">Review Offer</a>
                             @endif
                         </td>
                     </tr>

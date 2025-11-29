@@ -51,7 +51,7 @@
 
     @if($recipient->role === 'seller' || $recipient->role === 'both')
         <div style="text-align: center; margin: 30px 0;">
-            <a href="{{ route('seller.offer.decision', $offer->id) }}" style="background: #2CB8B4; color: #FFFFFF; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600;">Review Offer</a>
+            <a href="{{ route('seller.offer.decision.show', $offer->id) }}" style="background: #2CB8B4; color: #FFFFFF; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600;">Review Offer</a>
         </div>
     @else
         <div style="text-align: center; margin: 30px 0;">

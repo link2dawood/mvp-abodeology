@@ -113,8 +113,8 @@ Route::middleware(['auth', 'role.web:seller,both'])->prefix('seller')->name('sel
     Route::post('/property/{id}/instruct', [App\Http\Controllers\SellerController::class, 'storeInstruct'])->name('instruct.store');
     Route::get('/instruct', [App\Http\Controllers\SellerController::class, 'instruct'])->name('instruct.general'); // Fallback for non-property-specific
     Route::post('/instruct', [App\Http\Controllers\SellerController::class, 'storeInstruct'])->name('instruct.store.general'); // Fallback
-    Route::get('/offer/{id}/decision', [App\Http\Controllers\SellerController::class, 'showOfferDecision'])->name('offer.decision');
-    Route::put('/offer/{id}/decision', [App\Http\Controllers\SellerController::class, 'handleOfferDecision'])->name('offer.decision');
+    Route::get('/offer/{id}/decision', [App\Http\Controllers\SellerController::class, 'showOfferDecision'])->name('offer.decision.show');
+    Route::put('/offer/{id}/decision', [App\Http\Controllers\SellerController::class, 'handleOfferDecision'])->name('offer.decision.update');
     Route::get('/offer/{id}/decision/success', [App\Http\Controllers\SellerController::class, 'showOfferDecisionSuccess'])->name('offer.decision.success');
     Route::get('/property/{id}/homecheck', [App\Http\Controllers\SellerController::class, 'showRoomUpload'])->name('homecheck.upload');
     Route::get('/property/{id}/homecheck-report', [App\Http\Controllers\SellerController::class, 'showHomecheckReport'])->name('homecheck.report');

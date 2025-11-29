@@ -234,7 +234,7 @@
         </div>
     @endif
 
-    <form id="offerDecisionForm" method="POST" action="{{ route('seller.offer.decision', $offer->id ?? 1) }}">
+    <form id="offerDecisionForm" method="POST" action="{{ route('seller.offer.decision.update', $offer->id ?? 1) }}">
         @csrf
         @method('PUT')
 
