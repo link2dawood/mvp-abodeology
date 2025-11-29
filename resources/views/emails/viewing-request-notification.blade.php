@@ -44,7 +44,7 @@
         @endif
     </div>
 
-    <div style="background: #E8F4F3; border-left: 4px solid #2CB8B4; padding: 15px; margin: 20px 0; border-radius: 4px;">
+    <div style="background: #E8F4F3; padding: 15px; margin: 20px 0; border-radius: 4px;">
         <p style="margin: 0;"><strong>Action Required:</strong> Please contact the buyer to confirm the viewing appointment and complete the viewing feedback form after the viewing.</p>
     </div>
 

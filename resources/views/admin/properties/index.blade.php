@@ -141,7 +141,7 @@
     @endif
 
     @if(request('status') === 'live')
-        <div style="background: #E8F4F3; border-left: 4px solid #2CB8B4; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
+        <div style="background: #E8F4F3; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
             <p style="margin: 0; color: #1E1E1E;"><strong>Showing Live Properties Only</strong></p>
         </div>
     @endif

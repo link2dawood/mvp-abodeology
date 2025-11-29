@@ -41,7 +41,7 @@
         <a href="{{ $loginUrl }}" style="background: #2CB8B4; color: #FFFFFF; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600;">Log In to Your Account</a>
     </div>
 
-    <div style="background: #E8F4F3; border-left: 4px solid #2CB8B4; padding: 15px; margin: 20px 0; border-radius: 4px;">
+    <div style="background: #E8F4F3; padding: 15px; margin: 20px 0; border-radius: 4px;">
         <p style="margin: 0;"><strong>⚠️ Security Note:</strong> Please change your password after logging in for the first time. You can do this from your account profile settings.</p>
     </div>
 

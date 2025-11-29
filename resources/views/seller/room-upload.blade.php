@@ -228,7 +228,7 @@
     @endif
 
     @if(isset($existingRooms) && $existingRooms->count() > 0)
-        <div style="background: #E8F4F3; border-left: 4px solid #2CB8B4; padding: 15px; margin-bottom: 20px; border-radius: 6px;">
+        <div style="background: #E8F4F3; padding: 15px; margin-bottom: 20px; border-radius: 6px;">
             <h3 style="margin-top: 0; color: #2CB8B4; font-size: 18px;">Previously Uploaded Rooms</h3>
             @foreach($existingRooms as $roomName => $roomImages)
                 <div style="margin-bottom: 15px;">

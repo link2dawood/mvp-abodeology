@@ -128,7 +128,6 @@
 
     .pre-filled-note {
         background: #d4edda;
-        border-left: 4px solid #28a745;
         padding: 10px 15px;
         margin-bottom: 15px;
         border-radius: 4px;

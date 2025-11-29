@@ -309,7 +309,7 @@
     @endif
 
     @if($property->instruction && $property->instruction->status === 'signed')
-    <div class="card" style="background: #d4edda; border-left: 4px solid #28a745;">
+    <div class="card" style="background: #d4edda;">
         <h3 style="color: #28a745; margin-top: 0;">✓ Instruction Signed</h3>
         <p>Congratulations! The seller has signed the Terms & Conditions. The Welcome Pack has been sent to the seller.</p>
         <p><strong>Signed Date:</strong> {{ \Carbon\Carbon::parse($property->instruction->signed_at)->format('l, F j, Y g:i A') }}</p>
@@ -447,7 +447,7 @@
     @endif
 
     @if($property->status === 'live')
-        <div class="card" style="background: #d4edda; border-left: 4px solid #28a745;">
+        <div class="card" style="background: #d4edda;">
             <h3 style="color: #28a745; margin-top: 0;">✓ Listing Live on Market</h3>
             <p style="font-size: 14px; color: #666; margin-bottom: 15px;">
                 This property is live and available for viewing requests.

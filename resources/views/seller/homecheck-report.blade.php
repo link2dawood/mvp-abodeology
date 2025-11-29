@@ -75,7 +75,6 @@
             margin: 25px auto;
             padding: 16px 20px;
             background: #fff6d6;
-            border-left: 5px solid #e1b300;
             border-radius: 8px;
             font-size: 14px;
             color: #7a6300;

@@ -262,7 +262,7 @@
     @endif
 
     @if($valuation->id_visual_check)
-    <div class="card" style="background: #d4edda; border-left: 4px solid #28a745;">
+    <div class="card" style="background: #d4edda;">
         <h3 style="color: #28a745; margin-top: 0;">✓ ID Visual Check Completed</h3>
         <p style="margin: 5px 0;"><strong>Status:</strong> ID document visually checked on-site</p>
         @if($valuation->id_visual_check_notes)
@@ -305,7 +305,7 @@
         @endif
     </div>
     @else
-    <div class="card" style="background: #d4edda; border-left: 4px solid #28a745;">
+    <div class="card" style="background: #d4edda;">
         <h3 style="color: #28a745; margin-top: 0;">✓ Valuation Completed</h3>
         <p>This valuation has been completed. The Valuation Form has been submitted and property details have been captured.</p>
         @php

@@ -246,7 +246,7 @@
                                 </div>
                             @endif
                             @if($prop->status === 'awaiting_aml')
-                                <div style="margin-top: 10px; padding: 10px; background: #fff3cd; border-left: 3px solid #ffc107; border-radius: 3px;">
+                                <div style="margin-top: 10px; padding: 10px; background: #fff3cd; border-radius: 3px;">
                                     <p style="margin: 0 0 8px 0; font-size: 13px; color: #856404; font-weight: 600;">⚠️ Action Required: Upload AML Documents</p>
                                     <p style="margin: 0; font-size: 12px; color: #856404;">Please upload your ID and Proof of Address to proceed.</p>
                                     <a href="{{ route('seller.aml.upload', $prop->id) }}" class="btn" style="background: #ffc107; color: #000; margin-top: 8px; padding: 8px 16px; font-size: 13px;">Upload Now</a>
@@ -257,7 +257,7 @@
                                     $hasSolicitorDetails = $prop->solicitor_details_completed;
                                 @endphp
                                 @if(!$hasAmlDocs || !$hasSolicitorDetails)
-                                    <div style="margin-top: 10px; padding: 10px; background: #E8F4F3; border-left: 3px solid #2CB8B4; border-radius: 3px;">
+                                    <div style="margin-top: 10px; padding: 10px; background: #E8F4F3; border-radius: 3px;">
                                         <p style="margin: 0; font-size: 13px; color: #1E1E1E;"><strong>Action Required:</strong></p>
                                         <ul style="margin: 5px 0 0 0; padding-left: 20px; font-size: 13px; color: #1E1E1E;">
                                             @if(!$hasAmlDocs)

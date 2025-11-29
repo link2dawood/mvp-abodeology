@@ -279,51 +279,9 @@
     <!-- CRITICAL ACTIONS SECTION -->
     <h2 style="margin-top: 40px;">Critical Actions Requiring Attention</h2>
     <div class="grid">
-        <!-- NEW LISTINGS -->
-        @if(isset($newListings) && $newListings->count() > 0)
-            <div class="card" style="border-left: 4px solid var(--abodeology-teal);">
-                <h3 style="color: var(--abodeology-teal); margin-top: 0;">New Listings (Last 7 Days)</h3>
-                <div style="margin-bottom: 15px; padding: 12px; background: #E8F4F3; border-radius: 6px;">
-                    <strong style="color: var(--abodeology-teal);">{{ $newListings->count() }} new listing(s) created</strong>
-                </div>
-                <table class="table">
-                    <tr>
-                        <th>Property</th>
-                        <th>Seller</th>
-                        <th>Status</th>
-                        <th>Created</th>
-                        <th>Action</th>
-                    </tr>
-                    @foreach($newListings as $listing)
-                        <tr>
-                            <td>
-                                <strong>{{ Str::limit($listing->address ?? 'N/A', 25) }}</strong>
-                                @if($listing->postcode)
-                                    <br><span style="font-size: 12px; color: #666;">{{ $listing->postcode }}</span>
-                                @endif
-                            </td>
-                            <td>{{ $listing->seller->name ?? 'N/A' }}</td>
-                            <td>
-                                <span class="status status-{{ $listing->status === 'live' ? 'active' : 'pending' }}">
-                                    {{ ucfirst(str_replace('_', ' ', $listing->status)) }}
-                                </span>
-                            </td>
-                            <td style="font-size: 12px; color: #666;">
-                                {{ $listing->created_at->format('M j, Y') }}
-                            </td>
-                            <td>
-                                <a href="{{ route('admin.properties.show', $listing->id) }}" class="btn" style="padding: 6px 12px; font-size: 13px;">View</a>
-                            </td>
-                        </tr>
-                    @endforeach
-                </table>
-                <a href="{{ route('admin.properties.index') }}" class="btn btn-main">View All Properties</a>
-            </div>
-        @endif
-
         <!-- AML PENDING -->
         @if(isset($amlPending) && $amlPending->count() > 0)
-            <div class="card" style="border-left: 4px solid #ffc107;">
+            <div class="card">
                 <h3 style="color: #856404; margin-top: 0;">AML Pending Verification</h3>
                 <div style="margin-bottom: 15px; padding: 12px; background: #fff3cd; border-radius: 6px;">
                     <strong style="color: #856404;">{{ $amlPending->count() }} AML check(s) pending</strong>
@@ -360,7 +318,7 @@
 
         <!-- OFFERS PENDING SELLER RESPONSE -->
         @if(isset($offersPendingResponse) && $offersPendingResponse->count() > 0)
-            <div class="card" style="border-left: 4px solid #ffc107;">
+            <div class="card">
                 <h3 style="color: #856404; margin-top: 0;">Offers Pending Seller Response</h3>
                 <div style="margin-bottom: 15px; padding: 12px; background: #fff3cd; border-radius: 6px;">
                     <strong style="color: #856404;">{{ $offersPendingResponse->count() }} offer(s) awaiting seller response</strong>
@@ -405,7 +363,7 @@
 
         <!-- HOMECHECK PENDING -->
         @if(isset($homecheckPending) && $homecheckPending->count() > 0)
-            <div class="card" style="border-left: 4px solid #ffc107;">
+            <div class="card">
                 <h3 style="color: #856404; margin-top: 0;">HomeCheck Pending</h3>
                 <div style="margin-bottom: 15px; padding: 12px; background: #fff3cd; border-radius: 6px;">
                     <strong style="color: #856404;">{{ $homecheckPending->count() }} HomeCheck(s) pending completion</strong>
@@ -440,62 +398,6 @@
             </div>
         @endif
     </div>
-
-    <!-- RECENT ACTIVITY -->
-    @if(isset($recentActivity) && $recentActivity->count() > 0)
-        <h2 style="margin-top: 40px;">Recent Activity</h2>
-        <div class="card" style="grid-column: 1 / -1;">
-            <h3>System Activity Feed</h3>
-            <table class="table">
-                <tr>
-                    <th>Type</th>
-                    <th>Activity</th>
-                    <th>User</th>
-                    <th>Date & Time</th>
-                    <th>Status</th>
-                    <th>Action</th>
-                </tr>
-                @foreach($recentActivity as $activity)
-                    <tr>
-                        <td>
-                            @if($activity['type'] === 'valuation')
-                                <span style="background: var(--abodeology-teal); color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">Valuation</span>
-                            @elseif($activity['type'] === 'offer')
-                                <span style="background: #ffc107; color: #000; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">Offer</span>
-                            @elseif($activity['type'] === 'property')
-                                <span style="background: #28a745; color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">Property</span>
-                            @elseif($activity['type'] === 'viewing')
-                                <span style="background: #17a2b8; color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">Viewing</span>
-                            @endif
-                        </td>
-                        <td>
-                            <strong>{{ $activity['title'] ?? 'N/A' }}</strong>
-                            <br><span style="font-size: 12px; color: #666;">{{ $activity['description'] ?? '' }}</span>
-                        </td>
-                        <td>{{ $activity['user'] ?? 'N/A' }}</td>
-                        <td style="font-size: 12px; color: #666;">
-                            @if(isset($activity['date']))
-                                {{ $activity['date']->format('M j, Y') }}
-                                <br>{{ $activity['date']->format('g:i A') }}
-                            @else
-                                N/A
-                            @endif
-                        </td>
-                        <td>
-                            <span class="status status-{{ $activity['status'] === 'pending' ? 'pending' : 'active' }}">
-                                {{ ucfirst($activity['status'] ?? 'N/A') }}
-                            </span>
-                        </td>
-                        <td>
-                            @if(isset($activity['route']))
-                                <a href="{{ $activity['route'] }}" class="btn" style="padding: 6px 12px; font-size: 13px;">View</a>
-                            @endif
-                        </td>
-                    </tr>
-                @endforeach
-            </table>
-        </div>
-    @endif
 
     <!-- MAIN DATA GRID -->
     <h2 style="margin-top: 40px;">Overview</h2>

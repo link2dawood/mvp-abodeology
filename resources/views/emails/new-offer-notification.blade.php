@@ -45,7 +45,7 @@
         <p><strong>Offer Date:</strong> {{ $offer->created_at->format('l, F j, Y g:i A') }}</p>
     </div>
 
-    <div style="background: #E8F4F3; border-left: 4px solid #2CB8B4; padding: 15px; margin: 20px 0; border-radius: 4px;">
+    <div style="background: #E8F4F3; padding: 15px; margin: 20px 0; border-radius: 4px;">
         <p style="margin: 0;"><strong>Action Required:</strong> Please review this offer and respond through your dashboard.</p>
     </div>
 

@@ -94,7 +94,6 @@
 
     .info-box {
         background: #E8F4F3;
-        border-left: 4px solid #2CB8B4;
         padding: 15px;
         margin-bottom: 20px;
         border-radius: 4px;

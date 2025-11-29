@@ -13,12 +13,12 @@
 
     @if($decision === 'accepted')
         <h2 style="color: #28a745;">🎉 Congratulations! Your Offer Has Been Accepted!</h2>
-        <div style="background: #d4edda; border-left: 4px solid #28a745; padding: 15px; margin: 20px 0; border-radius: 4px;">
+        <div style="background: #d4edda; padding: 15px; margin: 20px 0; border-radius: 4px;">
             <p style="margin: 0; font-weight: 600; color: #155724;">Great news! The seller has accepted your offer of £{{ number_format($offer->offer_amount, 2) }} for the property at {{ $property->address }}.</p>
         </div>
     @elseif($decision === 'declined')
         <h2 style="color: #dc3545;">Offer Response - {{ $property->address }}</h2>
-        <div style="background: #f8d7da; border-left: 4px solid #dc3545; padding: 15px; margin: 20px 0; border-radius: 4px;">
+        <div style="background: #f8d7da; padding: 15px; margin: 20px 0; border-radius: 4px;">
             <p style="margin: 0; color: #721c24;">We're sorry to inform you that your offer of £{{ number_format($offer->offer_amount, 2) }} has been declined by the seller.</p>
         </div>
     @elseif($decision === 'counter')
@@ -41,7 +41,7 @@
     </div>
 
     @if($decision === 'accepted')
-        <div style="background: #E8F4F3; border-left: 4px solid #2CB8B4; padding: 15px; margin: 20px 0; border-radius: 4px;">
+        <div style="background: #E8F4F3; padding: 15px; margin: 20px 0; border-radius: 4px;">
             <h3 style="margin-top: 0; color: #2CB8B4;">What Happens Next?</h3>
             <ul style="margin: 10px 0; padding-left: 25px;">
                 <li>A Memorandum of Sale has been automatically generated</li>

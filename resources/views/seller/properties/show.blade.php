@@ -306,7 +306,7 @@
                 </div>
             @elseif($property->status === 'signed')
                 <p style="color: #28a745; font-weight: 600; margin-top: 10px;">✓ Terms & Conditions signed. Welcome Pack sent!</p>
-                <div style="margin-top: 20px; padding: 15px; background: #E8F4F3; border-left: 4px solid #2CB8B4; border-radius: 4px;">
+                <div style="margin-top: 20px; padding: 15px; background: #E8F4F3; border-radius: 4px;">
                     <h4 style="color: #2CB8B4; margin-top: 0;">Next Steps</h4>
                     <div style="margin-top: 15px;">
                         @php
