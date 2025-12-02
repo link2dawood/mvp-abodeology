@@ -264,7 +264,13 @@
                 </tr>
                 <tr>
                     <th>Offer Amount</th>
-                    <td><strong style="color: var(--abodeology-teal); font-size: 18px;">£{{ number_format($offer->offer_amount, 2) }}</strong></td>
+                    <td>
+                        @if($offer->released_to_seller)
+                            <strong style="color: var(--abodeology-teal); font-size: 18px;">£{{ number_format($offer->offer_amount, 2) }}</strong>
+                        @else
+                            <span style="color: #666; font-style: italic;">Amount withheld pending agent review. Please contact your agent to discuss this offer.</span>
+                        @endif
+                    </td>
                 </tr>
                 <tr>
                     <th>Offer Date</th>

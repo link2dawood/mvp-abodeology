@@ -102,19 +102,13 @@ class CheckWebRole
             'agent' => route('admin.agent.dashboard'),
             'buyer' => route('buyer.dashboard'),
             'seller' => route('seller.dashboard'),
-            'both' => function() use ($user) {
-                // Users with both roles - check if they have seller activity
-                $hasSellerActivity = $user->valuations()->exists() || $user->properties()->exists();
-                return $hasSellerActivity 
-                    ? route('seller.dashboard') 
-                    : route('buyer.dashboard');
-            },
+            'both' => route('combined.dashboard'),
             'pva' => route('pva.dashboard'),
         ];
 
         $dashboardRoute = $dashboardRoutes[$userRole] ?? route('home');
         
-        // Handle callable routes (for 'both' role)
+        // Handle callable routes (if any)
         if (is_callable($dashboardRoute)) {
             $dashboardRoute = $dashboardRoute();
         }

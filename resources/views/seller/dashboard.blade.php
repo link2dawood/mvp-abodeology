@@ -169,42 +169,6 @@
 
 @section('content')
 <div class="container">
-    @if(isset($valuations) && $valuations->count() > 0)
-        <h2 style="margin-top: 0;">Upcoming Valuations</h2>
-        <div style="margin-bottom: 30px;">
-            @foreach($valuations as $valuation)
-                @if($valuation->valuation_date && $valuation->valuation_date >= now()->toDateString())
-                    <div class="card" style="margin-bottom: 15px;">
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                            <div style="flex: 1;">
-                                <strong style="font-size: 16px;">{{ $valuation->property_address }}</strong>
-                                @if($valuation->postcode)
-                                    <div style="color: #666; font-size: 14px; margin-top: 5px;">{{ $valuation->postcode }}</div>
-                                @endif
-                                <div style="margin-top: 10px; font-size: 14px;">
-                                    <strong>Valuation Date:</strong> 
-                                    {{ \Carbon\Carbon::parse($valuation->valuation_date)->format('l, F j, Y') }}
-                                    @if($valuation->valuation_time)
-                                        @ {{ \Carbon\Carbon::parse($valuation->valuation_time)->format('g:i A') }}
-                                    @endif
-                                </div>
-                                @if($valuation->status)
-                                    <div style="margin-top: 8px;">
-                                        <span class="status">Status: {{ ucfirst($valuation->status) }}</span>
-                                    </div>
-                                @endif
-                            </div>
-                        </div>
-                    </div>
-                @endif
-            @endforeach
-        </div>
-    @endif
-
-    <div style="margin-bottom: 20px;">
-        <h2 style="margin: 0; border: none; padding: 0;">Your Properties</h2>
-    </div>
-
     @if(session('success'))
         <div style="background: #d4edda; border: 1px solid #c3e6cb; color: #155724; padding: 12px 20px; border-radius: 4px; margin-bottom: 20px;">
             {{ session('success') }}
@@ -217,7 +181,43 @@
         </div>
     @endif
 
-    @if(isset($properties) && $properties->count() > 0)
+    <!-- VALUATION BOOKING SECTION - Always visible -->
+    <h2>Valuation Booking</h2>
+    <div class="card">
+        @if(isset($upcomingValuations) && $upcomingValuations->count() > 0)
+            @foreach($upcomingValuations as $valuation)
+                <div style="margin-bottom: 15px; padding: 15px; background: #f9f9f9; border-radius: 4px;">
+                    <strong style="font-size: 16px;">{{ $valuation->property_address }}</strong>
+                    @if($valuation->postcode)
+                        <div style="color: #666; font-size: 14px; margin-top: 5px;">{{ $valuation->postcode }}</div>
+                    @endif
+                    <div style="margin-top: 10px; font-size: 14px;">
+                        @if($valuation->valuation_date)
+                            <strong>Valuation Date:</strong> 
+                            {{ \Carbon\Carbon::parse($valuation->valuation_date)->format('l, F j, Y') }}
+                            @if($valuation->valuation_time)
+                                @ {{ \Carbon\Carbon::parse($valuation->valuation_time)->format('g:i A') }}
+                            @endif
+                        @else
+                            <span style="color: #666;">Awaiting scheduling</span>
+                        @endif
+                    </div>
+                    @if($valuation->status)
+                        <div style="margin-top: 8px;">
+                            <span class="status">Status: {{ ucfirst($valuation->status) }}</span>
+                        </div>
+                    @endif
+                </div>
+            @endforeach
+        @else
+            <p style="text-align: center; color: #999; padding: 20px;">No valuation appointments scheduled. <a href="{{ route('valuation.booking') }}">Book a valuation</a></p>
+        @endif
+    </div>
+
+    <!-- PROPERTY DETAILS SECTION - Always visible -->
+    <h2>Your Properties</h2>
+    <div class="card">
+        @if(isset($properties) && $properties->count() > 0)
         <div style="margin-bottom: 30px;">
             @foreach($properties as $prop)
                 <div class="card" style="margin-bottom: 15px;">
@@ -302,12 +302,11 @@
         </div>
     @endif
 
-    @if(isset($property) && $property)
-        <!-- MATERIAL INFORMATION -->
+    <!-- MATERIAL INFORMATION SECTION - Always visible -->
+    <h2>Material Information</h2>
+    <div class="card">
         @if(isset($materialInfo) && $materialInfo->count() > 0)
-            <h2>Material Information</h2>
-            <div class="card">
-                <table>
+            <table>
                     <tr>
                         <th>Property</th>
                         <th>Status</th>
@@ -331,14 +330,16 @@
                         </tr>
                     @endforeach
                 </table>
-            </div>
+        @else
+            <p style="text-align: center; color: #999; padding: 20px;">No material information available yet.</p>
         @endif
+    </div>
 
-        <!-- HOMECHECK -->
-        <h2>HomeCheck Reports</h2>
-        <div class="card">
-            @if(isset($homecheckReports) && $homecheckReports->count() > 0)
-                <table>
+    <!-- HOMECHECK REPORTS SECTION - Always visible -->
+    <h2>HomeCheck Reports</h2>
+    <div class="card">
+        @if(isset($homecheckReports) && $homecheckReports->count() > 0)
+            <table>
                     <tr>
                         <th>Property</th>
                         <th>Status</th>
@@ -390,32 +391,109 @@
                         </tr>
                     @endforeach
                 </table>
-            @else
-                <p style="text-align: center; color: #999; padding: 20px;">No HomeCheck reports yet</p>
-                @if(isset($property) && $property->status !== 'draft')
-                    <a href="{{ route('seller.homecheck.upload', $property->id) }}" class="btn">Start HomeCheck</a>
-                @endif
+        @else
+            <p style="text-align: center; color: #999; padding: 20px;">No HomeCheck reports yet</p>
+            @if(isset($property) && $property && $property->status !== 'draft')
+                <a href="{{ route('seller.homecheck.upload', $property->id) }}" class="btn">Start HomeCheck</a>
             @endif
-        </div>
+        @endif
+    </div>
 
-        <!-- VIEWING FEEDBACK SUMMARY -->
-        @if(isset($viewingFeedbackSummary) && $viewingFeedbackSummary->count() > 0)
-            <h2>Viewing Feedback Summary</h2>
-            <div class="card">
-                <div style="margin-bottom: 15px; padding: 12px; background: #E8F4F3; border-radius: 6px;">
-                    <strong style="color: var(--abodeology-teal);">You have received feedback for {{ $viewingFeedbackSummary->count() }} viewing(s)</strong>
-                </div>
-                <table>
+    <!-- VIEWING SCHEDULE SECTION - Always visible -->
+    <h2>Viewing Schedule</h2>
+    <div class="card">
+        @if(isset($upcomingViewings) && $upcomingViewings->count() > 0)
+            <div style="margin-bottom: 15px; padding: 12px; background: #E8F4F3; border-radius: 6px;">
+                <strong style="color: var(--abodeology-teal);">You have {{ $upcomingViewings->count() }} upcoming viewing(s)</strong>
+            </div>
+            <table>
+                <tr>
+                    <th>Date</th>
+                    <th>Time</th>
+                    <th>Property</th>
+                    <th>Buyer</th>
+                    <th>Contact</th>
+                    <th>Status</th>
+                </tr>
+                @foreach($upcomingViewings as $viewing)
                     <tr>
-                        <th>Property</th>
-                        <th>Buyer</th>
-                        <th>Viewing Date</th>
-                        <th>Interest</th>
-                        <th>Property Condition</th>
-                        <th>PVA</th>
-                        <th>Feedback</th>
+                        <td>
+                            <strong>{{ $viewing->viewing_date ? $viewing->viewing_date->format('l, M j') : 'N/A' }}</strong>
+                            <br><span style="font-size: 12px; color: #666;">{{ $viewing->viewing_date ? $viewing->viewing_date->format('Y') : '' }}</span>
+                        </td>
+                        <td>
+                            <strong>{{ $viewing->viewing_date ? $viewing->viewing_date->format('g:i A') : 'N/A' }}</strong>
+                        </td>
+                        <td>
+                            <strong>{{ $viewing->property->address ?? 'N/A' }}</strong>
+                            @if($viewing->property->postcode)
+                                <br><span style="font-size: 12px; color: #666;">{{ $viewing->property->postcode }}</span>
+                            @endif
+                        </td>
+                        <td>
+                            <strong>{{ $viewing->buyer->name ?? 'N/A' }}</strong>
+                        </td>
+                        <td>
+                            @if($viewing->buyer)
+                                @if($viewing->buyer->email)
+                                    <span style="font-size: 12px;">{{ $viewing->buyer->email }}</span>
+                                @endif
+                                @if($viewing->buyer->phone)
+                                    <br><span style="font-size: 12px;">{{ $viewing->buyer->phone }}</span>
+                                @endif
+                            @endif
+                        </td>
+                        <td>
+                            <span style="background: var(--abodeology-teal); color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">
+                                {{ ucfirst($viewing->status ?? 'Scheduled') }}
+                            </span>
+                        </td>
                     </tr>
-                    @foreach($viewingFeedbackSummary as $feedback)
+                @endforeach
+            </table>
+            @if(isset($allViewings) && $allViewings->count() > ($upcomingViewings->count() ?? 0))
+                <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #dcdcdc;">
+                    <h4 style="margin: 0 0 10px 0; font-size: 16px;">All Viewings ({{ $allViewings->count() }})</h4>
+                    <table>
+                        <tr>
+                            <th>Date</th>
+                            <th>Property</th>
+                            <th>Buyer</th>
+                            <th>Status</th>
+                        </tr>
+                        @foreach($allViewings->take(10) as $viewing)
+                            <tr>
+                                <td>{{ $viewing->viewing_date ? $viewing->viewing_date->format('M j, Y g:i A') : 'N/A' }}</td>
+                                <td>{{ Str::limit($viewing->property->address ?? 'N/A', 30) }}</td>
+                                <td>{{ $viewing->buyer->name ?? 'N/A' }}</td>
+                                <td>{{ ucfirst($viewing->status ?? 'N/A') }}</td>
+                            </tr>
+                        @endforeach
+                    </table>
+                </div>
+            @endif
+        @else
+            <p style="text-align: center; color: #999; padding: 20px;">No upcoming viewings scheduled</p>
+        @endif
+    </div>
+
+    <!-- VIEWING FEEDBACK SECTION - Always visible -->
+    <h2>Viewing Feedback</h2>
+    <div class="card">
+        @if(isset($viewingFeedbackSummary) && $viewingFeedbackSummary->count() > 0)
+            <div style="margin-bottom: 15px; padding: 12px; background: #E8F4F3; border-radius: 6px;">
+                <strong style="color: var(--abodeology-teal);">You have received feedback for {{ $viewingFeedbackSummary->count() }} viewing(s)</strong>
+            </div>
+            <table>
+                <tr>
+                    <th>Property</th>
+                    <th>Buyer</th>
+                    <th>Viewing Date</th>
+                    <th>Interest</th>
+                    <th>Property Condition</th>
+                    <th>Feedback</th>
+                </tr>
+                @foreach($viewingFeedbackSummary as $feedback)
                         <tr>
                             <td>
                                 <strong>{{ $feedback['property_address'] ?? 'N/A' }}</strong>
@@ -447,7 +525,6 @@
                                     <span style="color: #999;">Not rated</span>
                                 @endif
                             </td>
-                            <td>{{ $feedback['pva_name'] ?? 'N/A' }}</td>
                             <td>
                                 @if($feedback['buyer_feedback'])
                                     <span style="font-size: 12px;">{{ Str::limit($feedback['buyer_feedback'], 50) }}</span>
@@ -458,170 +535,22 @@
                         </tr>
                         @if($feedback['buyer_feedback'])
                             <tr>
-                                <td colspan="7" style="padding: 8px 12px; background: #F9F9F9; font-size: 13px;">
+                                <td colspan="6" style="padding: 8px 12px; background: #F9F9F9; font-size: 13px;">
                                     <strong>Full Feedback:</strong> {{ $feedback['buyer_feedback'] }}
                                 </td>
                             </tr>
                         @endif
                     @endforeach
                 </table>
-            </div>
+        @else
+            <p style="text-align: center; color: #999; padding: 20px;">No viewing feedback received yet.</p>
         @endif
+    </div>
 
-        <!-- SALES PROGRESSION -->
-        @if(isset($salesProgression) && $salesProgression->count() > 0)
-            <h2>Sales Progression</h2>
-            <div class="card">
-                <table>
-                    <tr>
-                        <th>Property</th>
-                        <th>Buyer</th>
-                        <th>Sale Price</th>
-                        <th>MoS Issued</th>
-                        <th>Exchange Date</th>
-                        <th>Completion Date</th>
-                        <th>Progress</th>
-                    </tr>
-                    @foreach($salesProgression as $progression)
-                        <tr>
-                            <td>
-                                <strong>{{ $progression->property->address ?? 'N/A' }}</strong>
-                            </td>
-                            <td>{{ $progression->buyer->name ?? 'N/A' }}</td>
-                            <td>
-                                @if($progression->offer)
-                                    <strong style="color: var(--abodeology-teal);">£{{ number_format($progression->offer->offer_amount, 0) }}</strong>
-                                @else
-                                    <span style="color: #999;">N/A</span>
-                                @endif
-                            </td>
-                            <td>
-                                @if($progression->memorandum_of_sale_issued)
-                                    <span style="background: #28a745; color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 12px;">✓ Yes</span>
-                                @else
-                                    <span style="background: #ffc107; color: #000; padding: 4px 8px; border-radius: 4px; font-size: 12px;">Pending</span>
-                                @endif
-                            </td>
-                            <td>
-                                @if($progression->exchange_date)
-                                    {{ \Carbon\Carbon::parse($progression->exchange_date)->format('M j, Y') }}
-                                @else
-                                    <span style="color: #999;">Not set</span>
-                                @endif
-                            </td>
-                            <td>
-                                @if($progression->completion_date)
-                                    {{ \Carbon\Carbon::parse($progression->completion_date)->format('M j, Y') }}
-                                @else
-                                    <span style="color: #999;">Not set</span>
-                                @endif
-                            </td>
-                            <td>
-                                @php
-                                    $steps = 0;
-                                    $total = 6;
-                                    if ($progression->memorandum_of_sale_issued) $steps++;
-                                    if ($progression->enquiries_raised) $steps++;
-                                    if ($progression->enquiries_answered) $steps++;
-                                    if ($progression->searches_ordered) $steps++;
-                                    if ($progression->searches_received) $steps++;
-                                    if ($progression->exchange_date) $steps++;
-                                    $percentage = ($steps / $total) * 100;
-                                @endphp
-                                <div style="width: 100px; background: #f0f0f0; border-radius: 4px; height: 20px; position: relative;">
-                                    <div style="width: {{ $percentage }}%; background: var(--abodeology-teal); height: 100%; border-radius: 4px;"></div>
-                                    <span style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 11px; font-weight: 600; color: #333;">{{ round($percentage) }}%</span>
-                                </div>
-                            </td>
-                        </tr>
-                    @endforeach
-                </table>
-            </div>
-        @endif
-
-        <!-- VIEWING SCHEDULE -->
-        <h2>Viewing Schedule</h2>
-        <div class="card">
-            @if(isset($upcomingViewings) && $upcomingViewings->count() > 0)
-                <div style="margin-bottom: 15px; padding: 12px; background: #E8F4F3; border-radius: 6px;">
-                    <strong style="color: var(--abodeology-teal);">You have {{ $upcomingViewings->count() }} upcoming viewing(s)</strong>
-                </div>
-                <table>
-                    <tr>
-                        <th>Date</th>
-                        <th>Time</th>
-                        <th>Property</th>
-                        <th>Buyer</th>
-                        <th>Contact</th>
-                        <th>Status</th>
-                    </tr>
-                    @foreach($upcomingViewings as $viewing)
-                        <tr>
-                            <td>
-                                <strong>{{ $viewing->viewing_date ? $viewing->viewing_date->format('l, M j') : 'N/A' }}</strong>
-                                <br><span style="font-size: 12px; color: #666;">{{ $viewing->viewing_date ? $viewing->viewing_date->format('Y') : '' }}</span>
-                            </td>
-                            <td>
-                                <strong>{{ $viewing->viewing_date ? $viewing->viewing_date->format('g:i A') : 'N/A' }}</strong>
-                            </td>
-                            <td>
-                                <strong>{{ $viewing->property->address ?? 'N/A' }}</strong>
-                                @if($viewing->property->postcode)
-                                    <br><span style="font-size: 12px; color: #666;">{{ $viewing->property->postcode }}</span>
-                                @endif
-                            </td>
-                            <td>
-                                <strong>{{ $viewing->buyer->name ?? 'N/A' }}</strong>
-                            </td>
-                            <td>
-                                @if($viewing->buyer)
-                                    @if($viewing->buyer->email)
-                                        <span style="font-size: 12px;">{{ $viewing->buyer->email }}</span>
-                                    @endif
-                                    @if($viewing->buyer->phone)
-                                        <br><span style="font-size: 12px;">{{ $viewing->buyer->phone }}</span>
-                                    @endif
-                                @endif
-                            </td>
-                            <td>
-                                <span style="background: var(--abodeology-teal); color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">
-                                    {{ ucfirst($viewing->status ?? 'Scheduled') }}
-                                </span>
-                            </td>
-                        </tr>
-                    @endforeach
-                </table>
-            @else
-                <p style="text-align: center; color: #999; padding: 20px;">No upcoming viewings scheduled</p>
-            @endif
-            
-            @if(isset($allViewings) && $allViewings->count() > ($upcomingViewings->count() ?? 0))
-                <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #dcdcdc;">
-                    <h4 style="margin: 0 0 10px 0; font-size: 16px;">All Viewings ({{ $allViewings->count() }})</h4>
-                    <table>
-                        <tr>
-                            <th>Date</th>
-                            <th>Property</th>
-                            <th>Buyer</th>
-                            <th>Status</th>
-                        </tr>
-                        @foreach($allViewings->take(10) as $viewing)
-                            <tr>
-                                <td>{{ $viewing->viewing_date ? $viewing->viewing_date->format('M j, Y g:i A') : 'N/A' }}</td>
-                                <td>{{ Str::limit($viewing->property->address ?? 'N/A', 30) }}</td>
-                                <td>{{ $viewing->buyer->name ?? 'N/A' }}</td>
-                                <td>{{ ucfirst($viewing->status ?? 'N/A') }}</td>
-                            </tr>
-                        @endforeach
-                    </table>
-                </div>
-            @endif
-        </div>
-
-        <!-- OFFERS PANEL -->
-        <h2>Offers</h2>
-        <div class="card">
-            @if(isset($offers) && $offers->count() > 0)
+    <!-- OFFERS SECTION - Always visible -->
+    <h2>Offers</h2>
+    <div class="card">
+        @if(isset($offers) && $offers->count() > 0)
                 <div style="margin-bottom: 15px; padding: 12px; background: #E8F4F3; border-radius: 6px;">
                     <strong style="color: var(--abodeology-teal);">You have {{ $offers->count() }} pending offer(s) requiring your attention</strong>
                 </div>
@@ -649,11 +578,15 @@
                                 @endif
                             </td>
                             <td>
-                                <strong style="color: var(--abodeology-teal); font-size: 16px;">
-                                    £{{ number_format($offer->offer_amount ?? 0, 0) }}
-                                </strong>
-                                @if($offer->deposit_amount)
-                                    <br><span style="font-size: 12px; color: #666;">Deposit: £{{ number_format($offer->deposit_amount, 0) }}</span>
+                                @if($offer->released_to_seller)
+                                    <strong style="color: var(--abodeology-teal); font-size: 16px;">
+                                        £{{ number_format($offer->offer_amount ?? 0, 0) }}
+                                    </strong>
+                                    @if($offer->deposit_amount)
+                                        <br><span style="font-size: 12px; color: #666;">Deposit: £{{ number_format($offer->deposit_amount, 0) }}</span>
+                                    @endif
+                                @else
+                                    <span style="color: #666; font-style: italic; font-size: 14px;">Amount withheld pending agent review</span>
                                 @endif
                             </td>
                             <td>
@@ -708,59 +641,116 @@
                         @endif
                     @endforeach
                 </table>
-            @else
-                <p style="text-align: center; color: #999; padding: 20px;">No pending offers</p>
-            @endif
-            
-            @if(isset($allOffers) && $allOffers->count() > $offers->count())
-                <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #dcdcdc;">
-                    <h4 style="margin: 0 0 10px 0; font-size: 16px;">All Offers ({{ $allOffers->count() }})</h4>
-                    <table>
+        @else
+            <p style="text-align: center; color: #999; padding: 20px;">No pending offers</p>
+        @endif
+        
+        @if(isset($allOffers) && isset($offers) && $allOffers->count() > $offers->count())
+            <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #dcdcdc;">
+                <h4 style="margin: 0 0 10px 0; font-size: 16px;">All Offers ({{ $allOffers->count() }})</h4>
+                <table>
+                    <tr>
+                        <th>Property</th>
+                        <th>Buyer</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                    </tr>
+                    @foreach($allOffers as $offer)
                         <tr>
-                            <th>Property</th>
-                            <th>Buyer</th>
-                            <th>Amount</th>
-                            <th>Status</th>
-                            <th>Date</th>
+                            <td>{{ Str::limit($offer->property->address ?? 'N/A', 30) }}</td>
+                            <td>{{ $offer->buyer->name ?? 'N/A' }}</td>
+                            <td>£{{ number_format($offer->offer_amount ?? 0, 0) }}</td>
+                            <td>
+                                @if($offer->status === 'accepted')
+                                    <span style="background: #28a745; color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 12px;">Accepted</span>
+                                @elseif($offer->status === 'declined')
+                                    <span style="background: #dc3545; color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 12px;">Declined</span>
+                                @else
+                                    <span style="background: #6c757d; color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 12px;">{{ ucfirst($offer->status) }}</span>
+                                @endif
+                            </td>
+                            <td style="font-size: 12px; color: #666;">
+                                {{ $offer->created_at->format('M j, Y') }}
+                            </td>
                         </tr>
-                        @foreach($allOffers as $offer)
-                            <tr>
-                                <td>{{ Str::limit($offer->property->address ?? 'N/A', 30) }}</td>
-                                <td>{{ $offer->buyer->name ?? 'N/A' }}</td>
-                                <td>£{{ number_format($offer->offer_amount ?? 0, 0) }}</td>
-                                <td>
-                                    @if($offer->status === 'accepted')
-                                        <span style="background: #28a745; color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 12px;">Accepted</span>
-                                    @elseif($offer->status === 'declined')
-                                        <span style="background: #dc3545; color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 12px;">Declined</span>
-                                    @else
-                                        <span style="background: #6c757d; color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 12px;">{{ ucfirst($offer->status) }}</span>
-                                    @endif
-                                </td>
-                                <td style="font-size: 12px; color: #666;">
-                                    {{ $offer->created_at->format('M j, Y') }}
-                                </td>
-                            </tr>
-                        @endforeach
-                    </table>
-                </div>
-            @endif
-        </div>
-
-        <h2>Documents</h2>
-        <div class="card">
-            <a href="#" class="btn">Download Terms & Conditions</a>
-            @if($property->status === 'sstc' || $property->status === 'sold')
-                <a href="#" class="btn">Download Memorandum of Sale</a>
-            @endif
-        </div>
-    @else
-        <div style="margin-top: 40px;">
-            <h2>Get Started</h2>
-            <div class="card">
-                <p style="margin: 0 0 15px 0; color: #666;">Properties are created by agents after your valuation appointment. If you've booked a valuation, your property will appear here once the agent completes the onboarding process.</p>
+                    @endforeach
+                </table>
             </div>
-        </div>
-    @endif
+        @endif
+    </div>
+
+    <!-- SALES PROGRESSION SECTION - Always visible -->
+    <h2>Sales Progression</h2>
+    <div class="card">
+        @if(isset($salesProgression) && $salesProgression->count() > 0)
+            <table>
+                <tr>
+                    <th>Property</th>
+                    <th>Buyer</th>
+                    <th>Sale Price</th>
+                    <th>MoS Issued</th>
+                    <th>Exchange Date</th>
+                    <th>Completion Date</th>
+                    <th>Progress</th>
+                </tr>
+                @foreach($salesProgression as $progression)
+                    <tr>
+                        <td>
+                            <strong>{{ $progression->property->address ?? 'N/A' }}</strong>
+                        </td>
+                        <td>{{ $progression->buyer->name ?? 'N/A' }}</td>
+                        <td>
+                            @if($progression->offer)
+                                <strong style="color: var(--abodeology-teal);">£{{ number_format($progression->offer->offer_amount, 0) }}</strong>
+                            @else
+                                <span style="color: #999;">N/A</span>
+                            @endif
+                        </td>
+                        <td>
+                            @if($progression->memorandum_of_sale_issued)
+                                <span style="background: #28a745; color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 12px;">✓ Yes</span>
+                            @else
+                                <span style="background: #ffc107; color: #000; padding: 4px 8px; border-radius: 4px; font-size: 12px;">Pending</span>
+                            @endif
+                        </td>
+                        <td>
+                            @if($progression->exchange_date)
+                                {{ \Carbon\Carbon::parse($progression->exchange_date)->format('M j, Y') }}
+                            @else
+                                <span style="color: #999;">Not set</span>
+                            @endif
+                        </td>
+                        <td>
+                            @if($progression->completion_date)
+                                {{ \Carbon\Carbon::parse($progression->completion_date)->format('M j, Y') }}
+                            @else
+                                <span style="color: #999;">Not set</span>
+                            @endif
+                        </td>
+                        <td>
+                            @php
+                                $steps = 0;
+                                $total = 6;
+                                if ($progression->memorandum_of_sale_issued) $steps++;
+                                if ($progression->enquiries_raised) $steps++;
+                                if ($progression->enquiries_answered) $steps++;
+                                if ($progression->searches_ordered) $steps++;
+                                if ($progression->searches_received) $steps++;
+                                if ($progression->exchange_date) $steps++;
+                                $percentage = ($steps / $total) * 100;
+                            @endphp
+                            <div style="width: 100px; background: #f0f0f0; border-radius: 4px; height: 20px; position: relative;">
+                                <div style="width: {{ $percentage }}%; background: var(--abodeology-teal); height: 100%; border-radius: 4px;"></div>
+                                <span style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 11px; font-weight: 600; color: #333;">{{ round($percentage) }}%</span>
+                            </div>
+                        </td>
+                    </tr>
+                @endforeach
+            </table>
+        @else
+            <p style="text-align: center; color: #999; padding: 20px;">No sales progression data yet.</p>
+        @endif
+    </div>
 </div>
 @endsection

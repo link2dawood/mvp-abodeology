@@ -372,7 +372,13 @@
                 @foreach($property->offers as $offer)
                     <tr>
                         <td style="padding: 12px; border-bottom: 1px solid #dcdcdc;">{{ $offer->buyer->name ?? 'N/A' }}</td>
-                        <td style="padding: 12px; border-bottom: 1px solid #dcdcdc;">£{{ number_format($offer->offer_amount ?? 0, 0) }}</td>
+                        <td style="padding: 12px; border-bottom: 1px solid #dcdcdc;">
+                            @if($offer->released_to_seller)
+                                £{{ number_format($offer->offer_amount ?? 0, 0) }}
+                            @else
+                                <span style="color: #666; font-style: italic;">Amount withheld</span>
+                            @endif
+                        </td>
                         <td style="padding: 12px; border-bottom: 1px solid #dcdcdc;">{{ ucfirst($offer->status ?? 'Pending') }}</td>
                         <td style="padding: 12px; border-bottom: 1px solid #dcdcdc;">
                             @if($offer->status === 'pending')

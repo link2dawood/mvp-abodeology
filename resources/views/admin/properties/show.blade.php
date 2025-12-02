@@ -516,9 +516,19 @@
                             <td style="padding: 12px; border: 1px solid #dcdcdc; font-size: 13px; color: #666;">
                                 {{ $offer->created_at->format('M j, Y') }}
                                 <br>{{ $offer->created_at->format('g:i A') }}
+                                @if($offer->released_to_seller && $offer->released_at)
+                                    <br><span style="color: #28a745; font-size: 11px;">✓ Released {{ $offer->released_at->format('M j') }}</span>
+                                @endif
                             </td>
                             <td style="padding: 12px; border: 1px solid #dcdcdc;">
                                 @if($offer->status === 'pending')
+                                    @if(!$offer->released_to_seller)
+                                        <form action="{{ route('admin.offers.release', $offer->id) }}" method="POST" style="display: inline-block; margin-bottom: 5px;">
+                                            @csrf
+                                            <button type="submit" class="btn" style="background: #28a745; color: #fff; padding: 6px 12px; font-size: 13px; border: none; border-radius: 4px; cursor: pointer;">Release to Seller</button>
+                                        </form>
+                                        <br>
+                                    @endif
                                     <a href="{{ route('seller.offer.decision.show', $offer->id) }}" class="btn btn-main" style="padding: 6px 12px; font-size: 13px;">Review Offer</a>
                                 @elseif($offer->latestDecision)
                                     <div style="font-size: 12px;">

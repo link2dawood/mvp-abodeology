@@ -414,21 +414,44 @@ class BuyerController extends Controller
     {
         $user = auth()->user();
         
-        // Allow buyers, both role, or sellers viewing their own properties
-        $property = \App\Models\Property::where('status', 'live');
-        
-        if (in_array($user->role, ['buyer', 'both'])) {
-            // Buyers can view any live property
-            $property = $property->findOrFail($id);
-        } elseif ($user->role === 'seller') {
-            // Sellers can view their own live properties
-            $property = $property->where('seller_id', $user->id)->findOrFail($id);
-        } else {
-            return redirect()->route($this->getRoleDashboard($user->role))
-                ->with('error', 'You do not have permission to access this page.');
-        }
+        try {
+            // Allow buyers, both role, or sellers viewing their own properties
+            if (in_array($user->role, ['buyer', 'both'])) {
+                // Buyers can view any live property
+                $property = \App\Models\Property::where('status', 'live')
+                    ->with(['seller', 'photos'])
+                    ->findOrFail($id);
+            } elseif ($user->role === 'seller') {
+                // Sellers can view their own live properties
+                $property = \App\Models\Property::where('status', 'live')
+                    ->where('seller_id', $user->id)
+                    ->with(['seller', 'photos'])
+                    ->findOrFail($id);
+            } else {
+                return redirect()->route($this->getRoleDashboard($user->role))
+                    ->with('error', 'You do not have permission to access this page.');
+            }
 
-        return view('buyer.viewing-request', compact('property'));
+            return view('buyer.viewing-request', compact('property'));
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            \Log::error('Property not found for viewing request', [
+                'property_id' => $id,
+                'user_id' => $user->id,
+                'user_role' => $user->role
+            ]);
+            
+            return redirect()->route('buyer.dashboard')
+                ->with('error', 'Property not found or is not available for viewing.');
+        } catch (\Exception $e) {
+            \Log::error('Error loading viewing request page: ' . $e->getMessage(), [
+                'property_id' => $id,
+                'user_id' => $user->id,
+                'error' => $e->getTraceAsString()
+            ]);
+            
+            return redirect()->route('buyer.dashboard')
+                ->with('error', 'An error occurred while loading the viewing request page. Please try again.');
+        }
     }
 
     /**
@@ -468,13 +491,43 @@ class BuyerController extends Controller
             // Combine date and time
             $viewingDateTime = \Carbon\Carbon::parse($validated['viewing_date'] . ' ' . $validated['viewing_time']);
 
+            // Determine viewing status based on whether we hold keys
+            // If property has keys, viewing can be scheduled directly
+            // If property doesn't have keys, status is 'pending' until vendor confirms
+            $viewingStatus = $property->with_keys ? 'scheduled' : 'pending';
+
             // Create viewing request
             $viewing = \App\Models\Viewing::create([
                 'property_id' => $property->id,
                 'buyer_id' => $user->id,
                 'viewing_date' => $viewingDateTime,
-                'status' => 'scheduled',
+                'status' => $viewingStatus,
             ]);
+
+            // If viewing is automatically scheduled (with keys), send confirmation emails
+            if ($viewingStatus === 'scheduled') {
+                $viewing->load(['buyer', 'property.seller']);
+                
+                try {
+                    // Notify buyer
+                    \Mail::to($viewing->buyer->email)->send(
+                        new \App\Mail\ViewingConfirmed($viewing, $property, $viewing->buyer, 'buyer')
+                    );
+                } catch (\Exception $e) {
+                    \Log::error('Failed to send viewing confirmation to buyer: ' . $e->getMessage());
+                }
+
+                try {
+                    // Notify seller
+                    if ($property->seller) {
+                        \Mail::to($property->seller->email)->send(
+                            new \App\Mail\ViewingConfirmed($viewing, $property, $property->seller, 'seller')
+                        );
+                    }
+                } catch (\Exception $e) {
+                    \Log::error('Failed to send viewing confirmation to seller: ' . $e->getMessage());
+                }
+            }
 
             // Notify all viewing partners (PVAs) about the new viewing request
             try {
@@ -506,7 +559,7 @@ class BuyerController extends Controller
             \DB::commit();
 
             return redirect()->route('buyer.dashboard')
-                ->with('success', 'Viewing request submitted successfully! A viewing partner will contact you to confirm the appointment.');
+                ->with('success', 'Viewing request submitted successfully!');
 
         } catch (\Exception $e) {
             \DB::rollBack();

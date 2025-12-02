@@ -74,10 +74,18 @@ Route::middleware(['auth', 'role.web:admin,agent'])->prefix('admin')->name('admi
     Route::post('/aml-checks/{id}/verify', [App\Http\Controllers\AdminController::class, 'verifyAmlCheck'])->name('aml-checks.verify');
     Route::get('/aml-documents/{documentId}/serve', [App\Http\Controllers\AdminController::class, 'serveAmlDocument'])->name('aml-documents.serve');
     Route::post('/properties/{id}/publish', [App\Http\Controllers\AdminController::class, 'publishListing'])->name('properties.publish');
+    
+    // Offer Management Routes
+    Route::post('/offers/{id}/release', [App\Http\Controllers\AdminController::class, 'releaseOfferToSeller'])->name('offers.release');
 });
 
 // Allow sellers to view their own live listings (must be before buyer routes to take precedence)
 Route::middleware(['auth'])->get('/buyer/property/{id}/viewing-request', [App\Http\Controllers\BuyerController::class, 'showViewingRequest'])->name('buyer.viewing.request');
+
+// Combined Dashboard Route (for users with both roles) - Must be before buyer/seller routes
+Route::middleware(['auth', 'role.web:both'])->prefix('combined')->name('combined.')->group(function () {
+    Route::get('/dashboard', [App\Http\Controllers\CombinedDashboardController::class, 'dashboard'])->name('dashboard');
+});
 
 // Buyer Routes
 Route::middleware(['auth', 'role.web:buyer,both'])->prefix('buyer')->name('buyer.')->group(function () {
@@ -114,6 +122,7 @@ Route::middleware(['auth', 'role.web:seller,both'])->prefix('seller')->name('sel
     Route::get('/offer/{id}/decision', [App\Http\Controllers\SellerController::class, 'showOfferDecision'])->name('offer.decision.show');
     Route::put('/offer/{id}/decision', [App\Http\Controllers\SellerController::class, 'handleOfferDecision'])->name('offer.decision.update');
     Route::get('/offer/{id}/decision/success', [App\Http\Controllers\SellerController::class, 'showOfferDecisionSuccess'])->name('offer.decision.success');
+    Route::post('/offer/discuss', [App\Http\Controllers\SellerController::class, 'discussWithAgent'])->name('offer.discuss');
     Route::get('/property/{id}/homecheck', [App\Http\Controllers\SellerController::class, 'showRoomUpload'])->name('homecheck.upload');
     Route::get('/property/{id}/homecheck-report', [App\Http\Controllers\SellerController::class, 'showHomecheckReport'])->name('homecheck.report');
     Route::post('/property/{id}/homecheck', [App\Http\Controllers\SellerController::class, 'storeRoomUpload'])->name('homecheck.store');

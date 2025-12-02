@@ -38,6 +38,7 @@ class Property extends Model
         'asking_price',
         'pricing_notes',
         'status',
+        'with_keys',
     ];
 
     protected function casts(): array
@@ -46,6 +47,7 @@ class Property extends Model
             'asking_price' => 'decimal:2',
             'ground_rent' => 'decimal:2',
             'service_charge' => 'decimal:2',
+            'with_keys' => 'boolean',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
         ];

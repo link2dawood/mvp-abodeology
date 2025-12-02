@@ -2,7 +2,7 @@
 
 namespace App\Mail;
 
-use App\Models\Offer;
+use App\Models\Viewing;
 use App\Models\Property;
 use App\Models\User;
 use Illuminate\Bus\Queueable;
@@ -11,22 +11,24 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class NewOfferNotification extends Mailable
+class ViewingConfirmed extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public $offer;
+    public $viewing;
     public $property;
     public $recipient;
+    public $recipientRole; // 'buyer' or 'seller'
 
     /**
      * Create a new message instance.
      */
-    public function __construct(Offer $offer, Property $property, User $recipient)
+    public function __construct(Viewing $viewing, Property $property, User $recipient, string $recipientRole)
     {
-        $this->offer = $offer;
+        $this->viewing = $viewing;
         $this->property = $property;
         $this->recipient = $recipient;
+        $this->recipientRole = $recipientRole;
     }
 
     /**
@@ -34,12 +36,9 @@ class NewOfferNotification extends Mailable
      */
     public function envelope(): Envelope
     {
-        // For sellers, don't show amount in subject if not released
-        if (in_array($this->recipient->role, ['seller', 'both']) && !$this->offer->released_to_seller) {
-            $subject = 'New Offer Received - ' . $this->property->address;
-        } else {
-            $subject = 'New Offer Received - £' . number_format($this->offer->offer_amount, 0) . ' - ' . $this->property->address;
-        }
+        $subject = $this->recipientRole === 'buyer'
+            ? 'Viewing Confirmed - ' . $this->property->address
+            : 'Viewing Confirmed for Your Property - ' . $this->property->address;
         
         return new Envelope(
             subject: $subject,
@@ -52,7 +51,7 @@ class NewOfferNotification extends Mailable
     public function content(): Content
     {
         return new Content(
-            view: 'emails.new-offer-notification',
+            view: 'emails.viewing-confirmed',
         );
     }
 

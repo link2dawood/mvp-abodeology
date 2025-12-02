@@ -196,6 +196,9 @@ class PVAController extends Controller
 
         $viewing = \App\Models\Viewing::with(['buyer', 'property'])->findOrFail($id);
 
+        // Check if viewing is already confirmed
+        $wasPending = $viewing->status === 'pending';
+        
         // Assign PVA to viewing if not already assigned
         if ($viewing->pva_id === null) {
             $viewing->update([
@@ -204,10 +207,41 @@ class PVAController extends Controller
             ]);
         } elseif ($viewing->pva_id !== $user->id) {
             return back()->with('error', 'This viewing is already assigned to another PVA.');
+        } else {
+            // PVA already assigned, just confirm the viewing
+            if ($viewing->status !== 'scheduled') {
+                $viewing->update([
+                    'status' => 'scheduled',
+                ]);
+            }
         }
 
-        // TODO: Send confirmation email to buyer
-        // \Mail::to($viewing->buyer->email)->send(new \App\Mail\ViewingConfirmed($viewing));
+        // Reload viewing with relationships
+        $viewing->refresh();
+        $viewing->load(['buyer', 'property.seller', 'pva']);
+
+        // Send confirmation emails to buyer and seller when viewing is confirmed
+        if ($wasPending || $viewing->status === 'scheduled') {
+            try {
+                // Notify buyer
+                \Mail::to($viewing->buyer->email)->send(
+                    new \App\Mail\ViewingConfirmed($viewing, $viewing->property, $viewing->buyer, 'buyer')
+                );
+            } catch (\Exception $e) {
+                \Log::error('Failed to send viewing confirmation to buyer: ' . $e->getMessage());
+            }
+
+            try {
+                // Notify seller
+                if ($viewing->property->seller) {
+                    \Mail::to($viewing->property->seller->email)->send(
+                        new \App\Mail\ViewingConfirmed($viewing, $viewing->property, $viewing->property->seller, 'seller')
+                    );
+                }
+            } catch (\Exception $e) {
+                \Log::error('Failed to send viewing confirmation to seller: ' . $e->getMessage());
+            }
+        }
 
         return redirect()->route('pva.viewings.show', $viewing->id)
             ->with('success', 'Viewing confirmed! The buyer has been notified.');

@@ -16,6 +16,7 @@ class SalesProgression extends Model
         'solicitor_buyer',
         'solicitor_seller',
         'memorandum_of_sale_issued',
+        'memorandum_pending_info',
         'memorandum_path',
         'enquiries_raised',
         'enquiries_answered',
@@ -29,6 +30,7 @@ class SalesProgression extends Model
     {
         return [
             'memorandum_of_sale_issued' => 'boolean',
+            'memorandum_pending_info' => 'boolean',
             'enquiries_raised' => 'boolean',
             'enquiries_answered' => 'boolean',
             'searches_ordered' => 'boolean',

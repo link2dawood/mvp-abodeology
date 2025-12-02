@@ -4,29 +4,28 @@ namespace App\Mail;
 
 use App\Models\Offer;
 use App\Models\Property;
-use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class NewOfferNotification extends Mailable
+class MemorandumPendingInfo extends Mailable
 {
     use Queueable, SerializesModels;
 
     public $offer;
     public $property;
-    public $recipient;
+    public $role; // 'seller' or 'buyer'
 
     /**
      * Create a new message instance.
      */
-    public function __construct(Offer $offer, Property $property, User $recipient)
+    public function __construct(Offer $offer, Property $property, string $role)
     {
         $this->offer = $offer;
         $this->property = $property;
-        $this->recipient = $recipient;
+        $this->role = $role;
     }
 
     /**
@@ -34,12 +33,9 @@ class NewOfferNotification extends Mailable
      */
     public function envelope(): Envelope
     {
-        // For sellers, don't show amount in subject if not released
-        if (in_array($this->recipient->role, ['seller', 'both']) && !$this->offer->released_to_seller) {
-            $subject = 'New Offer Received - ' . $this->property->address;
-        } else {
-            $subject = 'New Offer Received - £' . number_format($this->offer->offer_amount, 0) . ' - ' . $this->property->address;
-        }
+        $subject = $this->role === 'seller' 
+            ? 'Action Required: Complete Your Information for Memorandum of Sale'
+            : 'Action Required: Complete Your Information for Memorandum of Sale';
         
         return new Envelope(
             subject: $subject,
@@ -52,7 +48,7 @@ class NewOfferNotification extends Mailable
     public function content(): Content
     {
         return new Content(
-            view: 'emails.new-offer-notification',
+            view: 'emails.memorandum-pending-info',
         );
     }
 

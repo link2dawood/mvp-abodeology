@@ -20,6 +20,9 @@ class Offer extends Model
         'chain_position',
         'conditions',
         'status',
+        'released_to_seller',
+        'released_at',
+        'released_by',
     ];
 
     protected function casts(): array
@@ -27,6 +30,8 @@ class Offer extends Model
         return [
             'offer_amount' => 'decimal:2',
             'deposit_amount' => 'decimal:2',
+            'released_to_seller' => 'boolean',
+            'released_at' => 'datetime',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
         ];
@@ -108,5 +113,13 @@ class Offer extends Model
     public function latestDecision()
     {
         return $this->hasOne(OfferDecision::class)->latestOfMany('decided_at');
+    }
+
+    /**
+     * Get the user who released this offer to the seller.
+     */
+    public function releasedBy()
+    {
+        return $this->belongsTo(User::class, 'released_by');
     }
 }

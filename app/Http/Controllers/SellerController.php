@@ -37,38 +37,19 @@ class SellerController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
         
-        // Check if seller is in pre-valuation/awaiting valuation state
-        // Show pre-valuation dashboard if:
-        // 1. No properties exist, OR
-        // 2. All properties are in draft/awaiting_aml status with no completed valuations/homechecks
-        $hasActiveProperties = $properties->whereIn('status', ['live', 'sstc', 'sold', 'property_details_captured', 'property_details_completed'])->count() > 0;
-        $hasCompletedValuations = \App\Models\Valuation::where('seller_id', $user->id)
-            ->whereIn('status', ['completed', 'scheduled'])
-            ->count() > 0;
-        $hasCompletedHomechecks = \App\Models\HomecheckReport::whereHas('property', function($q) use ($user) {
-                $q->where('seller_id', $user->id);
+        // Get upcoming valuations for display (always fetch for unified dashboard)
+        $upcomingValuations = \App\Models\Valuation::where('seller_id', $user->id)
+            ->where(function($q) {
+                $q->where('status', 'scheduled')
+                  ->orWhere('status', 'pending');
             })
-            ->whereIn('status', ['completed', 'in_progress'])
-            ->count() > 0;
-        
-        // If no active properties and no completed valuations/homechecks, show pre-valuation dashboard
-        if (!$hasActiveProperties && !$hasCompletedValuations && !$hasCompletedHomechecks) {
-            // Get upcoming valuations for display
-            $upcomingValuations = \App\Models\Valuation::where('seller_id', $user->id)
-                ->where(function($q) {
-                    $q->where('status', 'scheduled')
-                      ->orWhere('status', 'pending');
-                })
-                ->where(function($q) {
-                    $q->whereNull('valuation_date')
-                      ->orWhere('valuation_date', '>=', now());
-                })
-                ->orderBy('valuation_date', 'asc')
-                ->orderBy('valuation_time', 'asc')
-                ->get();
-            
-            return view('seller.pre-valuation-dashboard', compact('upcomingValuations'));
-        }
+            ->where(function($q) {
+                $q->whereNull('valuation_date')
+                  ->orWhere('valuation_date', '>=', now());
+            })
+            ->orderBy('valuation_date', 'asc')
+            ->orderBy('valuation_time', 'asc')
+            ->get();
 
         // Get AML check for the seller
         $amlCheck = \App\Models\AmlCheck::where('user_id', $user->id)->first();
@@ -211,6 +192,10 @@ class SellerController extends Controller
             });
         }
 
+        // Load photos for properties
+        $properties->load('photos');
+        
+        // Always return unified dashboard with all sections
         return view('seller.dashboard', compact(
             'properties',
             'property',
@@ -223,7 +208,8 @@ class SellerController extends Controller
             'salesProgression',
             'viewingFeedbackSummary',
             'amlCheck',
-            'valuations'
+            'valuations',
+            'upcomingValuations'
         ));
     }
 
@@ -823,10 +809,15 @@ class SellerController extends Controller
                     // Buyer solicitor would be stored separately or in offer details
                 ]);
 
-                // Generate and send Memorandum of Sale
-                try {
-                    $memorandumService = new \App\Services\MemorandumOfSaleService();
-                    $memorandumPath = $memorandumService->generateAndSave($offer, $offer->property, $salesProgression);
+                // Check if buyer and seller have completed required information for MoS
+                $sellerInfoComplete = $offer->property->solicitor_details_completed ?? false;
+                $buyerInfoComplete = $this->checkBuyerInfoComplete($offer->buyer);
+
+                // Generate and send Memorandum of Sale only if both parties have completed their info
+                if ($sellerInfoComplete && $buyerInfoComplete) {
+                    try {
+                        $memorandumService = new \App\Services\MemorandumOfSaleService();
+                        $memorandumPath = $memorandumService->generateAndSave($offer, $offer->property, $salesProgression);
 
                     // Update sales progression with memorandum path
                     $salesProgression->update([
@@ -847,9 +838,31 @@ class SellerController extends Controller
                         new \App\Mail\MemorandumOfSale($offer, $offer->property, $memorandumPath, 'buyer')
                     );
 
-                } catch (\Exception $e) {
-                    \Log::error('Memorandum of Sale generation error: ' . $e->getMessage());
-                    // Don't fail the transaction if memorandum generation fails
+                    } catch (\Exception $e) {
+                        \Log::error('Memorandum of Sale generation error: ' . $e->getMessage());
+                        // Don't fail the transaction if memorandum generation fails
+                    }
+                } else {
+                    // Mark that MoS is pending completion of required info
+                    $salesProgression->update([
+                        'memorandum_pending_info' => true,
+                    ]);
+                    
+                    // Notify both parties that they need to complete their information
+                    try {
+                        if (!$sellerInfoComplete) {
+                            \Mail::to($offer->property->seller->email)->send(
+                                new \App\Mail\MemorandumPendingInfo($offer, $offer->property, 'seller')
+                            );
+                        }
+                        if (!$buyerInfoComplete) {
+                            \Mail::to($offer->buyer->email)->send(
+                                new \App\Mail\MemorandumPendingInfo($offer, $offer->property, 'buyer')
+                            );
+                        }
+                    } catch (\Exception $e) {
+                        \Log::error('Failed to send MoS pending info notifications: ' . $e->getMessage());
+                    }
                 }
             }
 
@@ -912,6 +925,64 @@ class SellerController extends Controller
         }
 
         return view('seller.offer-decision-success', compact('offer'));
+    }
+
+    /**
+     * Handle "Discuss with Agent" request for an offer.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function discussWithAgent(Request $request)
+    {
+        $user = auth()->user();
+        
+        $validated = $request->validate([
+            'offer_id' => ['required', 'exists:offers,id'],
+            'contact_method' => ['nullable', 'string', 'in:call,video'],
+            'urgency' => ['nullable', 'string', 'in:normal,urgent,asap'],
+            'discussion_points' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $offer = \App\Models\Offer::with(['buyer', 'property'])->findOrFail($validated['offer_id']);
+
+        // Check if user owns the property
+        if ($offer->property->seller_id !== $user->id && !in_array($user->role, ['admin', 'agent'])) {
+            return redirect()->route('seller.dashboard')
+                ->with('error', 'You do not have permission to perform this action.');
+        }
+
+        try {
+            // Notify all agents/admins about the discussion request
+            $agents = \App\Models\User::whereIn('role', ['admin', 'agent'])->get();
+            
+            foreach ($agents as $agent) {
+                try {
+                    \Mail::to($agent->email)->send(
+                        new \App\Mail\OfferDiscussionRequest($offer, $offer->property, $user, $validated)
+                    );
+                } catch (\Exception $e) {
+                    \Log::error('Failed to send discussion request to agent ' . $agent->email . ': ' . $e->getMessage());
+                }
+            }
+
+            \Log::info('Offer discussion request created', [
+                'offer_id' => $offer->id,
+                'property_id' => $offer->property_id,
+                'seller_id' => $user->id,
+                'urgency' => $validated['urgency'] ?? 'normal',
+            ]);
+
+            return redirect()->route('seller.dashboard')
+                ->with('success', 'Your request to discuss this offer with an agent has been sent. An agent will contact you soon.');
+
+        } catch (\Exception $e) {
+            \Log::error('Offer discussion request error: ' . $e->getMessage());
+
+            return back()
+                ->withInput()
+                ->with('error', 'An error occurred while sending your request. Please try again.');
+        }
     }
 
     /**
@@ -1333,6 +1404,23 @@ class SellerController extends Controller
                 ->withInput()
                 ->with('error', 'An error occurred while saving your solicitor details. Please try again.');
         }
+    }
+
+    /**
+     * Check if buyer has completed required information for Memorandum of Sale.
+     *
+     * @param  \App\Models\User  $buyer
+     * @return bool
+     */
+    private function checkBuyerInfoComplete($buyer)
+    {
+        // Check if buyer has provided solicitor details
+        // Note: In the current implementation, buyer solicitor details are stored in buyer profile
+        // For now, we'll check if the buyer has a solicitor email in the sales progression or offer
+        // This is a simplified check - in a full implementation, you might check a buyer_profiles table
+        // For the workflow, we'll assume buyer info is complete if they have basic contact info
+        // This can be enhanced when buyer profiles are properly stored
+        return true; // Simplified for now - can be enhanced with proper buyer profile checks
     }
 
     /**

@@ -1832,4 +1832,70 @@ class AdminController extends Controller
             abort(404, 'Error loading document.');
         }
     }
+
+    /**
+     * Release offer amount to seller.
+     * Allows admin/agent to release the offer amount to the seller after review.
+     *
+     * @param  int  $id  Offer ID
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function releaseOfferToSeller($id)
+    {
+        $user = auth()->user();
+        
+        if (!in_array($user->role, ['admin', 'agent'])) {
+            return redirect()->route($this->getRoleDashboard($user->role))
+                ->with('error', 'You do not have permission to perform this action.');
+        }
+
+        $offer = \App\Models\Offer::with(['property', 'buyer'])->findOrFail($id);
+        
+        // For agents, verify they have access to this property
+        if ($user->role === 'agent') {
+            $agentPropertyIds = $this->getAgentPropertyIds($user->id);
+            if (!in_array($offer->property_id, $agentPropertyIds)) {
+                return redirect()->route('admin.properties.show', $offer->property_id)
+                    ->with('error', 'You do not have permission to release this offer.');
+            }
+        }
+
+        // Check if already released
+        if ($offer->released_to_seller) {
+            return redirect()->route('admin.properties.show', $offer->property_id)
+                ->with('info', 'This offer has already been released to the seller.');
+        }
+
+        try {
+            \DB::beginTransaction();
+
+            // Update offer to released
+            $offer->update([
+                'released_to_seller' => true,
+                'released_at' => now(),
+                'released_by' => $user->id,
+            ]);
+
+            // Notify seller that offer amount has been released
+            try {
+                \Mail::to($offer->property->seller->email)->send(
+                    new \App\Mail\OfferAmountReleased($offer, $offer->property)
+                );
+            } catch (\Exception $e) {
+                \Log::error('Failed to send offer release notification to seller: ' . $e->getMessage());
+            }
+
+            \DB::commit();
+
+            return redirect()->route('admin.properties.show', $offer->property_id)
+                ->with('success', 'Offer amount has been released to the seller. They have been notified via email.');
+
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            \Log::error('Error releasing offer to seller: ' . $e->getMessage());
+            
+            return redirect()->route('admin.properties.show', $offer->property_id)
+                ->with('error', 'Failed to release offer. Please try again.');
+        }
+    }
 }

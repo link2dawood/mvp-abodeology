@@ -68,8 +68,8 @@ class RegisterController extends Controller
                 return route('seller.dashboard');
             
             case 'both':
-                // Users with both roles - default to buyer dashboard
-                return route('buyer.dashboard');
+                // Users with both roles - redirect to combined dashboard
+                return route('combined.dashboard');
             
             case 'pva':
                 return route('pva.dashboard');

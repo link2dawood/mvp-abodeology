@@ -19,20 +19,44 @@
 
     <div style="background: #F4F4F4; padding: 20px; border-radius: 8px; margin: 20px 0;">
         <h3 style="margin-top: 0; color: #2CB8B4;">Offer Details</h3>
-        <p><strong>Offer Amount:</strong> £{{ number_format($offer->offer_amount, 2) }}</p>
-        @if($property->asking_price)
-            <p><strong>Asking Price:</strong> £{{ number_format($property->asking_price, 2) }}</p>
-            <p><strong>Difference:</strong> 
-                @php
-                    $difference = $offer->offer_amount - $property->asking_price;
-                    $percentage = $property->asking_price > 0 ? ($difference / $property->asking_price) * 100 : 0;
-                @endphp
-                @if($difference >= 0)
-                    <span style="color: #28a745;">+£{{ number_format(abs($difference), 2) }} ({{ number_format(abs($percentage), 2) }}% above asking)</span>
-                @else
-                    <span style="color: #dc3545;">-£{{ number_format(abs($difference), 2) }} ({{ number_format(abs($percentage), 2) }}% below asking)</span>
+        @if($recipient->role === 'seller' || $recipient->role === 'both')
+            @if($offer->released_to_seller)
+                <p><strong>Offer Amount:</strong> £{{ number_format($offer->offer_amount, 2) }}</p>
+                @if($property->asking_price)
+                    <p><strong>Asking Price:</strong> £{{ number_format($property->asking_price, 2) }}</p>
+                    <p><strong>Difference:</strong> 
+                        @php
+                            $difference = $offer->offer_amount - $property->asking_price;
+                            $percentage = $property->asking_price > 0 ? ($difference / $property->asking_price) * 100 : 0;
+                        @endphp
+                        @if($difference >= 0)
+                            <span style="color: #28a745;">+£{{ number_format(abs($difference), 2) }} ({{ number_format(abs($percentage), 2) }}% above asking)</span>
+                        @else
+                            <span style="color: #dc3545;">-£{{ number_format(abs($difference), 2) }} ({{ number_format(abs($percentage), 2) }}% below asking)</span>
+                        @endif
+                    </p>
                 @endif
-            </p>
+            @else
+                <p><strong>Offer Amount:</strong> <em>Amount withheld pending agent review</em></p>
+                <p style="color: #666; font-size: 13px;">The offer amount will be released to you after our agent has reviewed and discussed it with the buyer.</p>
+            @endif
+        @else
+            {{-- Admin/Agent always see the amount --}}
+            <p><strong>Offer Amount:</strong> £{{ number_format($offer->offer_amount, 2) }}</p>
+            @if($property->asking_price)
+                <p><strong>Asking Price:</strong> £{{ number_format($property->asking_price, 2) }}</p>
+                <p><strong>Difference:</strong> 
+                    @php
+                        $difference = $offer->offer_amount - $property->asking_price;
+                        $percentage = $property->asking_price > 0 ? ($difference / $property->asking_price) * 100 : 0;
+                    @endphp
+                    @if($difference >= 0)
+                        <span style="color: #28a745;">+£{{ number_format(abs($difference), 2) }} ({{ number_format(abs($percentage), 2) }}% above asking)</span>
+                    @else
+                        <span style="color: #dc3545;">-£{{ number_format(abs($difference), 2) }} ({{ number_format(abs($percentage), 2) }}% below asking)</span>
+                    @endif
+                </p>
+            @endif
         @endif
         <p><strong>Buyer:</strong> {{ $offer->buyer->name }}</p>
         <p><strong>Funding Type:</strong> {{ ucfirst(str_replace('_', ' ', $offer->funding_type ?? 'Not specified')) }}</p>
