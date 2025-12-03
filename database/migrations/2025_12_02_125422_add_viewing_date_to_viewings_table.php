@@ -11,10 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('viewings', function (Blueprint $table) {
-            // Add viewing_date column to align with application code
-            $table->dateTime('viewing_date')->nullable()->after('scheduled_at');
-        });
+        // Only add the column if it doesn't already exist, and don't rely on a dropped column
+        if (!Schema::hasColumn('viewings', 'viewing_date')) {
+            Schema::table('viewings', function (Blueprint $table) {
+                // Place viewing_date after pva_id, which always exists on fresh installs
+                $table->dateTime('viewing_date')->nullable()->after('pva_id');
+            });
+        }
     }
 
     /**
@@ -22,8 +25,10 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('viewings', function (Blueprint $table) {
-            $table->dropColumn('viewing_date');
-        });
+        if (Schema::hasColumn('viewings', 'viewing_date')) {
+            Schema::table('viewings', function (Blueprint $table) {
+                $table->dropColumn('viewing_date');
+            });
+        }
     }
 };
