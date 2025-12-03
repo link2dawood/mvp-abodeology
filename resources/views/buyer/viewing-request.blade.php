@@ -166,23 +166,43 @@
         </div>
     @endif
 
-    <form action="{{ route('viewing.request.store', $property->id) }}" method="POST">
+    @if(!isset($property) || !$property)
+        <div class="card" style="background: #fee; border: 1px solid #dc3545;">
+            <p style="color: #dc3545; margin: 0;">Property not found or is not available for viewing.</p>
+            <a href="{{ route('buyer.dashboard') }}" class="btn" style="margin-top: 15px;">Back to Dashboard</a>
+        </div>
+    @else
+    <form action="{{ route('buyer.viewing.request.store', $property->id) }}" method="POST">
         @csrf
 
         <!-- PROPERTY SUMMARY -->
+        @php
+            $primaryPhotoUrl = ($property->photos && $property->photos->count() > 0)
+                ? \Storage::url($property->photos->first()->image_path)
+                : 'data:image/svg+xml;base64,' . base64_encode('<svg width="600" height="400" xmlns="http://www.w3.org/2000/svg"><rect width="600" height="400" fill="#E8F4F3"/><text x="50%" y="50%" font-family="Arial, sans-serif" font-size="24" fill="#2CB8B4" text-anchor="middle" dominant-baseline="middle" font-weight="600">Abodeology Property</text></svg>');
+        @endphp
         <div class="card">
             <h3>Property</h3>
-            <p><strong>Address:</strong> {{ $property->address }}</p>
-            @if($property->postcode)
-                <p><strong>Postcode:</strong> {{ $property->postcode }}</p>
-            @endif
-            <p><strong>Asking Price:</strong> £{{ number_format($property->asking_price, 2) }}</p>
-            @if($property->property_type)
-                <p><strong>Type:</strong> {{ ucfirst(str_replace('_', ' ', $property->property_type)) }}</p>
-            @endif
-            @if($property->bedrooms)
-                <p><strong>Bedrooms:</strong> {{ $property->bedrooms }}</p>
-            @endif
+            <div style="display: grid; grid-template-columns: minmax(0, 320px) minmax(0, 1fr); gap: 20px; align-items: flex-start;">
+                <div>
+                    <img src="{{ $primaryPhotoUrl }}"
+                         alt="Property image"
+                         style="width: 100%; max-width: 360px; border-radius: 8px; display: block; object-fit: cover;">
+                </div>
+                <div>
+                    <p><strong>Address:</strong> {{ $property->address ?? 'N/A' }}</p>
+                    @if($property->postcode ?? null)
+                        <p><strong>Postcode:</strong> {{ $property->postcode }}</p>
+                    @endif
+                    <p><strong>Asking Price:</strong> £{{ number_format($property->asking_price ?? 0, 2) }}</p>
+                    @if($property->property_type ?? null)
+                        <p><strong>Type:</strong> {{ ucfirst(str_replace('_', ' ', $property->property_type)) }}</p>
+                    @endif
+                    @if($property->bedrooms ?? null)
+                        <p><strong>Bedrooms:</strong> {{ $property->bedrooms }}</p>
+                    @endif
+                </div>
+            </div>
         </div>
 
         <!-- VIEWING DETAILS -->
@@ -257,6 +277,7 @@
             <a href="{{ route('buyer.dashboard') }}" style="margin-left: 15px; color: #666; text-decoration: none;">Cancel</a>
         </div>
     </form>
+    @endif
 </div>
 @endsection
 

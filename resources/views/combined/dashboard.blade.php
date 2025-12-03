@@ -293,7 +293,7 @@
                 @php
                     $propertyPhoto = $property->photos && $property->photos->count() > 0 
                         ? \Storage::url($property->photos->first()->image_path) 
-                        : 'https://via.placeholder.com/400';
+                        : 'data:image/svg+xml;base64,' . base64_encode('<svg width="400" height="300" xmlns="http://www.w3.org/2000/svg"><rect width="400" height="300" fill="#E8F4F3"/><text x="50%" y="50%" font-family="Arial, sans-serif" font-size="20" fill="#2CB8B4" text-anchor="middle" dominant-baseline="middle" font-weight="600">Abodeology Property</text></svg>');
                 @endphp
                 <div class="property-card">
                     <div class="property-image" style="background-image:url('{{ $propertyPhoto }}');"></div>

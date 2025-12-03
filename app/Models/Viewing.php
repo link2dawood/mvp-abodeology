@@ -15,6 +15,7 @@ class Viewing extends Model
         'buyer_id',
         'pva_id',
         'viewing_date',
+        'scheduled_at',
         'status',
     ];
 
@@ -22,6 +23,7 @@ class Viewing extends Model
     {
         return [
             'viewing_date' => 'datetime',
+            'scheduled_at' => 'datetime',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
         ];

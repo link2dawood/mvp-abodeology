@@ -361,7 +361,7 @@
             $primaryProperty = $properties->whereIn('status', ['live', 'sstc'])->first() ?? $properties->first();
             $primaryPropertyPhoto = $primaryProperty && $primaryProperty->photos && $primaryProperty->photos->count() > 0 
                 ? \Storage::url($primaryProperty->photos->first()->image_path) 
-                : 'https://via.placeholder.com/350';
+                : 'data:image/svg+xml;base64,' . base64_encode('<svg width="350" height="250" xmlns="http://www.w3.org/2000/svg"><rect width="350" height="250" fill="#E8F4F3"/><text x="50%" y="50%" font-family="Arial, sans-serif" font-size="18" fill="#2CB8B4" text-anchor="middle" dominant-baseline="middle" font-weight="600">Abodeology</text></svg>');
         @endphp
 
         <!-- PROPERTY SUMMARY -->

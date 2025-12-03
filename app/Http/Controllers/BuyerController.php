@@ -414,6 +414,11 @@ class BuyerController extends Controller
     {
         $user = auth()->user();
         
+        if (!$user) {
+            return redirect()->route('login')
+                ->with('error', 'Please log in to request a viewing.');
+        }
+        
         try {
             // Allow buyers, both role, or sellers viewing their own properties
             if (in_array($user->role, ['buyer', 'both'])) {
@@ -432,12 +437,17 @@ class BuyerController extends Controller
                     ->with('error', 'You do not have permission to access this page.');
             }
 
+            // Ensure property has required fields
+            if (!$property || !$property->address) {
+                throw new \Exception('Property data is incomplete.');
+            }
+
             return view('buyer.viewing-request', compact('property'));
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             \Log::error('Property not found for viewing request', [
                 'property_id' => $id,
-                'user_id' => $user->id,
-                'user_role' => $user->role
+                'user_id' => $user->id ?? null,
+                'user_role' => $user->role ?? null
             ]);
             
             return redirect()->route('buyer.dashboard')
@@ -445,8 +455,9 @@ class BuyerController extends Controller
         } catch (\Exception $e) {
             \Log::error('Error loading viewing request page: ' . $e->getMessage(), [
                 'property_id' => $id,
-                'user_id' => $user->id,
-                'error' => $e->getTraceAsString()
+                'user_id' => $user->id ?? null,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
             
             return redirect()->route('buyer.dashboard')
@@ -501,6 +512,7 @@ class BuyerController extends Controller
                 'property_id' => $property->id,
                 'buyer_id' => $user->id,
                 'viewing_date' => $viewingDateTime,
+                'scheduled_at' => $viewingDateTime,
                 'status' => $viewingStatus,
             ]);
 
