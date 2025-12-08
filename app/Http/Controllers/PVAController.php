@@ -168,7 +168,7 @@ class PVAController extends Controller
 
         // Assigned viewings
         $assignedViewings = \App\Models\Viewing::where('pva_id', $user->id)
-            ->with(['buyer', 'property.seller', 'feedback'])
+            ->with(['buyer', 'property', 'feedback'])
             ->orderBy('viewing_date', 'asc')
             ->get();
         
@@ -176,14 +176,11 @@ class PVAController extends Controller
         $unassignedViewings = \App\Models\Viewing::where('pva_id', null)
             ->where('viewing_date', '>=', now())
             ->where('status', '!=', 'cancelled')
-            ->with(['buyer', 'property.seller'])
+            ->with(['buyer', 'property'])
             ->orderBy('viewing_date', 'asc')
             ->get();
 
-        // Combine for pagination
-        $viewings = $assignedViewings->merge($unassignedViewings)->sortBy('viewing_date');
-
-        return view('pva.viewings.index', compact('viewings', 'assignedViewings', 'unassignedViewings'));
+        return view('pva.viewings.index', compact('assignedViewings', 'unassignedViewings'));
     }
 
     /**
