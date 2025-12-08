@@ -117,6 +117,9 @@ class AdminController extends Controller
             ->get();
 
         $pvas = User::where('role', 'pva')
+            ->withCount(['assignedViewings' => function($query) {
+                $query->where('status', '!=', 'cancelled');
+            }])
             ->orderBy('created_at', 'desc')
             ->limit(5)
             ->get();

@@ -643,7 +643,7 @@
                 @forelse($pvas ?? [] as $pva)
                     <tr>
                         <td>{{ $pva->name ?? 'N/A' }}</td>
-                        <td>{{ $pva->assignedViewings()->count() ?? 0 }} viewings</td>
+                        <td>{{ $pva->assigned_viewings_count ?? 0 }} viewings</td>
                     </tr>
                 @empty
                     <tr>
