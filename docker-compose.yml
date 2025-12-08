@@ -21,9 +21,19 @@ services:
       - DB_PASSWORD=
     command: >
       sh -c "
-      php artisan migrate --force &&
+      echo 'Waiting for database connection...' &&
+      for i in 1 2 3 4 5 6 7 8 9 10; do
+        if (timeout 1 bash -c 'cat < /dev/null > /dev/tcp/db/3306') 2>/dev/null; then
+          echo 'Database port is accessible!' &&
+          sleep 2 &&
+          break
+        fi &&
+        echo \"Attempt \$i/10: Waiting for database...\" &&
+        sleep 2
+      done &&
       php artisan config:clear &&
       php artisan cache:clear &&
+      php artisan migrate --force &&
       php artisan serve --host=0.0.0.0 --port=8001
       "
 
@@ -36,14 +46,15 @@ services:
       MYSQL_ROOT_PASSWORD: ""       # empty password
       MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
     ports:
-      - "3307:3306"
+      - "3306:3306"
     volumes:
       - db_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root"]
+      interval: 3s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
 
   phpmyadmin:
     image: phpmyadmin/phpmyadmin

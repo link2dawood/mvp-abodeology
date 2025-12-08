@@ -11,8 +11,10 @@ class ViewingFeedback extends Model
 
     protected $fillable = [
         'viewing_id',
+        'buyer_interest_level',
         'buyer_interested',
         'buyer_feedback',
+        'buyer_questions',
         'property_condition',
         'buyer_notes',
         'pva_notes',

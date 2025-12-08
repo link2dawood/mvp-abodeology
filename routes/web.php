@@ -142,6 +142,7 @@ Route::middleware(['auth', 'role.web:pva'])->prefix('pva')->name('pva.')->group(
     Route::get('/viewings', [App\Http\Controllers\PVAController::class, 'viewings'])->name('viewings.index');
     Route::get('/viewings/{id}', [App\Http\Controllers\PVAController::class, 'showViewing'])->name('viewings.show');
     Route::post('/viewings/{id}/confirm', [App\Http\Controllers\PVAController::class, 'confirmViewing'])->name('viewings.confirm');
+    Route::post('/viewings/{id}/start', [App\Http\Controllers\PVAController::class, 'startViewing'])->name('viewings.start');
     Route::get('/viewings/{id}/feedback', [App\Http\Controllers\PVAController::class, 'showFeedback'])->name('viewings.feedback');
     Route::post('/viewings/{id}/feedback', [App\Http\Controllers\PVAController::class, 'storeFeedback'])->name('viewings.feedback.store');
 });

@@ -15,15 +15,17 @@ class Viewing extends Model
         'buyer_id',
         'pva_id',
         'viewing_date',
-        'scheduled_at',
+        'arrival_time',
         'status',
+        'special_instructions',
+        'access_instructions',
     ];
 
     protected function casts(): array
     {
         return [
             'viewing_date' => 'datetime',
-            'scheduled_at' => 'datetime',
+            'arrival_time' => 'datetime',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
         ];

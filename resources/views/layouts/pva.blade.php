@@ -32,7 +32,7 @@
         /* NAVBAR */
         .navbar {
             background: var(--black);
-            padding: 15px 35px;
+            padding: 20px 32px;
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -40,7 +40,7 @@
         }
 
         .navbar img {
-            height: 40px;
+            height: 42px;
         }
 
         .nav-links {
@@ -50,9 +50,10 @@
 
         .nav-links a {
             color: var(--white);
-            margin-left: 25px;
+            margin-left: 26px;
             text-decoration: none;
             font-size: 15px;
+            font-weight: 500;
             transition: color 0.3s ease;
         }
 
@@ -189,7 +190,7 @@
         <button class="mobile-menu-toggle" onclick="document.querySelector('.nav-links').classList.toggle('active')" aria-label="Toggle menu">☰</button>
         <nav class="nav-links">
             <a href="{{ route('pva.dashboard') ?? route('home') }}">Dashboard</a>
-            <a href="#">My Schedule</a>
+            <a href="{{ route('pva.viewings.index') }}">My Viewings</a>
             <a href="{{ route('profile.show') }}">Profile</a>
             <form action="{{ route('logout') }}" method="POST" style="display: inline; margin-left: 25px;">
                 @csrf

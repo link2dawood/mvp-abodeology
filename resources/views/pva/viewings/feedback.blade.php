@@ -205,19 +205,41 @@
         @csrf
 
         <div class="card">
-            <h3>Buyer Interest</h3>
+            <h3>Buyer Interest Level</h3>
             
             <div class="radio-group">
                 <label>
-                    <input type="radio" name="buyer_interested" value="1" {{ old('buyer_interested', $viewing->feedback->buyer_interested ?? null) == 1 ? 'checked' : '' }} required>
-                    <span>Buyer is interested in the property</span>
+                    <input type="radio" name="buyer_interest_level" value="not_interested" {{ old('buyer_interest_level', $viewing->feedback->buyer_interest_level ?? '') == 'not_interested' ? 'checked' : '' }} required>
+                    <span>Not interested</span>
                 </label>
                 <label>
-                    <input type="radio" name="buyer_interested" value="0" {{ old('buyer_interested', $viewing->feedback->buyer_interested ?? null) == 0 ? 'checked' : '' }} required>
-                    <span>Buyer is not interested in the property</span>
+                    <input type="radio" name="buyer_interest_level" value="maybe" {{ old('buyer_interest_level', $viewing->feedback->buyer_interest_level ?? '') == 'maybe' ? 'checked' : '' }} required>
+                    <span>Maybe</span>
+                </label>
+                <label>
+                    <input type="radio" name="buyer_interest_level" value="interested" {{ old('buyer_interest_level', $viewing->feedback->buyer_interest_level ?? '') == 'interested' ? 'checked' : '' }} required>
+                    <span>Interested</span>
+                </label>
+                <label>
+                    <input type="radio" name="buyer_interest_level" value="very_interested" {{ old('buyer_interest_level', $viewing->feedback->buyer_interest_level ?? '') == 'very_interested' ? 'checked' : '' }} required>
+                    <span>Very interested</span>
                 </label>
             </div>
-            @error('buyer_interested')
+            @error('buyer_interest_level')
+                <div class="error-message">{{ $message }}</div>
+            @enderror
+        </div>
+
+        <div class="card">
+            <h3>Questions for Agent</h3>
+            
+            <label for="buyer_questions">Did the buyer ask any questions for the agent?</label>
+            <textarea 
+                name="buyer_questions" 
+                id="buyer_questions"
+                placeholder="Enter any questions the buyer asked that need to be answered by the agent..."
+            >{{ old('buyer_questions', $viewing->feedback->buyer_questions ?? '') }}</textarea>
+            @error('buyer_questions')
                 <div class="error-message">{{ $message }}</div>
             @enderror
         </div>

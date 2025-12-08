@@ -38,21 +38,36 @@ class PVAController extends Controller
         // FETCH REAL DATA FROM DATABASE
         // ============================================
         
-        // 1. UPCOMING VIEWINGS - Assigned to this PVA
+        // 1. UPCOMING VIEWINGS - Assigned to this PVA (excluding today's which are shown separately)
         $upcomingViewings = \App\Models\Viewing::where('pva_id', $user->id)
-            ->where('viewing_date', '>=', now())
+            ->where('viewing_date', '>', today()->endOfDay())
             ->where('status', '!=', 'cancelled')
             ->with(['buyer', 'property'])
             ->orderBy('viewing_date', 'asc')
             ->limit(10)
             ->get()
             ->map(function($viewing) {
+                // Determine access type
+                $accessType = 'Keys needed';
+                if ($viewing->property && $viewing->property->with_keys) {
+                    $accessType = 'Keys available';
+                } elseif ($viewing->access_instructions) {
+                    if (stripos($viewing->access_instructions, 'vendor') !== false || stripos($viewing->access_instructions, 'seller') !== false) {
+                        $accessType = 'Vendor will open';
+                    } elseif (stripos($viewing->access_instructions, 'agent') !== false) {
+                        $accessType = 'Agent will open';
+                    }
+                }
+                
                 return [
                     'id' => $viewing->id,
                     'date' => $viewing->viewing_date ? $viewing->viewing_date->format('M j, Y') : 'N/A',
                     'time' => $viewing->viewing_date ? $viewing->viewing_date->format('g:i A') : 'N/A',
                     'property' => $viewing->property->address ?? 'N/A',
                     'buyer' => $viewing->buyer->name ?? 'N/A',
+                    'buyer_phone' => $viewing->buyer->phone ?? 'N/A',
+                    'access_type' => $accessType,
+                    'special_instructions' => $viewing->special_instructions ?? null,
                     'status' => ucfirst($viewing->status ?? 'Scheduled'),
                 ];
             });
@@ -65,11 +80,29 @@ class PVAController extends Controller
             ->orderBy('viewing_date', 'asc')
             ->get()
             ->map(function($viewing) {
+                // Determine access type
+                $accessType = 'Keys needed';
+                if ($viewing->property && $viewing->property->with_keys) {
+                    $accessType = 'Keys available';
+                } elseif ($viewing->access_instructions) {
+                    if (stripos($viewing->access_instructions, 'vendor') !== false || stripos($viewing->access_instructions, 'seller') !== false) {
+                        $accessType = 'Vendor will open';
+                    } elseif (stripos($viewing->access_instructions, 'agent') !== false) {
+                        $accessType = 'Agent will open';
+                    }
+                }
+                
                 return [
                     'id' => $viewing->id,
                     'time' => $viewing->viewing_date ? $viewing->viewing_date->format('g:i A') : 'N/A',
                     'property' => $viewing->property->address ?? 'N/A',
                     'buyer' => $viewing->buyer->name ?? 'N/A',
+                    'buyer_phone' => $viewing->buyer->phone ?? 'N/A',
+                    'access_type' => $accessType,
+                    'special_instructions' => $viewing->special_instructions ?? null,
+                    'access_instructions' => $viewing->access_instructions ?? null,
+                    'status' => $viewing->status,
+                    'arrival_time' => $viewing->arrival_time,
                 ];
             });
         
@@ -168,15 +201,75 @@ class PVAController extends Controller
                 ->with('error', 'You do not have permission to access this page.');
         }
 
-        $viewing = \App\Models\Viewing::with(['buyer', 'property.seller', 'feedback'])->findOrFail($id);
+        $viewing = \App\Models\Viewing::with(['buyer', 'property.seller', 'property.photos', 'feedback'])->findOrFail($id);
 
-        // Check if PVA can view this viewing
-        if ($viewing->pva_id !== $user->id && $viewing->pva_id !== null) {
+        // Check if PVA can view this viewing (allow unassigned viewings to be viewed for claiming)
+        if ($viewing->pva_id !== null && $viewing->pva_id !== $user->id) {
             return redirect()->route('pva.viewings.index')
                 ->with('error', 'You do not have permission to view this viewing.');
         }
 
-        return view('pva.viewings.show', compact('viewing'));
+        // Determine access type
+        $accessType = 'Keys needed';
+        if ($viewing->property && $viewing->property->with_keys) {
+            $accessType = 'Keys available';
+        } elseif ($viewing->access_instructions) {
+            if (stripos($viewing->access_instructions, 'vendor') !== false || stripos($viewing->access_instructions, 'seller') !== false) {
+                $accessType = 'Vendor will open';
+            } elseif (stripos($viewing->access_instructions, 'agent') !== false) {
+                $accessType = 'Agent will open';
+            }
+        }
+
+        return view('pva.viewings.show', compact('viewing', 'accessType'));
+    }
+
+    /**
+     * Start viewing - Mark arrival time.
+     *
+     * @param  int  $id  Viewing ID
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function startViewing($id)
+    {
+        $user = auth()->user();
+        
+        if ($user->role !== 'pva') {
+            return redirect()->route($this->getRoleDashboard($user->role))
+                ->with('error', 'You do not have permission to perform this action.');
+        }
+
+        $viewing = \App\Models\Viewing::with(['buyer', 'property'])->findOrFail($id);
+
+        // Check if PVA is assigned to this viewing
+        if ($viewing->pva_id !== $user->id) {
+            return back()->with('error', 'You are not assigned to this viewing.');
+        }
+
+        // Check if viewing hasn't started yet
+        if ($viewing->arrival_time !== null) {
+            return back()->with('info', 'Viewing has already been started.');
+        }
+
+        try {
+            $viewing->update([
+                'arrival_time' => now(),
+            ]);
+
+            // Log activity
+            \Log::info('PVA started viewing', [
+                'viewing_id' => $viewing->id,
+                'pva_id' => $user->id,
+                'arrival_time' => now(),
+            ]);
+
+            return redirect()->route('pva.viewings.show', $viewing->id)
+                ->with('success', 'Viewing started! Arrival time has been logged.');
+
+        } catch (\Exception $e) {
+            \Log::error('Error starting viewing: ' . $e->getMessage());
+            return back()->with('error', 'An error occurred while starting the viewing. Please try again.');
+        }
     }
 
     /**
@@ -297,14 +390,15 @@ class PVAController extends Controller
         }
 
         $validated = $request->validate([
-            'buyer_interested' => ['required', 'boolean'],
+            'buyer_interest_level' => ['required', 'string', 'in:not_interested,maybe,interested,very_interested'],
             'buyer_feedback' => ['nullable', 'string', 'max:2000'],
+            'buyer_questions' => ['nullable', 'string', 'max:2000'],
             'property_condition' => ['nullable', 'string', 'in:excellent,good,fair,poor'],
             'buyer_notes' => ['nullable', 'string', 'max:2000'],
             'pva_notes' => ['nullable', 'string', 'max:2000'],
         ], [
-            'buyer_interested.required' => 'Please indicate if the buyer is interested.',
-            'buyer_interested.boolean' => 'Invalid value for buyer interest.',
+            'buyer_interest_level.required' => 'Please select the buyer\'s interest level.',
+            'buyer_interest_level.in' => 'Invalid interest level selected.',
         ]);
 
         try {
@@ -314,8 +408,9 @@ class PVAController extends Controller
             $feedback = \App\Models\ViewingFeedback::updateOrCreate(
                 ['viewing_id' => $viewing->id],
                 [
-                    'buyer_interested' => $validated['buyer_interested'],
+                    'buyer_interest_level' => $validated['buyer_interest_level'],
                     'buyer_feedback' => $validated['buyer_feedback'] ?? null,
+                    'buyer_questions' => $validated['buyer_questions'] ?? null,
                     'property_condition' => $validated['property_condition'] ?? null,
                     'buyer_notes' => $validated['buyer_notes'] ?? null,
                     'pva_notes' => $validated['pva_notes'] ?? null,

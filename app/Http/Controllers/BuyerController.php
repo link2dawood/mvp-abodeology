@@ -512,7 +512,6 @@ class BuyerController extends Controller
                 'property_id' => $property->id,
                 'buyer_id' => $user->id,
                 'viewing_date' => $viewingDateTime,
-                'scheduled_at' => $viewingDateTime,
                 'status' => $viewingStatus,
             ]);
 
