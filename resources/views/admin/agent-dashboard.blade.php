@@ -341,6 +341,7 @@
                     <th>Property</th>
                     <th>Buyer</th>
                     <th>Date</th>
+                    <th>PVA</th>
                 </tr>
                 @forelse($viewings ?? [] as $viewing)
                     @if($viewing->viewing_date >= now())
@@ -348,14 +349,16 @@
                             <td>{{ Str::limit($viewing->property->address ?? 'N/A', 20) }}</td>
                             <td>{{ $viewing->buyer->name ?? 'N/A' }}</td>
                             <td>{{ $viewing->viewing_date ? $viewing->viewing_date->format('M d, Y') : 'N/A' }}</td>
+                            <td>{{ $viewing->pva->name ?? 'Unassigned' }}</td>
                         </tr>
                     @endif
                 @empty
                     <tr>
-                        <td colspan="3" style="text-align: center; color: #999;">No upcoming viewings</td>
+                        <td colspan="4" style="text-align: center; color: #999;">No upcoming viewings</td>
                     </tr>
                 @endforelse
             </table>
+            <a href="{{ route('admin.viewings.index') }}" class="btn btn-main">Manage & Assign Viewings</a>
         </div>
 
         <!-- SALES -->

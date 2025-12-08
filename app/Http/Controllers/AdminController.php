@@ -359,7 +359,7 @@ class AdminController extends Controller
 
         // Get viewings for agent's assigned properties
         $viewings = \App\Models\Viewing::whereIn('property_id', $agentPropertyIds)
-            ->with(['property', 'buyer'])
+            ->with(['property', 'buyer', 'pva'])
             ->orderBy('viewing_date', 'asc')
             ->limit(10)
             ->get();
@@ -2022,7 +2022,7 @@ class AdminController extends Controller
     }
 
     /**
-     * List all viewings for admin to assign (Admin only).
+     * List all viewings for admin/agent to assign.
      *
      * @return \Illuminate\Contracts\Support\Renderable
      */
@@ -2030,21 +2030,36 @@ class AdminController extends Controller
     {
         $user = auth()->user();
         
-        // Only admins can access this
-        if ($user->role !== 'admin') {
+        // Only admins and agents can access this
+        if (!in_array($user->role, ['admin', 'agent'])) {
             return redirect()->route($this->getRoleDashboard($user->role))
                 ->with('error', 'You do not have permission to access this page.');
         }
 
-        $viewings = Viewing::with(['buyer', 'property.seller', 'pva'])
-            ->orderBy('viewing_date', 'asc')
-            ->paginate(20);
+        // For agents, only show viewings for their assigned properties
+        if ($user->role === 'agent') {
+            $agentPropertyIds = $this->getAgentPropertyIds($user->id);
+            
+            if (empty($agentPropertyIds)) {
+                $viewings = collect([])->paginate(20);
+            } else {
+                $viewings = Viewing::whereIn('property_id', $agentPropertyIds)
+                    ->with(['buyer', 'property.seller', 'pva'])
+                    ->orderBy('viewing_date', 'asc')
+                    ->paginate(20);
+            }
+        } else {
+            // Admin sees all viewings
+            $viewings = Viewing::with(['buyer', 'property.seller', 'pva'])
+                ->orderBy('viewing_date', 'asc')
+                ->paginate(20);
+        }
 
         return view('admin.viewings.index', compact('viewings'));
     }
 
     /**
-     * Show form to assign a viewing to a PVA (Admin only).
+     * Show form to assign a viewing to a PVA (Admin or Agent).
      *
      * @param  int  $id
      * @return \Illuminate\Contracts\Support\Renderable
@@ -2053,13 +2068,23 @@ class AdminController extends Controller
     {
         $user = auth()->user();
         
-        // Only admins can access this
-        if ($user->role !== 'admin') {
+        // Only admins and agents can access this
+        if (!in_array($user->role, ['admin', 'agent'])) {
             return redirect()->route($this->getRoleDashboard($user->role))
                 ->with('error', 'You do not have permission to access this page.');
         }
 
         $viewing = Viewing::with(['buyer', 'property.seller', 'pva'])->findOrFail($id);
+        
+        // For agents, verify they have access to this viewing's property
+        if ($user->role === 'agent') {
+            $agentPropertyIds = $this->getAgentPropertyIds($user->id);
+            if (!in_array($viewing->property_id, $agentPropertyIds)) {
+                return redirect()->route('admin.viewings.index')
+                    ->with('error', 'You do not have permission to assign this viewing.');
+            }
+        }
+        
         $pvas = User::where('role', 'pva')
             ->orderBy('name', 'asc')
             ->get();
@@ -2068,7 +2093,7 @@ class AdminController extends Controller
     }
 
     /**
-     * Assign a viewing to a PVA (Admin only).
+     * Assign a viewing to a PVA (Admin or Agent).
      *
      * @param  \Illuminate\Http\Request  $request
      * @param  int  $id
@@ -2078,8 +2103,8 @@ class AdminController extends Controller
     {
         $user = auth()->user();
         
-        // Only admins can access this
-        if ($user->role !== 'admin') {
+        // Only admins and agents can access this
+        if (!in_array($user->role, ['admin', 'agent'])) {
             return redirect()->route($this->getRoleDashboard($user->role))
                 ->with('error', 'You do not have permission to perform this action.');
         }
@@ -2093,6 +2118,15 @@ class AdminController extends Controller
 
         try {
             $viewing = Viewing::with(['buyer', 'property.seller', 'pva'])->findOrFail($id);
+            
+            // For agents, verify they have access to this viewing's property
+            if ($user->role === 'agent') {
+                $agentPropertyIds = $this->getAgentPropertyIds($user->id);
+                if (!in_array($viewing->property_id, $agentPropertyIds)) {
+                    return redirect()->route('admin.viewings.index')
+                        ->with('error', 'You do not have permission to assign this viewing.');
+                }
+            }
             
             // Validate that the selected user is a PVA
             $pva = User::findOrFail($validated['pva_id']);

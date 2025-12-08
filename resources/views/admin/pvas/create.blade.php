@@ -21,7 +21,7 @@
         border: 1px solid var(--line-grey);
         box-shadow: 0px 3px 12px rgba(0,0,0,0.05);
         margin-bottom: 20px;
-        max-width: 600px;
+        max-width: 100%;
     }
 
     .form-group {
