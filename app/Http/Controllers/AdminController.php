@@ -1906,7 +1906,7 @@ class AdminController extends Controller
     }
 
     /**
-     * Show form to create a new PVA (Agent only).
+     * Show form to create a new PVA (Agent or Admin).
      *
      * @return \Illuminate\Contracts\Support\Renderable
      */
@@ -1914,17 +1914,22 @@ class AdminController extends Controller
     {
         $user = auth()->user();
         
-        // Only agents can access this
-        if ($user->role !== 'agent') {
+        // Only agents and admins can access this
+        if (!in_array($user->role, ['agent', 'admin'])) {
             return redirect()->route($this->getRoleDashboard($user->role))
                 ->with('error', 'You do not have permission to access this page.');
+        }
+
+        // Use different views based on role
+        if ($user->role === 'admin') {
+            return view('admin.pvas.create');
         }
 
         return view('admin.agent.pvas.create');
     }
 
     /**
-     * Store a new PVA (Agent only).
+     * Store a new PVA (Agent or Admin).
      *
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\RedirectResponse
@@ -1933,8 +1938,8 @@ class AdminController extends Controller
     {
         $user = auth()->user();
         
-        // Only agents can access this
-        if ($user->role !== 'agent') {
+        // Only agents and admins can access this
+        if (!in_array($user->role, ['agent', 'admin'])) {
             return redirect()->route($this->getRoleDashboard($user->role))
                 ->with('error', 'You do not have permission to perform this action.');
         }
@@ -1973,6 +1978,12 @@ class AdminController extends Controller
                 // Don't fail the creation if email fails
             }
 
+            // Redirect based on user role
+            if ($user->role === 'admin') {
+                return redirect()->route('admin.pvas.index')
+                    ->with('success', 'PVA created successfully. Login credentials have been sent to ' . $pva->email);
+            }
+            
             return redirect()->route('admin.agent.dashboard')
                 ->with('success', 'PVA created successfully. Login credentials have been sent to ' . $pva->email);
 

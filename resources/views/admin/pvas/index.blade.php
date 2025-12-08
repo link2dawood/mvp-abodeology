@@ -94,6 +94,9 @@
             <h2>Manage PVAs</h2>
             <p class="page-subtitle">View and manage Property Viewing Assistants</p>
         </div>
+        <div>
+            <a href="{{ route('admin.pvas.create') }}" class="btn btn-main">+ Add New PVA</a>
+        </div>
     </div>
 
     @if(session('success'))
