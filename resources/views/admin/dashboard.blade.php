@@ -652,6 +652,7 @@
                 @endforelse
             </table>
             <a href="{{ route('admin.pvas.index') }}" class="btn btn-main">Manage PVAs</a>
+            <a href="{{ route('admin.viewings.index') }}" class="btn btn-main" style="margin-left: 10px;">Assign Viewings</a>
         </div>
 
         <!-- SYSTEM ALERTS -->

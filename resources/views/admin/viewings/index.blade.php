@@ -139,9 +139,17 @@
                         <td>
                             <span class="status-badge status-{{ $viewing->status }}">{{ ucfirst($viewing->status) }}</span>
                         </td>
-                        <td>{{ $viewing->pva->name ?? 'Unassigned' }}</td>
                         <td>
-                            <a href="{{ route('admin.viewings.assign', $viewing->id) }}" class="btn btn-primary">Assign PVA</a>
+                            @if($viewing->pva)
+                                <span style="color: #155724; font-weight: 600;">{{ $viewing->pva->name }}</span>
+                            @else
+                                <span style="color: #856404; font-weight: 600;">⚠️ Unassigned</span>
+                            @endif
+                        </td>
+                        <td>
+                            <a href="{{ route('admin.viewings.assign', $viewing->id) }}" class="btn btn-primary">
+                                {{ $viewing->pva ? 'Reassign' : 'Assign' }} PVA
+                            </a>
                         </td>
                     </tr>
                 @empty
