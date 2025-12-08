@@ -33,11 +33,21 @@ Route::middleware(['auth', 'role.web:admin,agent'])->prefix('admin')->name('admi
     // Agent Dashboard (separate from admin)
     Route::prefix('agent')->name('agent.')->group(function () {
         Route::get('/dashboard', [App\Http\Controllers\AdminController::class, 'agentDashboard'])->name('dashboard');
+        
+        // PVA Management Routes (Agents can add PVAs)
+        Route::get('/pvas/create', [App\Http\Controllers\AdminController::class, 'createPva'])->name('pvas.create');
+        Route::post('/pvas', [App\Http\Controllers\AdminController::class, 'storePva'])->name('pvas.store');
     });
     
     // User Management Routes (Admin Only)
     Route::middleware(['role.web:admin'])->group(function () {
         Route::get('/users', [App\Http\Controllers\AdminController::class, 'users'])->name('users.index');
+        
+        // PVA Management Routes (Admin can manage and assign jobs)
+        Route::get('/pvas', [App\Http\Controllers\AdminController::class, 'managePvas'])->name('pvas.index');
+        Route::get('/viewings', [App\Http\Controllers\AdminController::class, 'viewings'])->name('viewings.index');
+        Route::get('/viewings/{id}/assign', [App\Http\Controllers\AdminController::class, 'showAssignViewing'])->name('viewings.assign');
+        Route::post('/viewings/{id}/assign', [App\Http\Controllers\AdminController::class, 'assignViewing'])->name('viewings.assign.store');
     });
     
     // Valuation Management Routes

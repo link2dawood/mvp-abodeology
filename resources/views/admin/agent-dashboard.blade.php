@@ -380,6 +380,13 @@
             </table>
         </div>
         @endif
+
+        <!-- PVA MANAGEMENT -->
+        <div class="card">
+            <h3>PVA Management</h3>
+            <p style="color: #666; margin-bottom: 15px;">Add and manage Property Viewing Assistants</p>
+            <a href="{{ route('admin.agent.pvas.create') }}" class="btn btn-main">Add New PVA</a>
+        </div>
     </div>
 </div>
 @endsection

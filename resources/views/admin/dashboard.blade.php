@@ -651,7 +651,7 @@
                     </tr>
                 @endforelse
             </table>
-            <a href="#" class="btn btn-main">Manage PVAs</a>
+            <a href="{{ route('admin.pvas.index') }}" class="btn btn-main">Manage PVAs</a>
         </div>
 
         <!-- SYSTEM ALERTS -->

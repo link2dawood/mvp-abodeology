@@ -10,6 +10,9 @@ use App\Models\PropertyMaterialInformation;
 use App\Models\Offer;
 use App\Models\User;
 use App\Models\AmlCheck;
+use App\Models\Viewing;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class AdminController extends Controller
 {
@@ -1896,6 +1899,245 @@ class AdminController extends Controller
             
             return redirect()->route('admin.properties.show', $offer->property_id)
                 ->with('error', 'Failed to release offer. Please try again.');
+        }
+    }
+
+    /**
+     * Show form to create a new PVA (Agent only).
+     *
+     * @return \Illuminate\Contracts\Support\Renderable
+     */
+    public function createPva()
+    {
+        $user = auth()->user();
+        
+        // Only agents can access this
+        if ($user->role !== 'agent') {
+            return redirect()->route($this->getRoleDashboard($user->role))
+                ->with('error', 'You do not have permission to access this page.');
+        }
+
+        return view('admin.agent.pvas.create');
+    }
+
+    /**
+     * Store a new PVA (Agent only).
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function storePva(Request $request)
+    {
+        $user = auth()->user();
+        
+        // Only agents can access this
+        if ($user->role !== 'agent') {
+            return redirect()->route($this->getRoleDashboard($user->role))
+                ->with('error', 'You do not have permission to perform this action.');
+        }
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
+            'phone' => ['required', 'string', 'max:20'],
+        ], [
+            'name.required' => 'Please provide the PVA name.',
+            'email.required' => 'Please provide the PVA email address.',
+            'email.email' => 'Please provide a valid email address.',
+            'email.unique' => 'This email is already registered.',
+            'phone.required' => 'Please provide the PVA phone number.',
+        ]);
+
+        try {
+            // Generate a secure random password
+            $password = Str::random(12);
+
+            // Create new PVA user
+            $pva = User::create([
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'phone' => $validated['phone'],
+                'password' => Hash::make($password),
+                'role' => 'pva',
+                'email_verified_at' => now(), // Auto-verify email
+            ]);
+
+            // Send login credentials email (optional - you may want to create a mail class for this)
+            try {
+                \Mail::to($pva->email)->send(new \App\Mail\PvaCreated($pva, $password));
+            } catch (\Exception $e) {
+                \Log::error('Failed to send PVA creation email: ' . $e->getMessage());
+                // Don't fail the creation if email fails
+            }
+
+            return redirect()->route('admin.agent.dashboard')
+                ->with('success', 'PVA created successfully. Login credentials have been sent to ' . $pva->email);
+
+        } catch (\Exception $e) {
+            \Log::error('Error creating PVA: ' . $e->getMessage());
+            
+            return back()
+                ->withInput()
+                ->with('error', 'Failed to create PVA. Please try again.');
+        }
+    }
+
+    /**
+     * Manage PVAs (Admin only).
+     *
+     * @return \Illuminate\Contracts\Support\Renderable
+     */
+    public function managePvas()
+    {
+        $user = auth()->user();
+        
+        // Only admins can access this
+        if ($user->role !== 'admin') {
+            return redirect()->route($this->getRoleDashboard($user->role))
+                ->with('error', 'You do not have permission to access this page.');
+        }
+
+        $pvas = User::where('role', 'pva')
+            ->withCount(['assignedViewings' => function($query) {
+                $query->where('status', '!=', 'cancelled');
+            }])
+            ->orderBy('created_at', 'desc')
+            ->paginate(20);
+
+        return view('admin.pvas.index', compact('pvas'));
+    }
+
+    /**
+     * List all viewings for admin to assign (Admin only).
+     *
+     * @return \Illuminate\Contracts\Support\Renderable
+     */
+    public function viewings()
+    {
+        $user = auth()->user();
+        
+        // Only admins can access this
+        if ($user->role !== 'admin') {
+            return redirect()->route($this->getRoleDashboard($user->role))
+                ->with('error', 'You do not have permission to access this page.');
+        }
+
+        $viewings = Viewing::with(['buyer', 'property.seller', 'pva'])
+            ->orderBy('viewing_date', 'asc')
+            ->paginate(20);
+
+        return view('admin.viewings.index', compact('viewings'));
+    }
+
+    /**
+     * Show form to assign a viewing to a PVA (Admin only).
+     *
+     * @param  int  $id
+     * @return \Illuminate\Contracts\Support\Renderable
+     */
+    public function showAssignViewing($id)
+    {
+        $user = auth()->user();
+        
+        // Only admins can access this
+        if ($user->role !== 'admin') {
+            return redirect()->route($this->getRoleDashboard($user->role))
+                ->with('error', 'You do not have permission to access this page.');
+        }
+
+        $viewing = Viewing::with(['buyer', 'property.seller', 'pva'])->findOrFail($id);
+        $pvas = User::where('role', 'pva')
+            ->orderBy('name', 'asc')
+            ->get();
+
+        return view('admin.viewings.assign', compact('viewing', 'pvas'));
+    }
+
+    /**
+     * Assign a viewing to a PVA (Admin only).
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  int  $id
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function assignViewing(Request $request, $id)
+    {
+        $user = auth()->user();
+        
+        // Only admins can access this
+        if ($user->role !== 'admin') {
+            return redirect()->route($this->getRoleDashboard($user->role))
+                ->with('error', 'You do not have permission to perform this action.');
+        }
+
+        $validated = $request->validate([
+            'pva_id' => ['required', 'exists:users,id'],
+        ], [
+            'pva_id.required' => 'Please select a PVA.',
+            'pva_id.exists' => 'The selected PVA is invalid.',
+        ]);
+
+        try {
+            $viewing = Viewing::with(['buyer', 'property.seller', 'pva'])->findOrFail($id);
+            
+            // Validate that the selected user is a PVA
+            $pva = User::findOrFail($validated['pva_id']);
+            if ($pva->role !== 'pva') {
+                return back()
+                    ->with('error', 'The selected user is not a PVA.');
+            }
+
+            // Update viewing assignment
+            $wasPending = $viewing->status === 'pending';
+            $viewing->update([
+                'pva_id' => $validated['pva_id'],
+                'status' => $viewing->status === 'pending' ? 'scheduled' : $viewing->status,
+            ]);
+
+            // Reload viewing with relationships
+            $viewing->refresh();
+            $viewing->load(['buyer', 'property.seller', 'pva']);
+
+            // Send confirmation emails if viewing was pending
+            if ($wasPending || $viewing->status === 'scheduled') {
+                try {
+                    // Notify buyer
+                    \Mail::to($viewing->buyer->email)->send(
+                        new \App\Mail\ViewingConfirmed($viewing, $viewing->property, $viewing->buyer, 'buyer')
+                    );
+                } catch (\Exception $e) {
+                    \Log::error('Failed to send viewing confirmation to buyer: ' . $e->getMessage());
+                }
+
+                try {
+                    // Notify seller
+                    if ($viewing->property->seller) {
+                        \Mail::to($viewing->property->seller->email)->send(
+                            new \App\Mail\ViewingConfirmed($viewing, $viewing->property, $viewing->property->seller, 'seller')
+                        );
+                    }
+                } catch (\Exception $e) {
+                    \Log::error('Failed to send viewing confirmation to seller: ' . $e->getMessage());
+                }
+
+                try {
+                    // Notify PVA
+                    \Mail::to($pva->email)->send(
+                        new \App\Mail\ViewingAssigned($viewing, $viewing->property, $pva)
+                    );
+                } catch (\Exception $e) {
+                    \Log::error('Failed to send viewing assignment notification to PVA: ' . $e->getMessage());
+                }
+            }
+
+            return redirect()->route('admin.viewings.index')
+                ->with('success', 'Viewing assigned to PVA successfully.');
+
+        } catch (\Exception $e) {
+            \Log::error('Error assigning viewing to PVA: ' . $e->getMessage());
+            
+            return back()
+                ->with('error', 'Failed to assign viewing. Please try again.');
         }
     }
 }
