@@ -177,12 +177,12 @@
         </div>
         @if($valuation->agent)
         <div class="info-row">
-            <div class="info-label">Assigned Agent:</div>
+            <div class="info-label">Assigned PVA:</div>
             <div class="info-value">{{ $valuation->agent->name }} ({{ $valuation->agent->email }})</div>
         </div>
         @else
         <div class="info-row">
-            <div class="info-label">Assigned Agent:</div>
+            <div class="info-label">Assigned PVA:</div>
             <div class="info-value" style="color: #999; font-style: italic;">Not assigned</div>
         </div>
         @endif
@@ -239,7 +239,7 @@
             </div>
             <div class="info-row">
                 <div class="info-label">
-                    <label for="agent_id">Assign Agent</label>
+                    <label for="agent_id">Assign PVA</label>
                 </div>
                 <div class="info-value">
                     <select
@@ -247,7 +247,7 @@
                         name="agent_id"
                         style="padding: 8px 10px; border-radius: 4px; border: 1px solid #D9D9D9; max-width: 300px;"
                     >
-                        <option value="">-- No Agent Assigned --</option>
+                        <option value="">-- No PVA Assigned --</option>
                         @foreach($agents as $agent)
                             <option value="{{ $agent->id }}" {{ $valuation->agent_id == $agent->id ? 'selected' : '' }}>
                                 {{ $agent->name }} ({{ $agent->email }})

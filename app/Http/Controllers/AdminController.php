@@ -515,8 +515,8 @@ class AdminController extends Controller
             }
         }
 
-        // Get all agents for the assignment dropdown
-        $agents = User::whereIn('role', ['admin', 'agent'])->orderBy('name')->get();
+        // Get all PVA users for the assignment dropdown
+        $agents = User::where('role', 'pva')->orderBy('name')->get();
 
         return view('admin.valuations.show', compact('valuation', 'agents'));
     }
@@ -545,6 +545,16 @@ class AdminController extends Controller
             'status' => ['required', 'in:pending,scheduled,completed'],
             'agent_id' => ['nullable', 'exists:users,id'],
         ]);
+
+        // Ensure agent_id (if provided) belongs to a PVA user
+        if (!empty($validated['agent_id'])) {
+            $assignedPva = User::find($validated['agent_id']);
+            if (!$assignedPva || $assignedPva->role !== 'pva') {
+                return redirect()
+                    ->route('admin.valuations.show', $valuation->id)
+                    ->with('error', 'Invalid PVA selected. Only PVA users can be assigned.');
+            }
+        }
 
         $valuation->valuation_date = $validated['valuation_date'];
         $valuation->valuation_time = $validated['valuation_time'] ?? null;
