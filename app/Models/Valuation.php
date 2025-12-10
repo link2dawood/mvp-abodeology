@@ -9,6 +9,7 @@ class Valuation extends Model
 {
     protected $fillable = [
         'seller_id',
+        'agent_id',
         'property_address',
         'postcode',
         'property_type',
@@ -41,5 +42,13 @@ class Valuation extends Model
     public function seller(): BelongsTo
     {
         return $this->belongsTo(User::class, 'seller_id');
+    }
+
+    /**
+     * Get the agent assigned to this valuation.
+     */
+    public function agent(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'agent_id');
     }
 }

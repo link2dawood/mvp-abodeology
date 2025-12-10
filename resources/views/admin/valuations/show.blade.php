@@ -175,6 +175,17 @@
             <div class="info-label">Request Date:</div>
             <div class="info-value">{{ $valuation->created_at->format('l, F j, Y g:i A') }}</div>
         </div>
+        @if($valuation->agent)
+        <div class="info-row">
+            <div class="info-label">Assigned Agent:</div>
+            <div class="info-value">{{ $valuation->agent->name }} ({{ $valuation->agent->email }})</div>
+        </div>
+        @else
+        <div class="info-row">
+            <div class="info-label">Assigned Agent:</div>
+            <div class="info-value" style="color: #999; font-style: italic;">Not assigned</div>
+        </div>
+        @endif
     </div>
 
     <div class="card">
@@ -223,6 +234,25 @@
                         <option value="pending" {{ $valuation->status === 'pending' ? 'selected' : '' }}>Pending</option>
                         <option value="scheduled" {{ $valuation->status === 'scheduled' ? 'selected' : '' }}>Scheduled</option>
                         <option value="completed" {{ $valuation->status === 'completed' ? 'selected' : '' }}>Completed</option>
+                    </select>
+                </div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">
+                    <label for="agent_id">Assign Agent</label>
+                </div>
+                <div class="info-value">
+                    <select
+                        id="agent_id"
+                        name="agent_id"
+                        style="padding: 8px 10px; border-radius: 4px; border: 1px solid #D9D9D9; max-width: 300px;"
+                    >
+                        <option value="">-- No Agent Assigned --</option>
+                        @foreach($agents as $agent)
+                            <option value="{{ $agent->id }}" {{ $valuation->agent_id == $agent->id ? 'selected' : '' }}>
+                                {{ $agent->name }} ({{ $agent->email }})
+                            </option>
+                        @endforeach
                     </select>
                 </div>
             </div>

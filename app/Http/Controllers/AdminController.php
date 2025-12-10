@@ -500,7 +500,7 @@ class AdminController extends Controller
                 ->with('error', 'You do not have permission to access this page.');
         }
 
-        $valuation = Valuation::with('seller')->findOrFail($id);
+        $valuation = Valuation::with(['seller', 'agent'])->findOrFail($id);
         
         // For agents, verify they have access to this valuation's property
         if ($user->role === 'agent') {
@@ -515,7 +515,10 @@ class AdminController extends Controller
             }
         }
 
-        return view('admin.valuations.show', compact('valuation'));
+        // Get all agents for the assignment dropdown
+        $agents = User::whereIn('role', ['admin', 'agent'])->orderBy('name')->get();
+
+        return view('admin.valuations.show', compact('valuation', 'agents'));
     }
 
     /**
@@ -540,11 +543,13 @@ class AdminController extends Controller
             'valuation_date' => ['required', 'date'],
             'valuation_time' => ['nullable', 'date_format:H:i'],
             'status' => ['required', 'in:pending,scheduled,completed'],
+            'agent_id' => ['nullable', 'exists:users,id'],
         ]);
 
         $valuation->valuation_date = $validated['valuation_date'];
         $valuation->valuation_time = $validated['valuation_time'] ?? null;
         $valuation->status = $validated['status'];
+        $valuation->agent_id = $validated['agent_id'] ?? null;
         $valuation->save();
 
         return redirect()

@@ -47,10 +47,6 @@ Route::middleware(['auth', 'role.web:admin,agent'])->prefix('admin')->name('admi
         Route::get('/pvas', [App\Http\Controllers\AdminController::class, 'managePvas'])->name('pvas.index');
         Route::get('/pvas/create', [App\Http\Controllers\AdminController::class, 'createPva'])->name('pvas.create');
         Route::post('/pvas', [App\Http\Controllers\AdminController::class, 'storePva'])->name('pvas.store');
-    });
-    
-    // Viewing Assignment Routes (Admin and Agent can assign viewings)
-    Route::middleware(['role.web:admin,agent'])->group(function () {
         Route::get('/viewings', [App\Http\Controllers\AdminController::class, 'viewings'])->name('viewings.index');
         Route::get('/viewings/{id}/assign', [App\Http\Controllers\AdminController::class, 'showAssignViewing'])->name('viewings.assign');
         Route::post('/viewings/{id}/assign', [App\Http\Controllers\AdminController::class, 'assignViewing'])->name('viewings.assign.store');
