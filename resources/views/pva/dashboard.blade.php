@@ -255,6 +255,36 @@
         @endforelse
     </div>
 
+    <!-- ASSIGNED VALUATIONS -->
+    @if(isset($assignedValuations) && $assignedValuations->count() > 0)
+        <div class="section">
+            <h2>Assigned Valuations</h2>
+            @foreach($assignedValuations as $valuation)
+                <div class="viewing-card">
+                    <div class="viewing-header">
+                        <span>{{ $valuation['property_address'] ?? 'N/A' }}</span>
+                        <span style="background: {{ $valuation['status'] === 'Completed' ? '#28a745' : ($valuation['status'] === 'Scheduled' ? '#32b3ac' : '#F4C542') }}; color: {{ $valuation['status'] === 'Completed' || $valuation['status'] === 'Scheduled' ? 'white' : 'black' }}; padding: 4px 12px; border-radius: 6px; font-size: 12px;">
+                            {{ $valuation['status'] ?? 'Pending' }}
+                        </span>
+                    </div>
+                    @if($valuation['postcode'])
+                        <div class="meta">Postcode: {{ $valuation['postcode'] }}</div>
+                    @endif
+                    <div class="meta">Valuation Date: {{ $valuation['valuation_date'] ?? 'N/A' }}</div>
+                    @if($valuation['valuation_time'] !== 'N/A')
+                        <div class="meta">Time: {{ $valuation['valuation_time'] }}</div>
+                    @endif
+                    <div class="meta">Seller: {{ $valuation['seller_name'] ?? 'N/A' }}</div>
+                    @if($valuation['seller_phone'])
+                        <div class="meta">Phone: {{ $valuation['seller_phone'] }}</div>
+                    @endif
+                    <div class="meta">Email: {{ $valuation['seller_email'] ?? 'N/A' }}</div>
+                    <a href="{{ route('pva.valuations.show', $valuation['id'] ?? '#') }}" class="btn btn-primary">View Valuation</a>
+                </div>
+            @endforeach
+        </div>
+    @endif
+
     <!-- UNASSIGNED VIEWINGS -->
     @if(isset($unassignedViewings) && $unassignedViewings->count() > 0)
         <div class="section">

@@ -495,12 +495,18 @@ class AdminController extends Controller
     {
         $user = auth()->user();
         
-        if (!in_array($user->role, ['admin', 'agent'])) {
-            return redirect()->route($this->getRoleDashboard($user->role))
-                ->with('error', 'You do not have permission to access this page.');
-        }
-
         $valuation = Valuation::with(['seller', 'agent'])->findOrFail($id);
+        
+        // Allow admin, agent, or assigned PVA to view
+        if (!in_array($user->role, ['admin', 'agent'])) {
+            // If user is PVA, check if they are assigned to this valuation
+            if ($user->role === 'pva' && $valuation->agent_id === $user->id) {
+                // PVA is assigned, allow access
+            } else {
+                return redirect()->route($this->getRoleDashboard($user->role))
+                    ->with('error', 'You do not have permission to access this page.');
+            }
+        }
         
         // For agents, verify they have access to this valuation's property
         if ($user->role === 'agent') {
@@ -515,8 +521,11 @@ class AdminController extends Controller
             }
         }
 
-        // Get all PVA users for the assignment dropdown
-        $agents = User::where('role', 'pva')->orderBy('name')->get();
+        // Get all PVA users for the assignment dropdown (only show for admin/agent)
+        $agents = null;
+        if (in_array($user->role, ['admin', 'agent'])) {
+            $agents = User::where('role', 'pva')->orderBy('name')->get();
+        }
 
         return view('admin.valuations.show', compact('valuation', 'agents'));
     }

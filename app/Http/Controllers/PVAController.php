@@ -133,7 +133,26 @@ class PVAController extends Controller
             ->limit(5)
             ->get();
         
-        // 5. STATISTICS
+        // 5. ASSIGNED VALUATIONS - Valuations assigned to this PVA
+        $assignedValuations = \App\Models\Valuation::where('agent_id', $user->id)
+            ->with(['seller'])
+            ->orderBy('valuation_date', 'asc')
+            ->get()
+            ->map(function($valuation) {
+                return [
+                    'id' => $valuation->id,
+                    'property_address' => $valuation->property_address,
+                    'postcode' => $valuation->postcode,
+                    'valuation_date' => $valuation->valuation_date ? $valuation->valuation_date->format('M j, Y') : 'N/A',
+                    'valuation_time' => $valuation->valuation_time ? \Carbon\Carbon::parse($valuation->valuation_time)->format('g:i A') : 'N/A',
+                    'status' => ucfirst($valuation->status ?? 'Pending'),
+                    'seller_name' => $valuation->seller->name ?? 'N/A',
+                    'seller_email' => $valuation->seller->email ?? 'N/A',
+                    'seller_phone' => $valuation->seller->phone ?? 'N/A',
+                ];
+            });
+        
+        // 6. STATISTICS
         $jobsCompletedCount = \App\Models\Viewing::where('pva_id', $user->id)
             ->where('status', 'completed')
             ->count();
@@ -146,6 +165,7 @@ class PVAController extends Controller
             'todaysTasks',
             'completedViewings',
             'unassignedViewings',
+            'assignedValuations',
             'pvaAreas',
             'jobsCompletedCount'
         ));

@@ -188,6 +188,7 @@
         @endif
     </div>
 
+    @if(in_array(auth()->user()->role, ['admin', 'agent']))
     <div class="card">
         <h3>Schedule Valuation (Admin/Agent)</h3>
         <form action="{{ route('admin.valuations.schedule', $valuation->id) }}" method="POST">
@@ -237,6 +238,7 @@
                     </select>
                 </div>
             </div>
+            @if($agents)
             <div class="info-row">
                 <div class="info-label">
                     <label for="agent_id">Assign PVA</label>
@@ -256,11 +258,13 @@
                     </select>
                 </div>
             </div>
+            @endif
             <div style="margin-top: 10px;">
                 <button type="submit" class="btn btn-main">Save Schedule</button>
             </div>
         </form>
     </div>
+    @endif
 
     <div class="card">
         <h3>Client Information</h3>

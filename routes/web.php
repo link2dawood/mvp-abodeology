@@ -150,6 +150,9 @@ Route::middleware(['auth', 'role.web:seller,both'])->prefix('seller')->name('sel
 Route::middleware(['auth', 'role.web:pva'])->prefix('pva')->name('pva.')->group(function () {
     Route::get('/dashboard', [App\Http\Controllers\PVAController::class, 'dashboard'])->name('dashboard');
     
+    // Valuation Routes (for assigned valuations)
+    Route::get('/valuations/{id}', [App\Http\Controllers\AdminController::class, 'showValuation'])->name('valuations.show');
+    
     // Viewing Management Routes
     Route::get('/viewings', [App\Http\Controllers\PVAController::class, 'viewings'])->name('viewings.index');
     Route::get('/viewings/{id}', [App\Http\Controllers\PVAController::class, 'showViewing'])->name('viewings.show');
