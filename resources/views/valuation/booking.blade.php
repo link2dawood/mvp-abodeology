@@ -67,6 +67,22 @@
             font-size: 15px;
             box-sizing: border-box;
             font-family: inherit;
+            line-height: 1.5;
+            height: auto;
+        }
+        select {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            background-size: 16px;
+            padding-right: 40px;
+            cursor: pointer;
+        }
+        select::-ms-expand {
+            display: none;
         }
         input:focus,
         select:focus,
@@ -237,21 +253,21 @@
             @enderror
 
             <div class="radio-group {{ $errors->has('role') ? 'error' : '' }}" style="{{ $errors->has('role') ? 'border: 1px solid #dc3545;' : '' }}">
-                <label style="font-weight:600; margin-bottom:10px; display: block;">I am a: *</label>
+                <label style="font-weight:600; margin-bottom:10px; display: block;">I am a homeowner looking to: *</label>
                 <label style="display: block; margin: 8px 0;">
                     <input type="radio" 
                            name="role" 
                            value="seller" 
                            {{ old('role', 'seller') == 'seller' ? 'checked' : '' }} 
                            required>
-                    Homeowner looking to sell
+                    Sell only
                 </label>
                 <label style="display: block; margin: 8px 0;">
                     <input type="radio" 
                            name="role" 
                            value="both" 
                            {{ old('role') == 'both' ? 'checked' : '' }}>
-                    Selling and also looking to buy
+                    Sell and looking for another property to buy.
                 </label>
             </div>
             @error('role')

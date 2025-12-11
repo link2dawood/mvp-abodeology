@@ -321,7 +321,7 @@
                 <div class="error-message">{{ $message }}</div>
             @enderror
 
-            <div class="grid-2">
+            <div id="leasehold-fields" class="grid-2" style="display: none;">
                 <div>
                     <label for="lease_years_remaining">Lease Years Remaining</label>
                     <input
@@ -646,5 +646,30 @@
         </div>
     </form>
 </div>
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const tenureSelect = document.getElementById('tenure');
+    const leaseholdFields = document.getElementById('leasehold-fields');
+    
+    function toggleLeaseholdFields() {
+        const selectedValue = tenureSelect.value;
+        // Show fields only for leasehold (hide for freehold, share_freehold, unknown, or empty)
+        if (selectedValue === 'leasehold') {
+            leaseholdFields.style.display = 'grid';
+        } else {
+            leaseholdFields.style.display = 'none';
+        }
+    }
+    
+    // Check on page load
+    toggleLeaseholdFields();
+    
+    // Check on change
+    tenureSelect.addEventListener('change', toggleLeaseholdFields);
+});
+</script>
+@endpush
 @endsection
 
