@@ -220,18 +220,36 @@ class ProfileController extends Controller
 
             // Delete old avatar if exists
             // Determine storage disk (S3 if configured, otherwise public)
-            $disk = config('filesystems.default') === 's3' ? 's3' : 'public';
+            $disk = $this->getStorageDisk();
             
-            if ($user->avatar && Storage::disk($disk)->exists('avatars/' . $user->avatar)) {
+            // Try to delete from both S3 and local storage (in case file exists in either)
+            if ($user->avatar) {
+                // Try S3 first if configured
+                if ($this->isS3Configured()) {
+                    try {
+                        if (Storage::disk('s3')->exists('avatars/' . $user->avatar)) {
+                            Storage::disk('s3')->delete('avatars/' . $user->avatar);
+                        }
+                    } catch (\Exception $e) {
+                        Log::warning('Failed to delete old avatar from S3', [
+                            'user_id' => $user->id,
+                            'avatar' => $user->avatar,
+                            'error' => $e->getMessage()
+                        ]);
+                    }
+                }
+                
+                // Also try local storage
                 try {
-                    Storage::disk($disk)->delete('avatars/' . $user->avatar);
+                    if (Storage::disk('public')->exists('avatars/' . $user->avatar)) {
+                        Storage::disk('public')->delete('avatars/' . $user->avatar);
+                    }
                 } catch (\Exception $e) {
-                    Log::warning('Failed to delete old avatar', [
+                    Log::warning('Failed to delete old avatar from local storage', [
                         'user_id' => $user->id,
                         'avatar' => $user->avatar,
                         'error' => $e->getMessage()
                     ]);
-                    // Continue even if old avatar deletion fails
                 }
             }
 
@@ -314,7 +332,7 @@ class ProfileController extends Controller
     private function processAndStoreImage($file, $filename)
     {
         // Determine storage disk (S3 if configured, otherwise public)
-        $disk = config('filesystems.default') === 's3' ? 's3' : 'public';
+        $disk = $this->getStorageDisk();
         
         try {
             // Process image with Intervention Image (v3 API)
@@ -458,11 +476,35 @@ class ProfileController extends Controller
     {
         $user = Auth::user();
 
-        // Determine storage disk (S3 if configured, otherwise public)
-        $disk = config('filesystems.default') === 's3' ? 's3' : 'public';
-        
-        if ($user->avatar && Storage::disk($disk)->exists('avatars/' . $user->avatar)) {
-            Storage::disk($disk)->delete('avatars/' . $user->avatar);
+        // Try to delete from both S3 and local storage (in case file exists in either)
+        if ($user->avatar) {
+            // Try S3 first if configured
+            if ($this->isS3Configured()) {
+                try {
+                    if (Storage::disk('s3')->exists('avatars/' . $user->avatar)) {
+                        Storage::disk('s3')->delete('avatars/' . $user->avatar);
+                    }
+                } catch (\Exception $e) {
+                    Log::warning('Failed to delete avatar from S3', [
+                        'user_id' => $user->id,
+                        'avatar' => $user->avatar,
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            }
+            
+            // Also try local storage
+            try {
+                if (Storage::disk('public')->exists('avatars/' . $user->avatar)) {
+                    Storage::disk('public')->delete('avatars/' . $user->avatar);
+                }
+            } catch (\Exception $e) {
+                Log::warning('Failed to delete avatar from local storage', [
+                    'user_id' => $user->id,
+                    'avatar' => $user->avatar,
+                    'error' => $e->getMessage()
+                ]);
+            }
         }
 
         $user->update([
@@ -470,5 +512,27 @@ class ProfileController extends Controller
         ]);
 
         return redirect()->route('profile.show')->with('success', 'Avatar removed successfully.');
+    }
+
+    /**
+     * Check if S3 is configured.
+     *
+     * @return bool
+     */
+    private function isS3Configured(): bool
+    {
+        return !empty(config('filesystems.disks.s3.key')) && 
+               !empty(config('filesystems.disks.s3.secret')) && 
+               !empty(config('filesystems.disks.s3.bucket'));
+    }
+
+    /**
+     * Get the storage disk to use (S3 if configured, otherwise public).
+     *
+     * @return string
+     */
+    private function getStorageDisk(): string
+    {
+        return $this->isS3Configured() ? 's3' : 'public';
     }
 }
