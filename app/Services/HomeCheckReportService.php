@@ -8,6 +8,7 @@ use App\Models\Property;
 use App\Models\PropertyDocument;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Http;
 use Carbon\Carbon;
 
 class HomeCheckReportService
@@ -100,13 +101,43 @@ class HomeCheckReportService
      */
     protected function generateAIAnalysis($homecheckData, Property $property): array
     {
-        // Simulate AI analysis results
-        // In production, this would:
-        // 1. Process images through AI model
-        // 2. Detect issues (moisture, damage, wear, etc.)
-        // 3. Rate condition (1-10)
-        // 4. Generate comments
+        $apiKey = config('services.openai.api_key');
+        $assistantId = config('services.openai.assistant_id');
 
+        // If OpenAI credentials are configured, try real AI analysis first
+        if (!empty($apiKey) && !empty($assistantId)) {
+            try {
+                $analysis = $this->generateAIAnalysisWithOpenAI($homecheckData, $property, $apiKey, $assistantId);
+
+                // Basic sanity check on structure before returning
+                if (is_array($analysis)
+                    && isset($analysis['overall_rating'], $analysis['summary'], $analysis['rooms'])) {
+                    return $analysis;
+                }
+
+                Log::warning('HomeCheck OpenAI analysis returned unexpected structure. Falling back to simulated analysis.', [
+                    'property_id' => $property->id,
+                ]);
+            } catch (\Throwable $e) {
+                Log::error('HomeCheck OpenAI analysis failed. Falling back to simulated analysis.', [
+                    'property_id' => $property->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        // Fallback: existing simulated analysis
+        return $this->generateFallbackAnalysis($homecheckData);
+    }
+
+    /**
+     * Fallback analysis when OpenAI is not configured or fails.
+     *
+     * @param \Illuminate\Support\Collection $homecheckData
+     * @return array
+     */
+    protected function generateFallbackAnalysis($homecheckData): array
+    {
         $analysis = [
             'overall_rating' => 8,
             'summary' => 'Property is in good condition with minor wear and tear typical for its age.',
@@ -131,6 +162,153 @@ class HomeCheckReportService
         $analysis['recommendations'] = $this->generateRecommendations($analysis);
 
         return $analysis;
+    }
+
+    /**
+     * Real AI analysis via OpenAI Assistants API using a pre-configured Assistant.
+     *
+     * @param \Illuminate\Support\Collection $homecheckData
+     * @param Property $property
+     * @param string $apiKey
+     * @param string $assistantId
+     * @return array
+     */
+    protected function generateAIAnalysisWithOpenAI($homecheckData, Property $property, string $apiKey, string $assistantId): array
+    {
+        // Build a compact JSON summary of the property and rooms to send to the assistant
+        $rooms = [];
+        $grouped = $homecheckData->groupBy('room_name');
+
+        foreach ($grouped as $roomName => $images) {
+            $rooms[$roomName] = [
+                'images_count' => $images->count(),
+                'images_360' => $images->where('is_360', true)->count(),
+                'images_regular' => $images->where('is_360', false)->count(),
+                'moisture_readings' => $images->pluck('moisture_reading')->filter()->values(),
+                'existing_ai_rating' => $images->first()->ai_rating ?? null,
+                'existing_ai_comments' => $images->first()->ai_comments ?? null,
+            ];
+        }
+
+        $payload = [
+            'property' => [
+                'id' => $property->id,
+                'address' => $property->address,
+                'postcode' => $property->postcode,
+                'property_type' => $property->property_type,
+                'bedrooms' => $property->bedrooms,
+                'tenure' => $property->tenure ?? null,
+            ],
+            'rooms' => $rooms,
+        ];
+
+        $prompt = "You are the Abodeology HomeCheck AI assistant. "
+            . "You will receive structured JSON data for a property and its rooms. "
+            . "For each room, analyse condition, moisture risk, and presentation quality based ONLY on the data provided. "
+            . "Respond with a single JSON object with this exact structure:\n\n"
+            . "{\n"
+            . "  \"overall_rating\": number (1-10),\n"
+            . "  \"summary\": string,\n"
+            . "  \"rooms\": {\n"
+            . "    \"Room Name\": {\n"
+            . "      \"rating\": number (1-10),\n"
+            . "      \"comments\": string,\n"
+            . "      \"moisture\": number|null,\n"
+            . "      \"issues\": [string, ...]\n"
+            . "    },\n"
+            . "    ...\n"
+            . "  },\n"
+            . "  \"recommendations\": [string, ...],\n"
+            . "  \"issues_found\": [string, ...]\n"
+            . "}\n\n"
+            . "JSON ONLY, no markdown or extra text.\n\n"
+            . "Here is the data to analyse:\n"
+            . json_encode($payload);
+
+        // 1) Create a thread with the user message
+        $threadResponse = Http::withToken($apiKey)
+            ->post('https://api.openai.com/v1/threads', [
+                'messages' => [
+                    [
+                        'role' => 'user',
+                        'content' => [
+                            [
+                                'type' => 'text',
+                                'text' => $prompt,
+                            ],
+                        ],
+                    ],
+                ],
+            ])
+            ->json();
+
+        if (empty($threadResponse['id'])) {
+            throw new \RuntimeException('Failed to create OpenAI thread for HomeCheck analysis.');
+        }
+
+        $threadId = $threadResponse['id'];
+
+        // 2) Run the assistant on the thread
+        $runResponse = Http::withToken($apiKey)
+            ->post("https://api.openai.com/v1/threads/{$threadId}/runs", [
+                'assistant_id' => $assistantId,
+            ])
+            ->json();
+
+        if (empty($runResponse['id'])) {
+            throw new \RuntimeException('Failed to start OpenAI assistant run for HomeCheck analysis.');
+        }
+
+        $runId = $runResponse['id'];
+
+        // 3) Poll until the run completes (simple, bounded loop)
+        $maxAttempts = 15;
+        $attempt = 0;
+        $status = $runResponse['status'] ?? 'queued';
+
+        while (in_array($status, ['queued', 'in_progress', 'cancelling'], true) && $attempt < $maxAttempts) {
+            sleep(2);
+
+            $runStatusResponse = Http::withToken($apiKey)
+                ->get("https://api.openai.com/v1/threads/{$threadId}/runs/{$runId}")
+                ->json();
+
+            $status = $runStatusResponse['status'] ?? $status;
+            $attempt++;
+        }
+
+        if ($status !== 'completed') {
+            throw new \RuntimeException('OpenAI assistant run did not complete successfully. Status: ' . $status);
+        }
+
+        // 4) Fetch the latest assistant message
+        $messagesResponse = Http::withToken($apiKey)
+            ->get("https://api.openai.com/v1/threads/{$threadId}/messages", [
+                'limit' => 10,
+            ])
+            ->json();
+
+        if (empty($messagesResponse['data'])) {
+            throw new \RuntimeException('No messages returned from OpenAI assistant for HomeCheck analysis.');
+        }
+
+        $assistantMessage = collect($messagesResponse['data'])
+            ->first(function ($message) {
+                return ($message['role'] ?? null) === 'assistant';
+            });
+
+        if (!$assistantMessage || empty($assistantMessage['content'][0]['text']['value'])) {
+            throw new \RuntimeException('Assistant message missing or malformed for HomeCheck analysis.');
+        }
+
+        $rawText = $assistantMessage['content'][0]['text']['value'];
+        $decoded = json_decode($rawText, true);
+
+        if (json_last_error() !== JSON_ERROR_NONE || !is_array($decoded)) {
+            throw new \RuntimeException('Failed to decode OpenAI assistant JSON response for HomeCheck analysis.');
+        }
+
+        return $decoded;
     }
 
     /**

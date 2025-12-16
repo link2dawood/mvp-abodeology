@@ -353,7 +353,6 @@
                 </div>
             @elseif($property->status === 'live')
                 <a href="{{ route('buyer.viewing.request', $property->id) }}" class="btn">View Live Listing</a>
-                <a href="{{ route('seller.homecheck.upload', $property->id) }}" class="btn">Manage HomeCheck</a>
             @endif
             <a href="{{ route('seller.properties.index') }}" class="btn" style="background: #2CB8B4;">Back to Properties</a>
         </div>

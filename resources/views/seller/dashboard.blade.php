@@ -382,20 +382,21 @@
                                 @endif
                             </td>
                             <td>
-                                @if($report->status === 'completed')
-                                    <a href="{{ route('seller.homecheck.report', $report->property_id) }}" target="_blank" class="btn" style="padding: 6px 12px; font-size: 13px;">View Report</a>
+                                @if($report->status === 'completed' && $report->homecheckData && $report->homecheckData->count() > 0)
+                                    <a href="{{ route('seller.homecheck.report', $report->property_id) }}" target="_blank" class="btn" style="padding: 6px 12px; font-size: 13px;">
+                                        View Report
+                                    </a>
                                 @else
-                                    <a href="{{ route('seller.homecheck.upload', $report->property_id) }}" class="btn" style="padding: 6px 12px; font-size: 13px;">Continue</a>
+                                    <span style="font-size: 13px; color: #666;">HomeCheck will be completed by your Abodeology consultant during the property visit.</span>
                                 @endif
                             </td>
                         </tr>
                     @endforeach
                 </table>
         @else
-            <p style="text-align: center; color: #999; padding: 20px;">No HomeCheck reports yet</p>
-            @if(isset($property) && $property && $property->status !== 'draft')
-                <a href="{{ route('seller.homecheck.upload', $property->id) }}" class="btn">Start HomeCheck</a>
-            @endif
+            <p style="text-align: center; color: #999; padding: 20px;">
+                No HomeCheck reports yet. Your Abodeology team will schedule and complete a HomeCheck during your on-site visit.
+            </p>
         @endif
     </div>
 

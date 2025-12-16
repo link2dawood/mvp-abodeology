@@ -135,9 +135,9 @@ Route::middleware(['auth', 'role.web:seller,both'])->prefix('seller')->name('sel
     Route::put('/offer/{id}/decision', [App\Http\Controllers\SellerController::class, 'handleOfferDecision'])->name('offer.decision.update');
     Route::get('/offer/{id}/decision/success', [App\Http\Controllers\SellerController::class, 'showOfferDecisionSuccess'])->name('offer.decision.success');
     Route::post('/offer/discuss', [App\Http\Controllers\SellerController::class, 'discussWithAgent'])->name('offer.discuss');
-    Route::get('/property/{id}/homecheck', [App\Http\Controllers\SellerController::class, 'showRoomUpload'])->name('homecheck.upload');
+    
+    // HomeCheck report is view-only for sellers. Upload is performed by Abodeology during on-site visit.
     Route::get('/property/{id}/homecheck-report', [App\Http\Controllers\SellerController::class, 'showHomecheckReport'])->name('homecheck.report');
-    Route::post('/property/{id}/homecheck', [App\Http\Controllers\SellerController::class, 'storeRoomUpload'])->name('homecheck.store');
     
     // AML Documents & Solicitor Details Routes
     Route::get('/property/{id}/aml-upload', [App\Http\Controllers\SellerController::class, 'showAmlUpload'])->name('aml.upload');
