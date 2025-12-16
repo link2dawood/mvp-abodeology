@@ -228,35 +228,62 @@ class User extends Authenticatable implements MustVerifyEmail, JWTSubject
     public function getAvatarUrlAttribute(): string
     {
         if ($this->avatar) {
-            // Determine storage disk (S3 if configured, otherwise public)
-            $disk = config('filesystems.default') === 's3' ? 's3' : 'public';
+            // First, check if S3 is configured and file exists there
+            $s3Configured = !empty(config('filesystems.disks.s3.key')) && 
+                           !empty(config('filesystems.disks.s3.secret')) && 
+                           !empty(config('filesystems.disks.s3.bucket'));
             
-            if ($disk === 's3') {
-                // For S3, use temporary signed URL (valid for 1 hour) to avoid permission issues
-                // This works even if bucket is private
+            if ($s3Configured) {
                 try {
-                    // Generate signed URL using Laravel's Storage facade
-                    $signedUrl = \Storage::disk('s3')->temporaryUrl(
-                        'avatars/' . $this->avatar,
-                        now()->addHour()
-                    );
-                    return $signedUrl;
+                    // Check if file exists in S3
+                    if (\Storage::disk('s3')->exists('avatars/' . $this->avatar)) {
+                        // For S3, use temporary signed URL (valid for 1 hour) to avoid permission issues
+                        // This works even if bucket is private
+                        try {
+                            $signedUrl = \Storage::disk('s3')->temporaryUrl(
+                                'avatars/' . $this->avatar,
+                                now()->addHour()
+                            );
+                            return $signedUrl;
+                        } catch (\Exception $e) {
+                            // Fallback to regular URL if signed URL generation fails
+                            \Log::warning('Failed to generate S3 signed URL for avatar', [
+                                'avatar' => $this->avatar,
+                                'error' => $e->getMessage()
+                            ]);
+                            // Try to get public URL from S3
+                            try {
+                                return \Storage::disk('s3')->url('avatars/' . $this->avatar);
+                            } catch (\Exception $e2) {
+                                \Log::warning('Failed to get S3 URL for avatar', [
+                                    'avatar' => $this->avatar,
+                                    'error' => $e2->getMessage()
+                                ]);
+                            }
+                        }
+                    }
                 } catch (\Exception $e) {
-                    // Fallback to regular URL if signed URL generation fails
-                    \Log::warning('Failed to generate S3 signed URL for avatar', [
+                    \Log::warning('Error checking S3 for avatar', [
                         'avatar' => $this->avatar,
                         'error' => $e->getMessage()
                     ]);
-                    return \Storage::disk('s3')->url('avatars/' . $this->avatar);
                 }
-            } else {
-                // For local storage, check if file exists
+            }
+            
+            // Fallback to local storage if S3 not configured or file not found in S3
+            try {
                 if (\Storage::disk('public')->exists('avatars/' . $this->avatar)) {
                     return asset('storage/avatars/' . $this->avatar);
                 }
+            } catch (\Exception $e) {
+                \Log::warning('Error checking local storage for avatar', [
+                    'avatar' => $this->avatar,
+                    'error' => $e->getMessage()
+                ]);
             }
         }
         
+        // Fallback to generated avatar if no file found
         return 'https://ui-avatars.com/api/?name=' . urlencode($this->name) . '&background=206bc4&color=fff&size=128';
     }
 }
