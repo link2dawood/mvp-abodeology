@@ -87,6 +87,57 @@
         opacity: 1;
     }
 
+    /* COLLAPSIBLE SECTION */
+    .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: pointer;
+        padding: 15px;
+        margin: -15px -15px 20px -15px;
+        border-radius: 6px;
+        transition: background 0.2s ease;
+        background: transparent;
+    }
+
+    .section-header:hover {
+        background: rgba(44, 184, 180, 0.05);
+    }
+
+    .section-header h2 {
+        margin: 0;
+        flex: 1;
+    }
+
+    .section-toggle-icon {
+        font-size: 20px;
+        color: var(--abodeology-teal);
+        transition: transform 0.3s ease;
+        min-width: 28px;
+        text-align: center;
+    }
+
+    .collapsible-section.collapsed .section-toggle-icon {
+        transform: rotate(-90deg);
+    }
+
+    .section-content {
+        transition: max-height 0.3s ease, opacity 0.3s ease;
+        overflow: hidden;
+    }
+
+    .collapsible-section.collapsed .section-content {
+        max-height: 0;
+        opacity: 0;
+        margin: 0;
+        padding: 0;
+    }
+
+    .collapsible-section:not(.collapsed) .section-content {
+        max-height: 10000px;
+        opacity: 1;
+    }
+
     /* KPI BOXES */
     .kpi-box {
         background: var(--white);
@@ -297,42 +348,62 @@
     <p class="page-subtitle">Complete visibility and control across the entire Abodeology platform.</p>
 
     <!-- KPIs -->
-    <div class="grid">
-        <div class="kpi-box" style="background: linear-gradient(135deg, #E8F4F3 0%, #F4F4F4 100%);">
-            <div class="kpi-number">{{ $stats['total_valuations'] ?? 0 }}</div>
-            <div class="kpi-label">Total Valuations</div>
+    <div class="card collapsible-section">
+        <div class="section-header" onclick="toggleSection(this)">
+            <h2 style="margin: 0;">Key Metrics</h2>
+            <span class="section-toggle-icon">▼</span>
         </div>
-        <div class="kpi-box" style="background: linear-gradient(135deg, #fff3cd 0%, #F4F4F4 100%);">
-            <div class="kpi-number">{{ $stats['pending_valuations'] ?? 0 }}</div>
-            <div class="kpi-label">Pending Requests</div>
-        </div>
-        <div class="kpi-box" style="background: linear-gradient(135deg, #E8F4F3 0%, #F4F4F4 100%);">
-            <div class="kpi-number">{{ $stats['active_listings'] ?? 0 }}</div>
-            <div class="kpi-label">Live Listings</div>
-        </div>
-        <div class="kpi-box" style="background: linear-gradient(135deg, #fff3cd 0%, #F4F4F4 100%);">
-            <div class="kpi-number">{{ $stats['offers_received'] ?? 0 }}</div>
-            <div class="kpi-label">Offers Pending</div>
-        </div>
-        <div class="kpi-box" style="background: linear-gradient(135deg, #E8F4F3 0%, #F4F4F4 100%);">
-            <div class="kpi-number">{{ $stats['sales_in_progress'] ?? 0 }}</div>
-            <div class="kpi-label">Sales Progressing</div>
-        </div>
-        <div class="kpi-box" style="background: linear-gradient(135deg, #E8F4F3 0%, #F4F4F4 100%);">
-            <div class="kpi-number">{{ $stats['pvas_active'] ?? 0 }}</div>
-            <div class="kpi-label">Active PVAs</div>
+        <div class="section-content">
+            <div class="grid">
+                <div class="kpi-box" style="background: linear-gradient(135deg, #E8F4F3 0%, #F4F4F4 100%);">
+                    <div class="kpi-number">{{ $stats['total_valuations'] ?? 0 }}</div>
+                    <div class="kpi-label">Total Valuations</div>
+                </div>
+                <div class="kpi-box" style="background: linear-gradient(135deg, #fff3cd 0%, #F4F4F4 100%);">
+                    <div class="kpi-number">{{ $stats['pending_valuations'] ?? 0 }}</div>
+                    <div class="kpi-label">Pending Requests</div>
+                </div>
+                <div class="kpi-box" style="background: linear-gradient(135deg, #E8F4F3 0%, #F4F4F4 100%);">
+                    <div class="kpi-number">{{ $stats['active_listings'] ?? 0 }}</div>
+                    <div class="kpi-label">Live Listings</div>
+                </div>
+                <div class="kpi-box" style="background: linear-gradient(135deg, #fff3cd 0%, #F4F4F4 100%);">
+                    <div class="kpi-number">{{ $stats['offers_received'] ?? 0 }}</div>
+                    <div class="kpi-label">Offers Pending</div>
+                </div>
+                <div class="kpi-box" style="background: linear-gradient(135deg, #E8F4F3 0%, #F4F4F4 100%);">
+                    <div class="kpi-number">{{ $stats['sales_in_progress'] ?? 0 }}</div>
+                    <div class="kpi-label">Sales Progressing</div>
+                </div>
+                <div class="kpi-box" style="background: linear-gradient(135deg, #E8F4F3 0%, #F4F4F4 100%);">
+                    <div class="kpi-number">{{ $stats['pvas_active'] ?? 0 }}</div>
+                    <div class="kpi-label">Active PVAs</div>
+                </div>
+            </div>
         </div>
     </div>
 
     <br><br>
 
     <!-- CRITICAL ACTIONS SECTION -->
-    <h2 style="margin-top: 40px;">Critical Actions Requiring Attention</h2>
-    <div style="margin-bottom: 15px;">
-        <button type="button" onclick="expandAllCards()" class="btn btn-main" style="margin-right: 10px;">Expand All</button>
-        <button type="button" onclick="collapseAllCards()" class="btn btn-secondary" style="background: #6c757d; color: white;">Collapse All</button>
-    </div>
-    <div class="grid">
+    @php
+        $hasCriticalActions = (isset($amlPending) && $amlPending->count() > 0) || 
+                             (isset($offersPendingResponse) && $offersPendingResponse->count() > 0) || 
+                             (isset($homecheckPending) && $homecheckPending->count() > 0);
+    @endphp
+    
+    @if($hasCriticalActions)
+    <div class="card collapsible-section">
+        <div class="section-header" onclick="toggleSection(this)">
+            <h2 style="margin: 0;">Critical Actions Requiring Attention</h2>
+            <span class="section-toggle-icon">▼</span>
+        </div>
+        <div class="section-content">
+            <div style="margin-bottom: 15px;">
+                <button type="button" onclick="expandAllCards()" class="btn btn-main" style="margin-right: 10px;">Expand All Cards</button>
+                <button type="button" onclick="collapseAllCards()" class="btn btn-secondary" style="background: #6c757d; color: white;">Collapse All Cards</button>
+            </div>
+            <div class="grid">
         <!-- AML PENDING -->
         @if(isset($amlPending) && $amlPending->count() > 0)
             <div class="card">
@@ -466,7 +537,10 @@
                 </div>
             </div>
         @endif
+            </div>
+        </div>
     </div>
+    @endif
 
     <!-- MAIN DATA GRID -->
     <h2 style="margin-top: 40px;">Overview</h2>
@@ -796,10 +870,19 @@ function toggleCard(header) {
     card.classList.toggle('collapsed');
 }
 
+function toggleSection(header) {
+    const section = header.closest('.collapsible-section');
+    section.classList.toggle('collapsed');
+}
+
 function expandAllCards() {
     const cards = document.querySelectorAll('.card');
     cards.forEach(card => {
         card.classList.remove('collapsed');
+    });
+    const sections = document.querySelectorAll('.collapsible-section');
+    sections.forEach(section => {
+        section.classList.remove('collapsed');
     });
 }
 
@@ -807,6 +890,10 @@ function collapseAllCards() {
     const cards = document.querySelectorAll('.card');
     cards.forEach(card => {
         card.classList.add('collapsed');
+    });
+    const sections = document.querySelectorAll('.collapsible-section');
+    sections.forEach(section => {
+        section.classList.add('collapsed');
     });
 }
 </script>
