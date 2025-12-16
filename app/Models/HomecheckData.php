@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Storage;
 
 class HomecheckData extends Model
 {
@@ -65,26 +66,26 @@ class HomecheckData extends Model
         if ($s3Configured) {
             try {
                 // Check if file exists in S3
-                if (\Storage::disk('s3')->exists($this->image_path)) {
+                if (Storage::disk('s3')->exists($this->image_path)) {
                     // For S3, use temporary signed URL (valid for 1 hour) to avoid permission issues
                     // This works even if bucket is private
                     try {
-                        $signedUrl = \Storage::disk('s3')->temporaryUrl(
+                        $signedUrl = Storage::disk('s3')->temporaryUrl(
                             $this->image_path,
                             now()->addHour()
                         );
                         return $signedUrl;
                     } catch (\Exception $e) {
                         // Fallback to regular URL if signed URL generation fails
-                        \Log::warning('Failed to generate S3 signed URL for homecheck image', [
+                        \Illuminate\Support\Facades\Log::warning('Failed to generate S3 signed URL for homecheck image', [
                             'image_path' => $this->image_path,
                             'error' => $e->getMessage()
                         ]);
                         // Try to get public URL from S3
                         try {
-                            return \Storage::disk('s3')->url($this->image_path);
+                            return Storage::disk('s3')->url($this->image_path);
                         } catch (\Exception $e2) {
-                            \Log::warning('Failed to get S3 URL for homecheck image', [
+                            \Illuminate\Support\Facades\Log::warning('Failed to get S3 URL for homecheck image', [
                                 'image_path' => $this->image_path,
                                 'error' => $e2->getMessage()
                             ]);
@@ -92,7 +93,7 @@ class HomecheckData extends Model
                     }
                 }
             } catch (\Exception $e) {
-                \Log::warning('Error checking S3 for homecheck image', [
+                \Illuminate\Support\Facades\Log::warning('Error checking S3 for homecheck image', [
                     'image_path' => $this->image_path,
                     'error' => $e->getMessage()
                 ]);
@@ -101,11 +102,11 @@ class HomecheckData extends Model
         
         // Fallback to local storage if S3 not configured or file not found in S3
         try {
-            if (\Storage::disk('public')->exists($this->image_path)) {
+            if (Storage::disk('public')->exists($this->image_path)) {
                 return asset('storage/' . $this->image_path);
             }
         } catch (\Exception $e) {
-            \Log::warning('Error checking local storage for homecheck image', [
+            \Illuminate\Support\Facades\Log::warning('Error checking local storage for homecheck image', [
                 'image_path' => $this->image_path,
                 'error' => $e->getMessage()
             ]);
