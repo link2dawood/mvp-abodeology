@@ -2212,4 +2212,64 @@ class AdminController extends Controller
                 ->with('error', 'Failed to assign viewing. Please try again.');
         }
     }
+
+    /**
+     * Show notifications page.
+     *
+     * @return \Illuminate\Contracts\Support\Renderable
+     */
+    public function notifications()
+    {
+        $user = auth()->user();
+        
+        // Role check
+        if (!in_array($user->role, ['admin', 'agent'])) {
+            return redirect()->route($this->getRoleDashboard($user->role))
+                ->with('error', 'You do not have permission to access this page.');
+        }
+
+        // Build notifications array
+        $notifications = [];
+        
+        // Get recent offers
+        $recentOffers = \App\Models\Offer::with(['property', 'buyer'])
+            ->where('created_at', '>=', now()->subDays(30))
+            ->orderBy('created_at', 'desc')
+            ->limit(20)
+            ->get();
+
+        foreach ($recentOffers as $offer) {
+            $notifications[] = [
+                'type' => 'info',
+                'icon' => 'ℹ',
+                'message' => "New offer of £" . number_format($offer->offer_amount, 2) . " on " . ($offer->property->address ?? 'property') . " from " . ($offer->buyer->name ?? 'buyer'),
+                'date' => $offer->created_at,
+                'link' => route('admin.properties.show', $offer->property_id),
+            ];
+        }
+
+        // Get recent viewing requests
+        $recentViewings = \App\Models\Viewing::with(['property', 'buyer'])
+            ->where('created_at', '>=', now()->subDays(30))
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get();
+
+        foreach ($recentViewings as $viewing) {
+            $notifications[] = [
+                'type' => 'info',
+                'icon' => 'ℹ',
+                'message' => "New viewing request for " . ($viewing->property->address ?? 'property') . " from " . ($viewing->buyer->name ?? 'buyer'),
+                'date' => $viewing->created_at,
+                'link' => route('admin.viewings.index'),
+            ];
+        }
+
+        // Sort notifications by date (newest first)
+        usort($notifications, function($a, $b) {
+            return $b['date'] <=> $a['date'];
+        });
+
+        return view('admin.notifications', compact('notifications'));
+    }
 }

@@ -211,6 +211,7 @@
             <a href="{{ route('admin.properties.index') }}">Properties</a>
             <a href="{{ route('admin.aml-checks.index') }}">AML Checks</a>
             <a href="{{ route('profile.show') }}">Profile</a>
+            <a href="{{ route('admin.notifications') }}">Notifications</a>
             @if(auth()->user()->role === 'admin')
                 <a href="#">Settings</a>
             @endif

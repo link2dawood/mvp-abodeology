@@ -348,10 +348,13 @@
 
         <!-- NOTIFICATIONS -->
         <div class="card">
-            <h3>Recent Activity</h3>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="margin: 0;">Notifications</h3>
+                <a href="{{ route('buyer.notifications') }}" style="color: #2CB8B4; text-decoration: none; font-size: 14px;">View All →</a>
+            </div>
             @if(isset($notifications) && count($notifications) > 0)
-                <ul>
-                    @foreach($notifications as $notification)
+                <ul style="list-style: none; padding: 0; margin: 0;">
+                    @foreach(array_slice($notifications, 0, 5) as $notification)
                         <li style="margin-bottom: 12px; padding: 10px; background: #F9F9F9; border-radius: 6px;">
                             <div style="font-size: 13px; color: #666; margin-bottom: 4px;">
                                 @if(isset($notification['date']))
@@ -372,7 +375,7 @@
                     @endforeach
                 </ul>
             @else
-                <p style="text-align: center; color: #999; padding: 20px;">No recent activity</p>
+                <p style="text-align: center; color: #999; padding: 20px;">No notifications</p>
             @endif
         </div>
 

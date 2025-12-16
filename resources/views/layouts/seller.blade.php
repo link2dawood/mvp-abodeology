@@ -207,7 +207,7 @@
             <a href="{{ route('seller.dashboard') }}">Dashboard</a>
             <a href="{{ route('seller.properties.index') }}">Properties</a>
             <a href="{{ route('profile.show') }}">Profile</a>
-            <a href="#">Notifications</a>
+            <a href="{{ route('seller.notifications') }}">Notifications</a>
             <form action="{{ route('logout') }}" method="POST" style="display: inline; margin-left: 28px;">
                 @csrf
                 <a href="#" onclick="event.preventDefault(); this.closest('form').submit();" style="margin-left: 0;">Logout</a>

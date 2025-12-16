@@ -1442,4 +1442,50 @@ class SellerController extends Controller
 
         return $dashboards[$role] ?? 'home';
     }
+
+    /**
+     * Show notifications page.
+     *
+     * @return \Illuminate\Contracts\Support\Renderable
+     */
+    public function notifications()
+    {
+        $user = auth()->user();
+        
+        // Role check
+        if (!in_array($user->role, ['seller', 'both'])) {
+            return redirect()->route($this->getRoleDashboard($user->role))
+                ->with('error', 'You do not have permission to access this page.');
+        }
+
+        // Get seller properties with offers
+        $properties = \App\Models\Property::where('seller_id', $user->id)
+            ->with(['offers.latestDecision'])
+            ->get();
+
+        // Build notifications array
+        $notifications = [];
+        
+        // Add notifications for new offers
+        foreach ($properties as $property) {
+            foreach ($property->offers as $offer) {
+                if ($offer->created_at->isAfter(now()->subDays(30))) {
+                    $notifications[] = [
+                        'type' => 'info',
+                        'icon' => 'ℹ',
+                        'message' => "New offer of £" . number_format($offer->offer_amount, 2) . " received on " . $property->address,
+                        'date' => $offer->created_at,
+                        'link' => route('seller.properties.show', $property->id),
+                    ];
+                }
+            }
+        }
+
+        // Sort notifications by date (newest first)
+        usort($notifications, function($a, $b) {
+            return $b['date'] <=> $a['date'];
+        });
+
+        return view('seller.notifications', compact('notifications'));
+    }
 }

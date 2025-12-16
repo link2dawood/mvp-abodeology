@@ -192,6 +192,7 @@
             <a href="{{ route('pva.dashboard') ?? route('home') }}">Dashboard</a>
             <a href="{{ route('pva.viewings.index') }}">My Viewings</a>
             <a href="{{ route('profile.show') }}">Profile</a>
+            <a href="{{ route('pva.notifications') }}">Notifications</a>
             <form action="{{ route('logout') }}" method="POST" style="display: inline; margin-left: 25px;">
                 @csrf
                 <a href="#" onclick="event.preventDefault(); this.closest('form').submit();" style="margin-left: 0;">Logout</a>

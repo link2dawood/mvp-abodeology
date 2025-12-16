@@ -481,4 +481,49 @@ class PVAController extends Controller
 
         return $dashboards[$role] ?? 'home';
     }
+
+    /**
+     * Show notifications page.
+     *
+     * @return \Illuminate\Contracts\Support\Renderable
+     */
+    public function notifications()
+    {
+        $user = auth()->user();
+        
+        // Role check
+        if ($user->role !== 'pva') {
+            return redirect()->route($this->getRoleDashboard($user->role))
+                ->with('error', 'You do not have permission to access this page.');
+        }
+
+        // Get assigned viewings
+        $viewings = \App\Models\Viewing::where('pva_id', $user->id)
+            ->with(['property', 'buyer'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // Build notifications array
+        $notifications = [];
+        
+        // Add notifications for new viewing assignments
+        foreach ($viewings as $viewing) {
+            if ($viewing->created_at->isAfter(now()->subDays(30))) {
+                $notifications[] = [
+                    'type' => 'info',
+                    'icon' => 'ℹ',
+                    'message' => "New viewing assigned: " . ($viewing->property->address ?? 'property') . " on " . ($viewing->viewing_date ? $viewing->viewing_date->format('M j, Y') : 'TBD'),
+                    'date' => $viewing->created_at,
+                    'link' => route('pva.viewings.show', $viewing->id),
+                ];
+            }
+        }
+
+        // Sort notifications by date (newest first)
+        usort($notifications, function($a, $b) {
+            return $b['date'] <=> $a['date'];
+        });
+
+        return view('pva.notifications', compact('notifications'));
+    }
 }

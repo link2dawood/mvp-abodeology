@@ -815,4 +815,67 @@ class BuyerController extends Controller
 
         return view('buyer.offer-confirmation', compact('offer'));
     }
+
+    /**
+     * Show notifications page.
+     *
+     * @return \Illuminate\Contracts\Support\Renderable
+     */
+    public function notifications()
+    {
+        $user = auth()->user();
+        
+        // Role check
+        if (!in_array($user->role, ['buyer', 'both'])) {
+            return redirect()->route($this->getRoleDashboard($user->role))
+                ->with('error', 'You do not have permission to access this page.');
+        }
+
+        // Get all buyer offers with decisions
+        $buyerOffers = \App\Models\Offer::where('buyer_id', $user->id)
+            ->with(['property', 'latestDecision'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // Build notifications array
+        $notifications = [];
+        
+        // Add notifications for offer decisions
+        foreach ($buyerOffers as $offer) {
+            if ($offer->latestDecision) {
+                if ($offer->latestDecision->decision === 'accepted') {
+                    $notifications[] = [
+                        'type' => 'success',
+                        'icon' => '✓',
+                        'message' => "Your offer of £" . number_format($offer->offer_amount, 2) . " on " . ($offer->property->address ?? 'property') . " has been accepted!",
+                        'date' => $offer->latestDecision->decided_at,
+                        'link' => route('buyer.dashboard'),
+                    ];
+                } elseif ($offer->latestDecision->decision === 'declined') {
+                    $notifications[] = [
+                        'type' => 'info',
+                        'icon' => 'ℹ',
+                        'message' => "Your offer on " . ($offer->property->address ?? 'property') . " was declined.",
+                        'date' => $offer->latestDecision->decided_at,
+                        'link' => route('buyer.dashboard'),
+                    ];
+                } elseif ($offer->latestDecision->decision === 'counter') {
+                    $notifications[] = [
+                        'type' => 'warning',
+                        'icon' => '⚠',
+                        'message' => "The seller has made a counter-offer of £" . number_format($offer->latestDecision->counter_amount ?? 0, 2) . " on " . ($offer->property->address ?? 'property') . ".",
+                        'date' => $offer->latestDecision->decided_at,
+                        'link' => route('buyer.dashboard'),
+                    ];
+                }
+            }
+        }
+
+        // Sort notifications by date (newest first)
+        usort($notifications, function($a, $b) {
+            return $b['date'] <=> $a['date'];
+        });
+
+        return view('buyer.notifications', compact('notifications'));
+    }
 }

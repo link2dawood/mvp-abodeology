@@ -43,6 +43,7 @@
         border-radius: 8px;
         padding: 20px;
         margin-bottom: 20px;
+        transition: all 0.3s ease;
     }
 
     .room-header {
@@ -50,6 +51,50 @@
         justify-content: space-between;
         align-items: center;
         margin-bottom: 15px;
+        cursor: pointer;
+        padding: 10px;
+        margin: -10px -10px 15px -10px;
+        border-radius: 6px;
+        transition: background 0.2s ease;
+    }
+
+    .room-header:hover {
+        background: rgba(44, 184, 180, 0.1);
+    }
+
+    .room-header-content {
+        display: flex;
+        align-items: center;
+        flex: 1;
+        gap: 10px;
+    }
+
+    .room-toggle-icon {
+        font-size: 18px;
+        color: var(--abodeology-teal);
+        transition: transform 0.3s ease;
+        min-width: 20px;
+    }
+
+    .room-block.collapsed .room-toggle-icon {
+        transform: rotate(-90deg);
+    }
+
+    .room-content {
+        transition: max-height 0.3s ease, opacity 0.3s ease;
+        overflow: hidden;
+    }
+
+    .room-block.collapsed .room-content {
+        max-height: 0;
+        opacity: 0;
+        margin: 0;
+        padding: 0;
+    }
+
+    .room-block:not(.collapsed) .room-content {
+        max-height: 5000px;
+        opacity: 1;
     }
 
     .room-name-input {
@@ -305,8 +350,12 @@
             <!-- Rooms will be added dynamically via JavaScript -->
         </div>
 
-        <!-- Add Room Button -->
-        <button type="button" class="add-room-btn" id="addRoomBtn">+ Add Room</button>
+        <!-- Room Controls -->
+        <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+            <button type="button" class="add-room-btn" id="addRoomBtn">+ Add Room</button>
+            <button type="button" class="btn btn-secondary" id="expandAllBtn" style="background: #6c757d; color: white;">Expand All</button>
+            <button type="button" class="btn btn-secondary" id="collapseAllBtn" style="background: #6c757d; color: white;">Collapse All</button>
+        </div>
 
         <!-- Notes Section -->
         <div class="card">
@@ -348,15 +397,21 @@ function addRoomBlock() {
     roomBlock.setAttribute('data-room-id', roomId);
     
     roomBlock.innerHTML = `
-        <div class="room-header">
-            <input type="text" 
-                   name="rooms[${roomIndex}][name]" 
-                   class="room-name-input" 
-                   placeholder="Room Name (e.g., Living Room, Kitchen, Bedroom 1)" 
-                   required>
-            <button type="button" class="remove-room-btn" onclick="removeRoom(this)">✕ Remove Room</button>
+        <div class="room-header" onclick="toggleRoomCollapse('${roomId}')">
+            <div class="room-header-content">
+                <span class="room-toggle-icon">▼</span>
+                <input type="text" 
+                       name="rooms[${roomIndex}][name]" 
+                       class="room-name-input" 
+                       placeholder="Room Name (e.g., Living Room, Kitchen, Bedroom 1)" 
+                       required
+                       onclick="event.stopPropagation();"
+                       style="flex: 1;">
+            </div>
+            <button type="button" class="remove-room-btn" onclick="event.stopPropagation(); removeRoom(this)">✕ Remove Room</button>
         </div>
         
+        <div class="room-content">
         <div class="image-type-toggle">
             <button type="button" class="image-type-btn active" data-room="${roomId}" data-type="photo" onclick="setImageType('${roomId}', 'photo')">
                 📷 Regular Photo
@@ -405,6 +460,7 @@ function addRoomBlock() {
         </div>
         
         <div class="error-message" id="error_${roomId}" style="display: none;"></div>
+        </div>
     `;
     
     document.getElementById('roomsContainer').appendChild(roomBlock);
@@ -615,6 +671,30 @@ document.getElementById('homecheckForm').addEventListener('submit', function(e) 
         e.preventDefault();
         return false;
     }
+});
+
+// Toggle Room Collapse
+function toggleRoomCollapse(roomId) {
+    const roomBlock = document.querySelector(`[data-room-id="${roomId}"]`);
+    if (roomBlock) {
+        roomBlock.classList.toggle('collapsed');
+    }
+}
+
+// Expand All Rooms
+document.getElementById('expandAllBtn').addEventListener('click', function() {
+    const roomBlocks = document.querySelectorAll('.room-block');
+    roomBlocks.forEach(block => {
+        block.classList.remove('collapsed');
+    });
+});
+
+// Collapse All Rooms
+document.getElementById('collapseAllBtn').addEventListener('click', function() {
+    const roomBlocks = document.querySelectorAll('.room-block');
+    roomBlocks.forEach(block => {
+        block.classList.add('collapsed');
+    });
 });
 
 // Add first room on page load

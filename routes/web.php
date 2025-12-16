@@ -29,6 +29,7 @@ Route::prefix('valuation')->name('valuation.')->group(function () {
 // Admin Routes
 Route::middleware(['auth', 'role.web:admin,agent'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [App\Http\Controllers\AdminController::class, 'dashboard'])->name('dashboard');
+    Route::get('/notifications', [App\Http\Controllers\AdminController::class, 'notifications'])->name('notifications');
     
     // Agent Dashboard (separate from admin)
     Route::prefix('agent')->name('agent.')->group(function () {
@@ -102,6 +103,7 @@ Route::middleware(['auth', 'role.web:both'])->prefix('combined')->name('combined
 // Buyer Routes
 Route::middleware(['auth', 'role.web:buyer,both'])->prefix('buyer')->name('buyer.')->group(function () {
     Route::get('/dashboard', [App\Http\Controllers\BuyerController::class, 'dashboard'])->name('dashboard');
+    Route::get('/notifications', [App\Http\Controllers\BuyerController::class, 'notifications'])->name('notifications');
     Route::get('/profile', [App\Http\Controllers\BuyerController::class, 'profile'])->name('profile');
     Route::put('/profile', [App\Http\Controllers\BuyerController::class, 'updateProfile'])->name('profile.update');
     Route::get('/property/{id}/offer', [App\Http\Controllers\BuyerController::class, 'makeOffer'])->name('make-offer');
@@ -120,6 +122,7 @@ Route::middleware(['auth', 'role.web:buyer,both'])->prefix('buyer')->name('buyer
 // Seller Routes
 Route::middleware(['auth', 'role.web:seller,both'])->prefix('seller')->name('seller.')->group(function () {
     Route::get('/dashboard', [App\Http\Controllers\SellerController::class, 'dashboard'])->name('dashboard');
+    Route::get('/notifications', [App\Http\Controllers\SellerController::class, 'notifications'])->name('notifications');
     
     // Property Management Routes (sellers can only view, not create - creation is done by agents)
     Route::get('/properties', [App\Http\Controllers\SellerController::class, 'index'])->name('properties.index');
@@ -149,6 +152,7 @@ Route::middleware(['auth', 'role.web:seller,both'])->prefix('seller')->name('sel
 // PVA Routes
 Route::middleware(['auth', 'role.web:pva'])->prefix('pva')->name('pva.')->group(function () {
     Route::get('/dashboard', [App\Http\Controllers\PVAController::class, 'dashboard'])->name('dashboard');
+    Route::get('/notifications', [App\Http\Controllers\PVAController::class, 'notifications'])->name('notifications');
     
     // Valuation Routes (for assigned valuations)
     Route::get('/valuations/{id}', [App\Http\Controllers\AdminController::class, 'showValuation'])->name('valuations.show');
