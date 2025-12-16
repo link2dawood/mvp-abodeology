@@ -37,6 +37,56 @@
         font-size: 20px;
     }
 
+    /* COLLAPSIBLE CARD */
+    .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: pointer;
+        padding: 10px;
+        margin: -10px -10px 15px -10px;
+        border-radius: 6px;
+        transition: background 0.2s ease;
+    }
+
+    .card-header:hover {
+        background: rgba(44, 184, 180, 0.1);
+    }
+
+    .card-header h3 {
+        margin: 0;
+        flex: 1;
+    }
+
+    .card-toggle-icon {
+        font-size: 18px;
+        color: var(--abodeology-teal);
+        transition: transform 0.3s ease;
+        min-width: 24px;
+        text-align: center;
+    }
+
+    .card.collapsed .card-toggle-icon {
+        transform: rotate(-90deg);
+    }
+
+    .card-content {
+        transition: max-height 0.3s ease, opacity 0.3s ease;
+        overflow: hidden;
+    }
+
+    .card.collapsed .card-content {
+        max-height: 0;
+        opacity: 0;
+        margin: 0;
+        padding: 0;
+    }
+
+    .card:not(.collapsed) .card-content {
+        max-height: 5000px;
+        opacity: 1;
+    }
+
     /* KPI BOXES */
     .kpi-box {
         background: var(--white);
@@ -278,11 +328,19 @@
 
     <!-- CRITICAL ACTIONS SECTION -->
     <h2 style="margin-top: 40px;">Critical Actions Requiring Attention</h2>
+    <div style="margin-bottom: 15px;">
+        <button type="button" onclick="expandAllCards()" class="btn btn-main" style="margin-right: 10px;">Expand All</button>
+        <button type="button" onclick="collapseAllCards()" class="btn btn-secondary" style="background: #6c757d; color: white;">Collapse All</button>
+    </div>
     <div class="grid">
         <!-- AML PENDING -->
         @if(isset($amlPending) && $amlPending->count() > 0)
             <div class="card">
-                <h3 style="color: #856404; margin-top: 0;">AML Pending Verification</h3>
+                <div class="card-header" onclick="toggleCard(this)">
+                    <h3 style="color: #856404; margin: 0;">AML Pending Verification</h3>
+                    <span class="card-toggle-icon">▼</span>
+                </div>
+                <div class="card-content">
                 <div style="margin-bottom: 15px; padding: 12px; background: #fff3cd; border-radius: 6px;">
                     <strong style="color: #856404;">{{ $amlPending->count() }} AML check(s) pending</strong>
                 </div>
@@ -313,13 +371,18 @@
                     @endforeach
                 </table>
                 <a href="{{ route('admin.aml-checks.index') }}" class="btn btn-main">View All AML Checks</a>
+                </div>
             </div>
         @endif
 
         <!-- OFFERS PENDING SELLER RESPONSE -->
         @if(isset($offersPendingResponse) && $offersPendingResponse->count() > 0)
             <div class="card">
-                <h3 style="color: #856404; margin-top: 0;">Offers Pending Seller Response</h3>
+                <div class="card-header" onclick="toggleCard(this)">
+                    <h3 style="color: #856404; margin: 0;">Offers Pending Seller Response</h3>
+                    <span class="card-toggle-icon">▼</span>
+                </div>
+                <div class="card-content">
                 <div style="margin-bottom: 15px; padding: 12px; background: #fff3cd; border-radius: 6px;">
                     <strong style="color: #856404;">{{ $offersPendingResponse->count() }} offer(s) awaiting seller response</strong>
                 </div>
@@ -358,13 +421,18 @@
                     @endforeach
                 </table>
                 <a href="{{ route('admin.properties.index') }}" class="btn btn-main">View All Offers</a>
+                </div>
             </div>
         @endif
 
         <!-- HOMECHECK PENDING -->
         @if(isset($homecheckPending) && $homecheckPending->count() > 0)
             <div class="card">
-                <h3 style="color: #856404; margin-top: 0;">HomeCheck Pending</h3>
+                <div class="card-header" onclick="toggleCard(this)">
+                    <h3 style="color: #856404; margin: 0;">HomeCheck Pending</h3>
+                    <span class="card-toggle-icon">▼</span>
+                </div>
+                <div class="card-content">
                 <div style="margin-bottom: 15px; padding: 12px; background: #fff3cd; border-radius: 6px;">
                     <strong style="color: #856404;">{{ $homecheckPending->count() }} HomeCheck(s) pending completion</strong>
                 </div>
@@ -395,6 +463,7 @@
                     @endforeach
                 </table>
                 <a href="{{ route('admin.properties.index') }}" class="btn btn-main">View All Properties</a>
+                </div>
             </div>
         @endif
     </div>
@@ -405,7 +474,11 @@
         <!-- TODAY'S APPOINTMENTS -->
         @if(isset($todaysAppointments) && $todaysAppointments->count() > 0)
         <div class="card">
-            <h3>Today's Appointments</h3>
+            <div class="card-header" onclick="toggleCard(this)">
+                <h3 style="margin: 0;">Today's Appointments</h3>
+                <span class="card-toggle-icon">▼</span>
+            </div>
+            <div class="card-content">
             <table class="table">
                 <tr>
                     <th>Time</th>
@@ -430,12 +503,17 @@
                     </tr>
                 @endforeach
             </table>
+            </div>
         </div>
         @endif
 
         <!-- NEW VALUATIONS -->
         <div class="card">
-            <h3>Recent Valuation Requests</h3>
+            <div class="card-header" onclick="toggleCard(this)">
+                <h3 style="margin: 0;">Recent Valuation Requests</h3>
+                <span class="card-toggle-icon">▼</span>
+            </div>
+            <div class="card-content">
             <table class="table">
                 <tr>
                     <th>Seller</th>
@@ -461,11 +539,16 @@
                 @endforelse
             </table>
             <a href="{{ route('admin.valuations.index') }}" class="btn btn-main">View All Valuations</a>
+            </div>
         </div>
 
         <!-- LIVE PROPERTIES -->
         <div class="card">
-            <h3>Live Properties</h3>
+            <div class="card-header" onclick="toggleCard(this)">
+                <h3 style="margin: 0;">Live Properties</h3>
+                <span class="card-toggle-icon">▼</span>
+            </div>
+            <div class="card-content">
             <table class="table">
                 <tr>
                     <th>Address</th>
@@ -502,11 +585,16 @@
                 @endforelse
             </table>
             <a href="{{ route('admin.properties.index', ['status' => 'live']) }}" class="btn btn-main">View All Live Properties</a>
+            </div>
         </div>
 
         <!-- PROPERTIES -->
         <div class="card">
-            <h3>All Properties</h3>
+            <div class="card-header" onclick="toggleCard(this)">
+                <h3 style="margin: 0;">All Properties</h3>
+                <span class="card-toggle-icon">▼</span>
+            </div>
+            <div class="card-content">
             <table class="table">
                 <tr>
                     <th>Address</th>
@@ -536,11 +624,16 @@
                 @endforelse
             </table>
             <a href="{{ route('admin.properties.index') }}" class="btn btn-main">View All Properties</a>
+            </div>
         </div>
 
         <!-- NEW SELLERS -->
         <div class="card">
-            <h3>New Seller Onboardings</h3>
+            <div class="card-header" onclick="toggleCard(this)">
+                <h3 style="margin: 0;">New Seller Onboardings</h3>
+                <span class="card-toggle-icon">▼</span>
+            </div>
+            <div class="card-content">
             <table class="table">
                 <tr>
                     <th>Seller</th>
@@ -558,11 +651,16 @@
                 @endforelse
             </table>
             <a href="#" class="btn btn-main">Manage Sellers</a>
+            </div>
         </div>
 
         <!-- BUYERS -->
         <div class="card">
-            <h3>New Buyer Registrations</h3>
+            <div class="card-header" onclick="toggleCard(this)">
+                <h3 style="margin: 0;">New Buyer Registrations</h3>
+                <span class="card-toggle-icon">▼</span>
+            </div>
+            <div class="card-content">
             <table class="table">
                 <tr>
                     <th>Name</th>
@@ -584,11 +682,16 @@
                 @endforelse
             </table>
             <a href="#" class="btn btn-main">View Buyers</a>
+            </div>
         </div>
 
         <!-- OFFERS -->
         <div class="card">
-            <h3>Offers Received</h3>
+            <div class="card-header" onclick="toggleCard(this)">
+                <h3 style="margin: 0;">Offers Received</h3>
+                <span class="card-toggle-icon">▼</span>
+            </div>
+            <div class="card-content">
             <table class="table">
                 <tr>
                     <th>Property</th>
@@ -608,11 +711,16 @@
                 @endforelse
             </table>
             <a href="#" class="btn btn-main">Review Offers</a>
+            </div>
         </div>
 
         <!-- SALES PROGRESSION -->
         <div class="card">
-            <h3>Sales Progression Overview</h3>
+            <div class="card-header" onclick="toggleCard(this)">
+                <h3 style="margin: 0;">Sales Progression Overview</h3>
+                <span class="card-toggle-icon">▼</span>
+            </div>
+            <div class="card-content">
             <table class="table">
                 <tr>
                     <th>Property</th>
@@ -630,11 +738,16 @@
                 @endforelse
             </table>
             <a href="#" class="btn btn-dark">Open Sales Pipeline</a>
+            </div>
         </div>
 
         <!-- PVA ACTIVITY -->
         <div class="card">
-            <h3>PVA Activity</h3>
+            <div class="card-header" onclick="toggleCard(this)">
+                <h3 style="margin: 0;">PVA Activity</h3>
+                <span class="card-toggle-icon">▼</span>
+            </div>
+            <div class="card-content">
             <table class="table">
                 <tr>
                     <th>PVA</th>
@@ -653,11 +766,16 @@
             </table>
             <a href="{{ route('admin.pvas.index') }}" class="btn btn-main">Manage PVAs</a>
             <a href="{{ route('admin.viewings.index') }}" class="btn btn-main" style="margin-left: 10px;">Assign Viewings</a>
+            </div>
         </div>
 
         <!-- SYSTEM ALERTS -->
         <div class="card">
-            <h3>System Alerts</h3>
+            <div class="card-header" onclick="toggleCard(this)">
+                <h3 style="margin: 0;">System Alerts</h3>
+                <span class="card-toggle-icon">▼</span>
+            </div>
+            <div class="card-content">
             <ul>
                 @forelse($alerts ?? [] as $alert)
                     <li>{{ $alert }}</li>
@@ -666,7 +784,31 @@
                 @endforelse
             </ul>
             <a href="#" class="btn btn-danger">View All Alerts</a>
+            </div>
         </div>
     </div>
 </div>
+
+@push('scripts')
+<script>
+function toggleCard(header) {
+    const card = header.closest('.card');
+    card.classList.toggle('collapsed');
+}
+
+function expandAllCards() {
+    const cards = document.querySelectorAll('.card');
+    cards.forEach(card => {
+        card.classList.remove('collapsed');
+    });
+}
+
+function collapseAllCards() {
+    const cards = document.querySelectorAll('.card');
+    cards.forEach(card => {
+        card.classList.add('collapsed');
+    });
+}
+</script>
+@endpush
 @endsection
