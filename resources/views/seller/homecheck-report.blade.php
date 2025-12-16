@@ -265,29 +265,9 @@
             $roomId = strtolower(str_replace([' ', '-'], '', $roomName));
             $firstImage = $roomImages->first();
             
-            // Get image URL with proper disk handling
-            $imageUrl = null;
+            // Get image URL using the model accessor
             $placeholderUrl = asset('media/placeholder-room.jpg');
-            
-            if ($firstImage && $firstImage->image_path) {
-                $disk = config('filesystems.default') === 's3' ? 's3' : 'public';
-                
-                // Check if file exists
-                if (\Storage::disk($disk)->exists($firstImage->image_path)) {
-                    if ($disk === 's3') {
-                        // For S3, use temporary URL (valid for 1 hour)
-                        try {
-                            $imageUrl = \Storage::disk('s3')->temporaryUrl($firstImage->image_path, now()->addHour());
-                        } catch (\Exception $e) {
-                            \Log::warning('S3 URL generation failed: ' . $e->getMessage());
-                            $imageUrl = \Storage::disk('s3')->url($firstImage->image_path);
-                        }
-                    } else {
-                        // For local storage
-                        $imageUrl = asset('storage/' . $firstImage->image_path);
-                    }
-                }
-            }
+            $imageUrl = $firstImage ? $firstImage->image_url : null;
             
             // Use placeholder if no valid image URL
             if (!$imageUrl) {

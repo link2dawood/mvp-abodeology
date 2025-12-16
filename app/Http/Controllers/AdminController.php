@@ -1231,7 +1231,7 @@ class AdminController extends Controller
                     : null;
                 
                 // Determine storage disk (S3 if configured, otherwise public)
-                $disk = config('filesystems.default') === 's3' ? 's3' : 'public';
+                $disk = $this->getStorageDisk();
                 
                 // Process each image with optimization
                 $imageOptimizer = new \App\Services\ImageOptimizationService();
@@ -2271,5 +2271,27 @@ class AdminController extends Controller
         });
 
         return view('admin.notifications', compact('notifications'));
+    }
+
+    /**
+     * Check if S3 is configured.
+     *
+     * @return bool
+     */
+    private function isS3Configured(): bool
+    {
+        return !empty(config('filesystems.disks.s3.key')) && 
+               !empty(config('filesystems.disks.s3.secret')) && 
+               !empty(config('filesystems.disks.s3.bucket'));
+    }
+
+    /**
+     * Get the storage disk to use (S3 if configured, otherwise public).
+     *
+     * @return string
+     */
+    private function getStorageDisk(): string
+    {
+        return $this->isS3Configured() ? 's3' : 'public';
     }
 }

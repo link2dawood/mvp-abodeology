@@ -47,4 +47,70 @@ class HomecheckData extends Model
     {
         return $this->belongsTo(HomecheckReport::class);
     }
+
+    /**
+     * Get the image URL for this homecheck data.
+     */
+    public function getImageUrlAttribute(): ?string
+    {
+        if (!$this->image_path) {
+            return null;
+        }
+
+        // First, check if S3 is configured and file exists there
+        $s3Configured = !empty(config('filesystems.disks.s3.key')) && 
+                       !empty(config('filesystems.disks.s3.secret')) && 
+                       !empty(config('filesystems.disks.s3.bucket'));
+        
+        if ($s3Configured) {
+            try {
+                // Check if file exists in S3
+                if (\Storage::disk('s3')->exists($this->image_path)) {
+                    // For S3, use temporary signed URL (valid for 1 hour) to avoid permission issues
+                    // This works even if bucket is private
+                    try {
+                        $signedUrl = \Storage::disk('s3')->temporaryUrl(
+                            $this->image_path,
+                            now()->addHour()
+                        );
+                        return $signedUrl;
+                    } catch (\Exception $e) {
+                        // Fallback to regular URL if signed URL generation fails
+                        \Log::warning('Failed to generate S3 signed URL for homecheck image', [
+                            'image_path' => $this->image_path,
+                            'error' => $e->getMessage()
+                        ]);
+                        // Try to get public URL from S3
+                        try {
+                            return \Storage::disk('s3')->url($this->image_path);
+                        } catch (\Exception $e2) {
+                            \Log::warning('Failed to get S3 URL for homecheck image', [
+                                'image_path' => $this->image_path,
+                                'error' => $e2->getMessage()
+                            ]);
+                        }
+                    }
+                }
+            } catch (\Exception $e) {
+                \Log::warning('Error checking S3 for homecheck image', [
+                    'image_path' => $this->image_path,
+                    'error' => $e->getMessage()
+                ]);
+            }
+        }
+        
+        // Fallback to local storage if S3 not configured or file not found in S3
+        try {
+            if (\Storage::disk('public')->exists($this->image_path)) {
+                return asset('storage/' . $this->image_path);
+            }
+        } catch (\Exception $e) {
+            \Log::warning('Error checking local storage for homecheck image', [
+                'image_path' => $this->image_path,
+                'error' => $e->getMessage()
+            ]);
+        }
+        
+        return null;
+    }
 }

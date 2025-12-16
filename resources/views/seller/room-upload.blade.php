@@ -235,9 +235,10 @@
                     <strong style="color: #1E1E1E;">{{ $roomName }}</strong> ({{ $roomImages->count() }} image{{ $roomImages->count() !== 1 ? 's' : '' }})
                     <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;">
                         @foreach($roomImages as $image)
-                            <img src="{{ \Storage::url($image->image_path) }}" 
+                            <img src="{{ $image->image_url ?? asset('media/placeholder-room.jpg') }}" 
                                  alt="{{ $roomName }}" 
-                                 style="width: 100px; height: 100px; object-fit: cover; border: 1px solid #ddd; border-radius: 4px;">
+                                 style="width: 100px; height: 100px; object-fit: cover; border: 1px solid #ddd; border-radius: 4px;"
+                                 onerror="this.src='{{ asset('media/placeholder-room.jpg') }}'">
                         @endforeach
                     </div>
                 </div>
