@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Schema;
 use App\Models\Valuation;
 use App\Models\Property;
 use App\Models\PropertyMaterialInformation;
@@ -106,32 +107,44 @@ class AdminController extends Controller
         
         $property = Property::findOrFail($propertyId);
         
-        // Update direct assignment (primary agent)
-        if ($isPrimary) {
-            $property->update(['assigned_agent_id' => $agentId]);
+        // Update direct assignment (primary agent) - only if column exists
+        if ($isPrimary && Schema::hasColumn('properties', 'assigned_agent_id')) {
+            try {
+                $property->update(['assigned_agent_id' => $agentId]);
+            } catch (\Exception $e) {
+                \Log::warning('Failed to update assigned_agent_id: ' . $e->getMessage());
+                // Continue even if this fails
+            }
         }
         
-        // Add to pivot table (supports multiple agents)
-        \DB::table('property_agents')->updateOrInsert(
-            [
-                'property_id' => $propertyId,
-                'agent_id' => $agentId,
-            ],
-            [
-                'assigned_by' => $assignedBy,
-                'assigned_at' => now(),
-                'is_primary' => $isPrimary,
-                'notes' => $notes,
-                'updated_at' => now(),
-            ]
-        );
-        
-        // If this is set as primary, unset other primary agents for this property
-        if ($isPrimary) {
-            \DB::table('property_agents')
-                ->where('property_id', $propertyId)
-                ->where('agent_id', '!=', $agentId)
-                ->update(['is_primary' => false]);
+        // Add to pivot table (supports multiple agents) - only if table exists
+        if (Schema::hasTable('property_agents')) {
+            try {
+                \DB::table('property_agents')->updateOrInsert(
+                    [
+                        'property_id' => $propertyId,
+                        'agent_id' => $agentId,
+                    ],
+                    [
+                        'assigned_by' => $assignedBy,
+                        'assigned_at' => now(),
+                        'is_primary' => $isPrimary,
+                        'notes' => $notes,
+                        'updated_at' => now(),
+                    ]
+                );
+                
+                // If this is set as primary, unset other primary agents for this property
+                if ($isPrimary) {
+                    \DB::table('property_agents')
+                        ->where('property_id', $propertyId)
+                        ->where('agent_id', '!=', $agentId)
+                        ->update(['is_primary' => false]);
+                }
+            } catch (\Exception $e) {
+                \Log::warning('Failed to update property_agents table: ' . $e->getMessage());
+                // Continue even if this fails
+            }
         }
     }
 
@@ -1033,30 +1046,54 @@ class AdminController extends Controller
             return back()->with('error', 'This property already has a signed instruction.');
         }
 
-        // Assign agent to property (if user is agent/admin)
-        if (in_array($user->role, ['admin', 'agent'])) {
-            $this->assignAgentToProperty($property->id, $user->id, $user->id, true, 'Assigned when instruction requested');
-        }
-        
-        // Create or update instruction request
-        $instruction = \App\Models\PropertyInstruction::updateOrCreate(
-            ['property_id' => $property->id],
-            [
-                'seller_id' => $property->seller_id,
-                'status' => 'pending',
-                'requested_by' => $user->id,
-                'requested_at' => now(),
-                'fee_percentage' => 1.5, // Default fee
-            ]
-        );
-
-        // Send notification email to seller with link to sign instruction
         try {
-            \Mail::to($property->seller->email)->send(
-                new \App\Mail\InstructionRequestNotification($property->seller, $property, $instruction)
+            \DB::beginTransaction();
+
+            // Assign agent to property (if user is agent/admin)
+            if (in_array($user->role, ['admin', 'agent'])) {
+                try {
+                    $this->assignAgentToProperty($property->id, $user->id, $user->id, true, 'Assigned when instruction requested');
+                } catch (\Exception $e) {
+                    \Log::warning('Failed to assign agent to property: ' . $e->getMessage());
+                    // Continue even if assignment fails
+                }
+            }
+            
+            // Create or update instruction request
+            $instruction = \App\Models\PropertyInstruction::updateOrCreate(
+                ['property_id' => $property->id],
+                [
+                    'seller_id' => $property->seller_id,
+                    'status' => 'pending',
+                    'requested_by' => $user->id,
+                    'requested_at' => now(),
+                    'fee_percentage' => 1.5, // Default fee
+                ]
             );
+
+            \DB::commit();
+
+            // Send notification email to seller with link to sign instruction
+            try {
+                \Mail::to($property->seller->email)->send(
+                    new \App\Mail\InstructionRequestNotification($property->seller, $property, $instruction)
+                );
+            } catch (\Exception $e) {
+                \Log::error('Failed to send instruction request notification email: ' . $e->getMessage());
+                // Don't fail the request if email fails
+            }
         } catch (\Exception $e) {
-            \Log::error('Failed to send instruction request notification email: ' . $e->getMessage());
+            \DB::rollBack();
+            \Log::error('Failed to request instruction: ' . $e->getMessage());
+            \Log::error('Stack trace: ' . $e->getTraceAsString());
+            
+            $errorMessage = 'An error occurred while requesting instruction. Please try again.';
+            if (config('app.debug')) {
+                $errorMessage .= ' Error: ' . $e->getMessage();
+            }
+            
+            return back()
+                ->with('error', $errorMessage);
         }
 
         return redirect()->route('admin.properties.show', $property->id)
@@ -1087,33 +1124,56 @@ class AdminController extends Controller
             return back()->with('error', 'This property already has a signed instruction.');
         }
 
-        // Assign agent to property (if user is agent/admin)
-        if (in_array($user->role, ['admin', 'agent'])) {
-            $this->assignAgentToProperty($property->id, $user->id, $user->id, true, 'Assigned when post-valuation email sent');
-        }
-        
-        // Create or update instruction request (pending status - not yet requested)
-        if (!$instruction) {
-            $instruction = \App\Models\PropertyInstruction::create([
-                'property_id' => $property->id,
-                'seller_id' => $property->seller_id,
-                'status' => 'pending',
-                'requested_by' => $user->id,
-                'requested_at' => null, // Will be set when seller clicks from email
-                'fee_percentage' => 1.5, // Default fee
-            ]);
-        }
-
-        // Send post-valuation email to seller with "Instruct Abodeology" button
         try {
-            \Mail::to($property->seller->email)->send(
-                new \App\Mail\PostValuationEmail($property->seller, $property)
-            );
+            \DB::beginTransaction();
+
+            // Assign agent to property (if user is agent/admin)
+            if (in_array($user->role, ['admin', 'agent'])) {
+                try {
+                    $this->assignAgentToProperty($property->id, $user->id, $user->id, true, 'Assigned when post-valuation email sent');
+                } catch (\Exception $e) {
+                    \Log::warning('Failed to assign agent to property: ' . $e->getMessage());
+                    // Continue even if assignment fails
+                }
+            }
+            
+            // Create or update instruction request (pending status - not yet requested)
+            if (!$instruction) {
+                $instruction = \App\Models\PropertyInstruction::create([
+                    'property_id' => $property->id,
+                    'seller_id' => $property->seller_id,
+                    'status' => 'pending',
+                    'requested_by' => $user->id,
+                    'requested_at' => null, // Will be set when seller clicks from email
+                    'fee_percentage' => 1.5, // Default fee
+                ]);
+            }
+
+            \DB::commit();
+
+            // Send post-valuation email to seller with "Instruct Abodeology" button
+            try {
+                \Mail::to($property->seller->email)->send(
+                    new \App\Mail\PostValuationEmail($property->seller, $property)
+                );
+            } catch (\Exception $e) {
+                \Log::error('Failed to send post-valuation email: ' . $e->getMessage());
+                // Don't fail the request if email fails, but show warning
+                return redirect()->route('admin.properties.show', $property->id)
+                    ->with('warning', 'Post-valuation email sent, but email delivery failed. Please check email configuration.');
+            }
         } catch (\Exception $e) {
+            \DB::rollBack();
             \Log::error('Failed to send post-valuation email: ' . $e->getMessage());
+            \Log::error('Stack trace: ' . $e->getTraceAsString());
+
+            $errorMessage = 'An error occurred while sending post-valuation email. Please try again.';
+            if (config('app.debug')) {
+                $errorMessage .= ' Error: ' . $e->getMessage();
+            }
 
             return back()
-                ->with('error', 'Failed to send post-valuation email. Please try again.');
+                ->with('error', $errorMessage);
         }
 
         return redirect()->route('admin.properties.show', $property->id)
