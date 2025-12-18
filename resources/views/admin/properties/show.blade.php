@@ -332,7 +332,8 @@
                         <br><strong>By:</strong> {{ $completedHomeCheck->completer->name ?? 'Agent' }}
                     @endif
                     <div style="margin-top: 10px;">
-                        <a href="{{ route('admin.homechecks.edit', $completedHomeCheck->id) }}" class="btn" style="background: #6c757d; color: #fff;">Edit HomeCheck</a>
+                        <a href="{{ route('admin.homechecks.show', $completedHomeCheck->id) }}" class="btn btn-main">View HomeCheck</a>
+                        <a href="{{ route('admin.homechecks.edit', $completedHomeCheck->id) }}" class="btn" style="background: #6c757d; color: #fff;">Edit</a>
                     </div>
                 </p>
                 @if($homecheckData->count() > 0)
@@ -375,14 +376,15 @@
                         <strong>Scheduled:</strong> {{ \Carbon\Carbon::parse($activeHomeCheck->scheduled_date)->format('l, F j, Y') }}
                     @endif
                     <div style="margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap;">
+                        <a href="{{ route('admin.homechecks.show', $activeHomeCheck->id) }}" class="btn btn-main">View HomeCheck</a>
                         @if($activeHomeCheck->status === 'pending')
-                            <a href="{{ route('admin.properties.complete-homecheck', $property->id) }}" class="btn btn-main">Start HomeCheck Upload</a>
+                            <a href="{{ route('admin.properties.complete-homecheck', $property->id) }}" class="btn" style="background: #28a745; color: #fff;">Start Upload</a>
                         @elseif($activeHomeCheck->status === 'scheduled')
-                            <a href="{{ route('admin.properties.complete-homecheck', $property->id) }}" class="btn btn-main">Complete HomeCheck</a>
+                            <a href="{{ route('admin.properties.complete-homecheck', $property->id) }}" class="btn" style="background: #28a745; color: #fff;">Complete HomeCheck</a>
                         @elseif($activeHomeCheck->status === 'in_progress')
-                            <a href="{{ route('admin.properties.complete-homecheck', $property->id) }}" class="btn btn-main">Continue HomeCheck Upload</a>
+                            <a href="{{ route('admin.properties.complete-homecheck', $property->id) }}" class="btn" style="background: #28a745; color: #fff;">Continue Upload</a>
                         @endif
-                        <a href="{{ route('admin.homechecks.edit', $activeHomeCheck->id) }}" class="btn" style="background: #6c757d; color: #fff;">Edit HomeCheck</a>
+                        <a href="{{ route('admin.homechecks.edit', $activeHomeCheck->id) }}" class="btn" style="background: #6c757d; color: #fff;">Edit</a>
                     </div>
                 </p>
             @else
