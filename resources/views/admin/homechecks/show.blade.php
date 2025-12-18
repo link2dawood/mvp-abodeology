@@ -93,7 +93,6 @@
         padding: 20px;
         background: #f9f9f9;
         border-radius: 8px;
-        border-left: 4px solid var(--abodeology-teal);
     }
 
     .room-title {

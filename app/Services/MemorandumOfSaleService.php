@@ -81,7 +81,7 @@ class MemorandumOfSaleService
         body { font-family: Arial, sans-serif; margin: 20px; color: #333; line-height: 1.6; }
         .header { background: #0F0F0F; color: #2CB8B4; padding: 20px; text-align: center; margin-bottom: 30px; }
         .header h1 { margin: 0; color: #2CB8B4; font-size: 28px; }
-        .section { margin: 25px 0; padding: 20px; background: #F9F9F9; border-left: 4px solid #2CB8B4; }
+        .section { margin: 25px 0; padding: 20px; background: #F9F9F9; }
         .section h2 { color: #2CB8B4; margin-top: 0; border-bottom: 2px solid #2CB8B4; padding-bottom: 10px; }
         .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 15px; }
         .info-item { padding: 10px; background: white; border-radius: 4px; }

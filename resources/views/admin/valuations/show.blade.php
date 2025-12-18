@@ -344,7 +344,7 @@
 
     {{-- HomeCheck Status Section --}}
     @if($property)
-    <div class="card" style="background: #F9F9F9; border-left: 4px solid #2CB8B4;">
+    <div class="card" style="background: #F9F9F9;">
         <h3 style="color: var(--abodeology-teal); margin-top: 0;">HomeCheck Status</h3>
         
         @if($completedHomeCheck)

@@ -27,7 +27,7 @@
         
         <p>{{ $message }}</p>
         
-        <div style="background: white; padding: 20px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #2CB8B4;">
+        <div style="background: white; padding: 20px; border-radius: 6px; margin: 20px 0;">
             <p style="margin: 0 0 10px 0;"><strong>Property Address:</strong></p>
             <p style="margin: 0; font-size: 18px; color: #1E1E1E;">{{ $property->address }}</p>
             @if($property->postcode)

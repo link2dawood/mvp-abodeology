@@ -409,7 +409,7 @@ class HomeCheckReportService
         .property-info { background: #F4F4F4; padding: 15px; margin: 20px 0; border-radius: 4px; }
         .section { margin: 30px 0; }
         .section h2 { color: #2CB8B4; border-bottom: 2px solid #2CB8B4; padding-bottom: 10px; }
-        .room-analysis { background: #F9F9F9; padding: 15px; margin: 15px 0; border-left: 4px solid #2CB8B4; }
+        .room-analysis { background: #F9F9F9; padding: 15px; margin: 15px 0; }
         .rating { font-size: 24px; font-weight: bold; color: #28a745; }
         .recommendations { background: #E8F4F3; padding: 15px; margin: 15px 0; border-radius: 4px; }
         .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; text-align: center; color: #666; font-size: 12px; }
