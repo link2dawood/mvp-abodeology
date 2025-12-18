@@ -144,7 +144,7 @@
         flex: 1;
     }
 
-    /* Room Upload Styles */
+    /* Room Block Styles */
     .room-block {
         background: #F9F9F9;
         border: 2px solid #dcdcdc;
@@ -167,16 +167,6 @@
         border-radius: 6px;
         font-size: 16px;
         margin-right: 10px;
-    }
-
-    .remove-room-btn {
-        background: #dc3545;
-        color: white;
-        border: none;
-        padding: 8px 15px;
-        border-radius: 6px;
-        cursor: pointer;
-        font-weight: 600;
     }
 
     .image-type-toggle {
@@ -275,6 +265,50 @@
         font-weight: 600;
     }
 
+    .existing-image-item {
+        position: relative;
+        border: 2px solid #28a745;
+        border-radius: 8px;
+        overflow: hidden;
+        background: #f0f9f0;
+    }
+
+    .existing-image-item img {
+        width: 100%;
+        height: 150px;
+        object-fit: cover;
+        display: block;
+    }
+
+    .existing-image-item .delete-existing-image {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        background: rgba(220, 53, 69, 0.9);
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 25px;
+        height: 25px;
+        cursor: pointer;
+        font-weight: bold;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .existing-image-item .existing-badge {
+        position: absolute;
+        bottom: 5px;
+        left: 5px;
+        background: rgba(40, 167, 69, 0.9);
+        color: white;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+
     .add-room-btn {
         background: #28a745;
         color: white;
@@ -288,27 +322,6 @@
 
     .add-room-btn:hover {
         background: #218838;
-    }
-
-    .existing-rooms {
-        background: #f9f9f9;
-        padding: 15px;
-        border-radius: 6px;
-        margin-bottom: 20px;
-    }
-
-    .existing-rooms h4 {
-        margin-top: 0;
-        color: #666;
-        font-size: 14px;
-    }
-
-    .existing-room-item {
-        padding: 8px;
-        margin: 5px 0;
-        background: white;
-        border-radius: 4px;
-        font-size: 13px;
     }
 
     @media (max-width: 768px) {
@@ -402,22 +415,113 @@
             </div>
         </div>
 
-        <!-- Existing Rooms -->
-        @if($homecheckData && $homecheckData->count() > 0)
+        <!-- Existing Rooms (Editable) -->
+        @if($roomsData && $roomsData->count() > 0)
         <div class="card">
-            <h3>Existing Rooms</h3>
-            <div class="existing-rooms">
-                <h4>Previously uploaded rooms ({{ $homecheckData->groupBy('room_name')->count() }} room(s)):</h4>
-                @foreach($homecheckData->groupBy('room_name') as $roomName => $roomImages)
-                    <div class="existing-room-item">
-                        <strong>{{ $roomName }}</strong> - {{ $roomImages->count() }} image(s)
-                        @if($roomImages->where('is_360', true)->count() > 0)
-                            <span style="color: #2CB8B4;">({{ $roomImages->where('is_360', true)->count() }} 360° images)</span>
-                        @endif
+            <h3>Edit Existing Rooms</h3>
+            <p style="color: #666; margin-bottom: 15px;">View, edit room names, delete individual images, delete entire rooms, or add new images to existing rooms.</p>
+
+            @foreach($roomsData as $roomName => $roomImages)
+                @php
+                    $firstImage = $roomImages->first();
+                    $roomId = 'existing_room_' . $firstImage->id;
+                    $moistureReading = $firstImage->moisture_reading ?? null;
+                @endphp
+
+                <div class="room-block" data-room-name="{{ $roomName }}" id="existing_room_block_{{ $firstImage->id }}">
+                    <div class="room-header">
+                        <input type="text" 
+                               name="existing_rooms[{{ $firstImage->id }}][name]" 
+                               value="{{ old('existing_rooms.' . $firstImage->id . '.name', $roomName) }}"
+                               class="room-name-input" 
+                               placeholder="Room Name" 
+                               required>
+                        <input type="hidden" name="existing_rooms[{{ $firstImage->id }}][id]" value="{{ $firstImage->id }}">
+                        <input type="hidden" name="existing_rooms[{{ $firstImage->id }}][delete_room]" id="delete_room_{{ $firstImage->id }}" value="0">
+                        <button type="button" 
+                                class="remove-room-btn" 
+                                onclick="deleteRoom('{{ $firstImage->id }}', '{{ $roomName }}')"
+                                style="background: #dc3545; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: 600; margin-left: 10px;">
+                            🗑️ Delete Entire Room
+                        </button>
                     </div>
-                @endforeach
-            </div>
-            <p style="color: #666; font-size: 13px; margin-top: 10px;">You can add new rooms below. Existing rooms cannot be modified from this page.</p>
+
+                    <!-- Existing Images -->
+                    <div style="margin-bottom: 20px;">
+                        <label style="font-weight: 600; margin-bottom: 10px; display: block;">Existing Images (click × to delete)</label>
+                        <div class="preview-grid" id="existing_images_{{ $firstImage->id }}">
+                            @foreach($roomImages as $image)
+                                <div class="existing-image-item" data-image-id="{{ $image->id }}">
+                                    <img src="{{ $image->image_url }}" alt="{{ $roomName }} Image" loading="lazy">
+                                    <span class="existing-badge">{{ $image->is_360 ? '360°' : 'Photo' }}</span>
+                                    <button type="button" 
+                                            class="delete-existing-image" 
+                                            onclick="deleteExistingImage({{ $image->id }}, '{{ $firstImage->id }}')"
+                                            title="Delete this image">×</button>
+                                    <input type="hidden" 
+                                           name="existing_rooms[{{ $firstImage->id }}][delete_images][]" 
+                                           id="delete_image_{{ $image->id }}" 
+                                           value="">
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+
+                    <!-- Add New Images to Existing Room -->
+                    <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #dcdcdc;">
+                        <label style="font-weight: 600; margin-bottom: 10px; display: block;">Add More Images to This Room</label>
+                        
+                        <div class="image-type-toggle">
+                            <button type="button" class="image-type-btn active" data-room="{{ $roomId }}" data-type="photo" onclick="setImageType('{{ $roomId }}', 'photo')">
+                                📷 Regular Photo
+                            </button>
+                            <button type="button" class="image-type-btn" data-room="{{ $roomId }}" data-type="360" onclick="setImageType('{{ $roomId }}', '360')">
+                                🌐 360° Image
+                            </button>
+                        </div>
+                        
+                        <div class="file-upload-area" 
+                             id="uploadArea_{{ $roomId }}"
+                             ondragover="handleDragOver(event)"
+                             ondragleave="handleDragLeave(event)"
+                             ondrop="handleDrop(event, '{{ $roomId }}')"
+                             onclick="document.getElementById('fileInput_{{ $roomId }}').click()">
+                            <p style="margin: 0; font-size: 16px; color: #666;">
+                                📤 Drag & drop images here or click to upload
+                            </p>
+                            <p style="margin: 10px 0 0 0; font-size: 13px; color: #999;">
+                                Supported formats: JPG, PNG (Max 10MB per image)
+                            </p>
+                        </div>
+                        
+                        <input type="file" 
+                               id="fileInput_{{ $roomId }}" 
+                               name="existing_rooms[{{ $firstImage->id }}][new_images][]"
+                               multiple 
+                               accept="image/jpeg,image/png,image/jpg"
+                               class="file-input"
+                               onchange="handleFileSelect(event, '{{ $roomId }}')">
+                        
+                        <input type="hidden" name="existing_rooms[{{ $firstImage->id }}][is_360]" id="is360_{{ $roomId }}" value="0">
+                        
+                        <div class="preview-grid" id="preview_{{ $roomId }}"></div>
+                    </div>
+
+                    <!-- Moisture Reading -->
+                    <div style="margin-top: 15px;">
+                        <label style="display: block; font-weight: 600; margin-bottom: 6px; color: #1E1E1E;">Moisture Reading (%)</label>
+                        <input type="number" 
+                               name="existing_rooms[{{ $firstImage->id }}][moisture_reading]" 
+                               step="0.1" 
+                               min="0" 
+                               max="100"
+                               value="{{ old('existing_rooms.' . $firstImage->id . '.moisture_reading', $moistureReading) }}"
+                               placeholder="e.g., 45.5"
+                               style="width: 100%; padding: 10px; border: 1px solid #dcdcdc; border-radius: 6px; font-size: 15px; box-sizing: border-box;">
+                        <p style="font-size: 12px; color: #666; margin-top: 5px;">Optional: Enter moisture reading for this room (0-100%)</p>
+                    </div>
+                </div>
+            @endforeach
         </div>
         @endif
 
@@ -433,7 +537,7 @@
 
             <!-- Room Controls -->
             <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-                <button type="button" class="add-room-btn" id="addRoomBtn">+ Add Room</button>
+                <button type="button" class="add-room-btn" id="addRoomBtn">+ Add New Room</button>
             </div>
         </div>
 
@@ -473,6 +577,31 @@
 <script>
 let roomIndex = 0;
 let roomImages = {};
+let deletedImages = {};
+
+// Delete Existing Image
+function deleteExistingImage(imageId, roomKey) {
+    if (confirm('Are you sure you want to delete this image?')) {
+        document.getElementById('delete_image_' + imageId).value = imageId;
+        const imageElement = document.querySelector('[data-image-id="' + imageId + '"]');
+        if (imageElement) {
+            imageElement.style.display = 'none';
+        }
+        deletedImages[imageId] = true;
+    }
+}
+
+// Delete Entire Room
+function deleteRoom(roomId, roomName) {
+    if (confirm('Are you sure you want to delete the entire room "' + roomName + '" and all its images? This action cannot be undone.')) {
+        document.getElementById('delete_room_' + roomId).value = '1';
+        const roomBlock = document.getElementById('existing_room_block_' + roomId);
+        if (roomBlock) {
+            roomBlock.style.display = 'none';
+            roomBlock.style.opacity = '0.5';
+        }
+    }
+}
 
 // Add Room Button Click
 document.getElementById('addRoomBtn').addEventListener('click', function() {
@@ -500,7 +629,6 @@ function addRoomBlock() {
                    class="room-name-input" 
                    placeholder="Room Name (e.g., Living Room, Kitchen, Bedroom 1)" 
                    required>
-            <button type="button" class="remove-room-btn" onclick="removeRoom(this)">✕ Remove Room</button>
         </div>
         
         <div class="image-type-toggle">
@@ -558,8 +686,14 @@ function addRoomBlock() {
 
 // Set Image Type
 function setImageType(roomId, type) {
+    if (!roomImages[roomId]) {
+        roomImages[roomId] = { images: [], is360: false };
+    }
     roomImages[roomId].is360 = (type === '360');
-    document.getElementById('is360_' + roomId).value = type === '360' ? '1' : '0';
+    const is360Input = document.getElementById('is360_' + roomId);
+    if (is360Input) {
+        is360Input.value = type === '360' ? '1' : '0';
+    }
     
     const buttons = document.querySelectorAll(`[data-room="${roomId}"]`);
     buttons.forEach(btn => {
@@ -578,18 +712,10 @@ function updatePreviewBadges(roomId) {
     const preview = document.getElementById('preview_' + roomId);
     if (!preview) return;
     
-    const is360 = roomImages[roomId].is360;
+    const is360 = roomImages[roomId] ? roomImages[roomId].is360 : false;
     preview.querySelectorAll('.image-type-badge').forEach(badge => {
         badge.textContent = is360 ? '360°' : 'Photo';
     });
-}
-
-// Remove Room
-function removeRoom(button) {
-    const roomBlock = button.closest('.room-block');
-    const roomId = roomBlock.getAttribute('data-room-id');
-    delete roomImages[roomId];
-    roomBlock.remove();
 }
 
 // Handle Drag Over
@@ -628,22 +754,32 @@ function handleFileSelect(e, roomId) {
 
 // Process Files
 function processFiles(files, roomId) {
+    if (!roomImages[roomId]) {
+        roomImages[roomId] = { images: [], is360: false };
+    }
+    
     const errorDiv = document.getElementById('error_' + roomId);
-    errorDiv.style.display = 'none';
-    errorDiv.textContent = '';
+    if (errorDiv) {
+        errorDiv.style.display = 'none';
+        errorDiv.textContent = '';
+    }
     
     const validFiles = [];
     
     files.forEach(file => {
         if (!file.type.match('image.*')) {
-            errorDiv.textContent = 'Please upload only image files (JPG, PNG)';
-            errorDiv.style.display = 'block';
+            if (errorDiv) {
+                errorDiv.textContent = 'Please upload only image files (JPG, PNG)';
+                errorDiv.style.display = 'block';
+            }
             return;
         }
         
         if (file.size > 10 * 1024 * 1024) {
-            errorDiv.textContent = 'File size must not exceed 10MB';
-            errorDiv.style.display = 'block';
+            if (errorDiv) {
+                errorDiv.textContent = 'File size must not exceed 10MB';
+                errorDiv.style.display = 'block';
+            }
             return;
         }
         
@@ -652,9 +788,6 @@ function processFiles(files, roomId) {
     
     if (validFiles.length === 0) return;
     
-    if (!roomImages[roomId]) {
-        roomImages[roomId] = { images: [], is360: false };
-    }
     roomImages[roomId].images.push(...validFiles);
     
     updateFileInput(roomId);
@@ -664,11 +797,15 @@ function processFiles(files, roomId) {
 // Update File Input
 function updateFileInput(roomId) {
     const input = document.getElementById('fileInput_' + roomId);
+    if (!input) return;
+    
     const dt = new DataTransfer();
     
-    roomImages[roomId].images.forEach(file => {
-        dt.items.add(file);
-    });
+    if (roomImages[roomId] && roomImages[roomId].images) {
+        roomImages[roomId].images.forEach(file => {
+            dt.items.add(file);
+        });
+    }
     
     input.files = dt.files;
 }
@@ -676,7 +813,7 @@ function updateFileInput(roomId) {
 // Display Previews
 function displayPreviews(roomId) {
     const preview = document.getElementById('preview_' + roomId);
-    if (!preview) return;
+    if (!preview || !roomImages[roomId]) return;
     
     preview.innerHTML = '';
     
@@ -702,46 +839,12 @@ function displayPreviews(roomId) {
 
 // Remove Image
 function removeImage(roomId, index) {
-    roomImages[roomId].images.splice(index, 1);
-    updateFileInput(roomId);
-    displayPreviews(roomId);
-}
-
-// Form Validation
-document.getElementById('homecheckForm').addEventListener('submit', function(e) {
-    const rooms = document.querySelectorAll('.room-block');
-    
-    if (rooms.length > 0) {
-        let hasError = false;
-        
-        rooms.forEach(room => {
-            const roomId = room.getAttribute('data-room-id');
-            const roomNameInput = room.querySelector('.room-name-input');
-            const errorDiv = document.getElementById('error_' + roomId);
-            
-            if (!roomNameInput.value.trim()) {
-                roomNameInput.style.borderColor = '#dc3545';
-                errorDiv.textContent = 'Room name is required';
-                errorDiv.style.display = 'block';
-                hasError = true;
-            } else {
-                roomNameInput.style.borderColor = '';
-            }
-            
-            if (!roomImages[roomId] || roomImages[roomId].images.length === 0) {
-                errorDiv.textContent = 'Please upload at least one image for this room';
-                errorDiv.style.display = 'block';
-                hasError = true;
-            }
-        });
-        
-        if (hasError) {
-            e.preventDefault();
-            alert('Please complete all required fields: room name and at least one image per room.');
-            return false;
-        }
+    if (roomImages[roomId] && roomImages[roomId].images) {
+        roomImages[roomId].images.splice(index, 1);
+        updateFileInput(roomId);
+        displayPreviews(roomId);
     }
-});
+}
 </script>
 @endpush
 @endsection

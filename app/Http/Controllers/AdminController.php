@@ -1454,8 +1454,9 @@ class AdminController extends Controller
 
         // Get existing homecheck data grouped by room
         $homecheckData = $homecheckReport->homecheckData;
+        $roomsData = $homecheckData->groupBy('room_name');
 
-        return view('admin.homechecks.edit', compact('homecheckReport', 'property', 'homecheckData'));
+        return view('admin.homechecks.edit', compact('homecheckReport', 'property', 'homecheckData', 'roomsData'));
     }
 
     /**
@@ -1489,6 +1490,16 @@ class AdminController extends Controller
             'scheduled_date' => ['nullable', 'date'],
             'status' => ['required', 'in:' . implode(',', \App\Models\HomecheckReport::getValidStatuses())],
             'notes' => ['nullable', 'string', 'max:1000'],
+            'existing_rooms' => ['nullable', 'array'],
+            'existing_rooms.*.id' => ['nullable', 'exists:homecheck_data,id'],
+            'existing_rooms.*.name' => ['nullable', 'string', 'max:255'],
+            'existing_rooms.*.delete_room' => ['nullable', 'boolean'],
+            'existing_rooms.*.delete_images' => ['nullable', 'array'],
+            'existing_rooms.*.delete_images.*' => ['nullable', 'exists:homecheck_data,id'],
+            'existing_rooms.*.new_images' => ['nullable', 'array'],
+            'existing_rooms.*.new_images.*' => ['nullable', 'image', 'mimes:jpeg,png,jpg', 'max:10240'],
+            'existing_rooms.*.is_360' => ['nullable', 'boolean'],
+            'existing_rooms.*.moisture_reading' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'rooms' => ['nullable', 'array'],
             'rooms.*.name' => ['required_with:rooms', 'string', 'max:255'],
             'rooms.*.images' => ['required_with:rooms', 'array', 'min:1'],
@@ -1500,7 +1511,7 @@ class AdminController extends Controller
             'status.required' => 'Please select a status.',
             'status.in' => 'Invalid status selected.',
             'rooms.*.name.required_with' => 'Room name is required when adding rooms.',
-            'rooms.*.images.required_with' => 'At least one image is required for each room.',
+            'rooms.*.images.required_with' => 'At least one image is required for each new room.',
             'rooms.*.images.*.image' => 'Only image files are allowed.',
             'rooms.*.images.*.max' => 'Image size must not exceed 10MB.',
         ]);
@@ -1532,10 +1543,119 @@ class AdminController extends Controller
 
             $homecheckReport->update($updateData);
 
-            // Handle room/image uploads if provided
-            if (!empty($validated['rooms']) && is_array($validated['rooms'])) {
-                $disk = $this->getStorageDisk();
+            $disk = $this->getStorageDisk();
+            $imageOptimizer = new \App\Services\ImageOptimizationService();
 
+            // Handle existing room updates
+            if (!empty($validated['existing_rooms']) && is_array($validated['existing_rooms'])) {
+                foreach ($validated['existing_rooms'] as $roomData) {
+                    if (empty($roomData['id'])) {
+                        continue;
+                    }
+
+                    // Get the first image of this room to identify the room
+                    $firstImage = \App\Models\HomecheckData::find($roomData['id']);
+                    if (!$firstImage) {
+                        continue;
+                    }
+
+                    $oldRoomName = $firstImage->room_name;
+                    
+                    // Check if entire room should be deleted
+                    if (!empty($roomData['delete_room']) && $roomData['delete_room'] == '1') {
+                        // Get all images for this room
+                        $roomImages = \App\Models\HomecheckData::where('homecheck_report_id', $homecheckReport->id)
+                            ->where('room_name', $oldRoomName)
+                            ->get();
+                        
+                        // Delete all images in this room
+                        foreach ($roomImages as $imageToDelete) {
+                            // Delete file from storage
+                            try {
+                                if ($disk === 's3') {
+                                    \Storage::disk('s3')->delete($imageToDelete->image_path);
+                                } else {
+                                    \Storage::disk('public')->delete($imageToDelete->image_path);
+                                }
+                            } catch (\Exception $e) {
+                                \Log::warning('Failed to delete homecheck image file: ' . $e->getMessage());
+                            }
+                            // Delete record
+                            $imageToDelete->delete();
+                        }
+                        continue; // Skip to next room
+                    }
+                    
+                    $newRoomName = !empty($roomData['name']) ? trim($roomData['name']) : $oldRoomName;
+
+                    // Get all images for this room
+                    $roomImages = \App\Models\HomecheckData::where('homecheck_report_id', $homecheckReport->id)
+                        ->where('room_name', $oldRoomName)
+                        ->get();
+
+                    // Delete individual images if specified
+                    if (!empty($roomData['delete_images']) && is_array($roomData['delete_images'])) {
+                        foreach ($roomData['delete_images'] as $imageId) {
+                            $imageToDelete = \App\Models\HomecheckData::find($imageId);
+                            if ($imageToDelete && $imageToDelete->homecheck_report_id == $homecheckReport->id) {
+                                // Delete file from storage
+                                try {
+                                    if ($disk === 's3') {
+                                        \Storage::disk('s3')->delete($imageToDelete->image_path);
+                                    } else {
+                                        \Storage::disk('public')->delete($imageToDelete->image_path);
+                                    }
+                                } catch (\Exception $e) {
+                                    \Log::warning('Failed to delete homecheck image file: ' . $e->getMessage());
+                                }
+                                // Delete record
+                                $imageToDelete->delete();
+                            }
+                        }
+                    }
+
+                    // Update room name for all remaining images in this room
+                    if ($newRoomName !== $oldRoomName) {
+                        \App\Models\HomecheckData::where('homecheck_report_id', $homecheckReport->id)
+                            ->where('room_name', $oldRoomName)
+                            ->update(['room_name' => $newRoomName]);
+                    }
+
+                    // Add new images to existing room
+                    if (!empty($roomData['new_images']) && is_array($roomData['new_images'])) {
+                        $is360 = isset($roomData['is_360']) && $roomData['is_360'] == '1';
+                        $moistureReading = isset($roomData['moisture_reading']) && $roomData['moisture_reading'] !== '' 
+                            ? floatval($roomData['moisture_reading']) 
+                            : null;
+
+                        foreach ($roomData['new_images'] as $image) {
+                            // Store image in property-specific folder
+                            $imagePath = $image->store('homechecks/' . $property->id . '/rooms/' . $newRoomName . '/' . ($is360 ? '360' : 'photos'), $disk);
+                            
+                            // Optimize the image
+                            try {
+                                $imageOptimizer->optimizeExisting($imagePath, $disk, 1920, 85);
+                            } catch (\Exception $e) {
+                                \Log::warning('Image optimization failed for homecheck image: ' . $e->getMessage());
+                            }
+                            
+                            // Create homecheck data record
+                            \App\Models\HomecheckData::create([
+                                'property_id' => $property->id,
+                                'homecheck_report_id' => $homecheckReport->id,
+                                'room_name' => $newRoomName,
+                                'image_path' => $imagePath,
+                                'is_360' => $is360,
+                                'moisture_reading' => $moistureReading,
+                                'created_at' => now(),
+                            ]);
+                        }
+                    }
+                }
+            }
+
+            // Handle new room/image uploads
+            if (!empty($validated['rooms']) && is_array($validated['rooms'])) {
                 foreach ($validated['rooms'] as $roomData) {
                     $roomName = trim($roomData['name']);
                     if (empty($roomName)) {
