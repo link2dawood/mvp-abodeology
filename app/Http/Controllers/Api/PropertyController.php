@@ -268,7 +268,7 @@ class PropertyController extends Controller
             'asking_price' => 'nullable|numeric|min:0',
             'description' => 'nullable|string',
             'material_information' => 'nullable|array',
-            'status' => 'sometimes|in:draft,pending,live,sold,withdrawn',
+            'status' => ['sometimes', 'in:' . implode(',', \App\Models\Property::getValidStatuses())],
         ]);
 
         if ($validator->fails()) {
@@ -278,10 +278,31 @@ class PropertyController extends Controller
             ], 422);
         }
 
-        $property->update($request->only([
+        // Handle status update with validation using PropertyStatusTransitionService
+        $updateData = $request->only([
             'address', 'property_type', 'asking_price', 'description',
-            'material_information', 'status',
-        ]));
+            'material_information',
+        ]);
+
+        if ($request->has('status') && $request->status !== $property->status) {
+            $statusService = new \App\Services\PropertyStatusTransitionService();
+            $statusResult = $statusService->changeStatus(
+                $property,
+                $request->status,
+                $user->id,
+                'Status updated via API'
+            );
+
+            if (!$statusResult['success']) {
+                return response()->json([
+                    'error' => 'Status update failed',
+                    'message' => $statusResult['message'],
+                ], 400);
+            }
+        } else {
+            // Update other fields only
+            $property->update($updateData);
+        }
 
         return response()->json([
             'message' => 'Property updated successfully',

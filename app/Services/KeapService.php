@@ -217,85 +217,88 @@ class KeapService
      */
     protected function triggerEvent(string $eventType, array $data): bool
     {
-        // Log event attempt
-        $log = KeapEventLog::create([
-            'event_type' => $eventType,
-            'status' => 'pending',
-            'payload' => $data,
-            'response' => null,
-            'error_message' => null,
-        ]);
-        
-        // If Keap is disabled, mark as skipped
-        if (!$this->enabled) {
-            $log->update([
-                'status' => 'skipped',
-                'response' => ['message' => 'Keap integration is disabled'],
+        // Use database transaction to ensure log is created even if API call fails
+        return \DB::transaction(function () use ($eventType, $data) {
+            // Log event attempt
+            $log = KeapEventLog::create([
+                'event_type' => $eventType,
+                'status' => 'pending',
+                'payload' => $data,
+                'response' => null,
+                'error_message' => null,
             ]);
-            Log::info("Keap event skipped (disabled): {$eventType}", $data);
-            return false;
-        }
         
-        // If API key is not set, mark as failed
-        if (empty($this->apiKey)) {
-            $log->update([
-                'status' => 'failed',
-                'error_message' => 'Keap API key not configured',
-            ]);
-            Log::warning("Keap event failed (no API key): {$eventType}", $data);
-            return false;
-        }
-        
-        try {
-            // Map event type to Keap webhook/API endpoint
-            $endpoint = $this->getEndpointForEvent($eventType);
-            
-            // Prepare request payload
-            $payload = $this->preparePayload($eventType, $data);
-            
-            // Make API call
-            $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . $this->apiKey,
-                'Content-Type' => 'application/json',
-            ])->timeout(30)->post($endpoint, $payload);
-            
-            // Log response
-            $log->update([
-                'status' => $response->successful() ? 'success' : 'failed',
-                'response' => $response->json() ?? $response->body(),
-                'error_message' => $response->successful() ? null : ($response->json()['message'] ?? $response->body()),
-            ]);
-            
-            if ($response->successful()) {
-                Log::info("Keap event triggered successfully: {$eventType}", [
-                    'event_id' => $log->id,
-                    'response' => $response->json(),
+            // If Keap is disabled, mark as skipped
+            if (!$this->enabled) {
+                $log->update([
+                    'status' => 'skipped',
+                    'response' => ['message' => 'Keap integration is disabled'],
                 ]);
-                return true;
-            } else {
-                Log::error("Keap event failed: {$eventType}", [
-                    'event_id' => $log->id,
-                    'status' => $response->status(),
-                    'response' => $response->body(),
-                ]);
+                Log::info("Keap event skipped (disabled): {$eventType}", $data);
                 return false;
             }
             
-        } catch (\Exception $e) {
-            $log->update([
-                'status' => 'failed',
-                'error_message' => $e->getMessage(),
-                'response' => ['exception' => get_class($e)],
-            ]);
+            // If API key is not set, mark as failed
+            if (empty($this->apiKey)) {
+                $log->update([
+                    'status' => 'failed',
+                    'error_message' => 'Keap API key not configured',
+                ]);
+                Log::warning("Keap event failed (no API key): {$eventType}", $data);
+                return false;
+            }
             
-            Log::error("Keap event exception: {$eventType}", [
-                'event_id' => $log->id,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-            
-            return false;
-        }
+            try {
+                // Map event type to Keap webhook/API endpoint
+                $endpoint = $this->getEndpointForEvent($eventType);
+                
+                // Prepare request payload
+                $payload = $this->preparePayload($eventType, $data);
+                
+                // Make API call
+                $response = Http::withHeaders([
+                    'Authorization' => 'Bearer ' . $this->apiKey,
+                    'Content-Type' => 'application/json',
+                ])->timeout(30)->post($endpoint, $payload);
+                
+                // Log response
+                $log->update([
+                    'status' => $response->successful() ? 'success' : 'failed',
+                    'response' => $response->json() ?? $response->body(),
+                    'error_message' => $response->successful() ? null : ($response->json()['message'] ?? $response->body()),
+                ]);
+                
+                if ($response->successful()) {
+                    Log::info("Keap event triggered successfully: {$eventType}", [
+                        'event_id' => $log->id,
+                        'response' => $response->json(),
+                    ]);
+                    return true;
+                } else {
+                    Log::error("Keap event failed: {$eventType}", [
+                        'event_id' => $log->id,
+                        'status' => $response->status(),
+                        'response' => $response->body(),
+                    ]);
+                    return false;
+                }
+                
+            } catch (\Exception $e) {
+                $log->update([
+                    'status' => 'failed',
+                    'error_message' => $e->getMessage(),
+                    'response' => ['exception' => get_class($e)],
+                ]);
+                
+                Log::error("Keap event exception: {$eventType}", [
+                    'event_id' => $log->id,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+                
+                return false;
+            }
+        });
     }
     
     /**
