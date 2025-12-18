@@ -621,7 +621,27 @@ class AdminController extends Controller
             $agents = User::where('role', 'pva')->orderBy('name')->get();
         }
 
-        return view('admin.valuations.show', compact('valuation', 'agents'));
+        // Get property associated with this valuation (if exists)
+        $property = Property::where('seller_id', $valuation->seller_id)
+            ->where('address', $valuation->property_address)
+            ->with(['homecheckReports' => function($query) {
+                $query->orderBy('created_at', 'desc');
+            }])
+            ->first();
+
+        // Get active and completed HomeCheck reports
+        $activeHomeCheck = null;
+        $completedHomeCheck = null;
+        if ($property) {
+            $activeHomeCheck = $property->homecheckReports
+                ->whereIn('status', ['pending', 'scheduled', 'in_progress'])
+                ->first();
+            $completedHomeCheck = $property->homecheckReports
+                ->where('status', 'completed')
+                ->first();
+        }
+
+        return view('admin.valuations.show', compact('valuation', 'agents', 'property', 'activeHomeCheck', 'completedHomeCheck'));
     }
 
     /**
@@ -1217,6 +1237,109 @@ class AdminController extends Controller
             return back()
                 ->withInput()
                 ->with('error', $errorMessage);
+        }
+    }
+
+    /**
+     * Show edit form for HomeCheck report.
+     *
+     * @param  int  $id  HomeCheck Report ID
+     * @return \Illuminate\Contracts\Support\Renderable
+     */
+    public function editHomeCheck($id)
+    {
+        $user = auth()->user();
+        
+        if (!in_array($user->role, ['admin', 'agent'])) {
+            return redirect()->route($this->getRoleDashboard($user->role))
+                ->with('error', 'You do not have permission to perform this action.');
+        }
+
+        $homecheckReport = \App\Models\HomecheckReport::with(['property', 'scheduler', 'completer'])->findOrFail($id);
+        $property = $homecheckReport->property;
+        
+        // For agents, verify they have access to this property
+        if ($user->role === 'agent') {
+            if (!$this->canAccessProperty($property->id, $user->id)) {
+                return redirect()->route('admin.properties.index')
+                    ->with('error', 'You do not have permission to edit this HomeCheck.');
+            }
+        }
+
+        return view('admin.homechecks.edit', compact('homecheckReport', 'property'));
+    }
+
+    /**
+     * Update HomeCheck report.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  int  $id  HomeCheck Report ID
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function updateHomeCheck(Request $request, $id)
+    {
+        $user = auth()->user();
+        
+        if (!in_array($user->role, ['admin', 'agent'])) {
+            return redirect()->route($this->getRoleDashboard($user->role))
+                ->with('error', 'You do not have permission to perform this action.');
+        }
+
+        $homecheckReport = \App\Models\HomecheckReport::with('property')->findOrFail($id);
+        $property = $homecheckReport->property;
+        
+        // For agents, verify they have access to this property
+        if ($user->role === 'agent') {
+            if (!$this->canAccessProperty($property->id, $user->id)) {
+                return redirect()->route('admin.properties.index')
+                    ->with('error', 'You do not have permission to edit this HomeCheck.');
+            }
+        }
+
+        $validated = $request->validate([
+            'scheduled_date' => ['nullable', 'date'],
+            'status' => ['required', 'in:' . implode(',', \App\Models\HomecheckReport::getValidStatuses())],
+            'notes' => ['nullable', 'string', 'max:1000'],
+        ], [
+            'scheduled_date.date' => 'Please provide a valid date.',
+            'status.required' => 'Please select a status.',
+            'status.in' => 'Invalid status selected.',
+        ]);
+
+        try {
+            $updateData = [
+                'status' => $validated['status'],
+                'notes' => $validated['notes'] ?? $homecheckReport->notes,
+            ];
+
+            // Update scheduled_date if provided
+            if (!empty($validated['scheduled_date'])) {
+                $updateData['scheduled_date'] = \Carbon\Carbon::parse($validated['scheduled_date'])->startOfDay();
+            }
+
+            // Update completed_at if status changed to completed
+            if ($validated['status'] === 'completed' && $homecheckReport->status !== 'completed') {
+                $updateData['completed_by'] = $user->id;
+                $updateData['completed_at'] = now();
+            }
+
+            // Clear completed fields if status changed from completed
+            if ($homecheckReport->status === 'completed' && $validated['status'] !== 'completed') {
+                $updateData['completed_by'] = null;
+                $updateData['completed_at'] = null;
+            }
+
+            $homecheckReport->update($updateData);
+
+            return redirect()->route('admin.properties.show', $property->id)
+                ->with('success', 'HomeCheck updated successfully!');
+
+        } catch (\Exception $e) {
+            \Log::error('HomeCheck update error: ' . $e->getMessage());
+
+            return back()
+                ->withInput()
+                ->with('error', 'An error occurred while updating the HomeCheck. Please try again.');
         }
     }
 

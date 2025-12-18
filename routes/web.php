@@ -71,6 +71,8 @@ Route::middleware(['auth', 'role.web:admin,agent'])->prefix('admin')->name('admi
     // HomeCheck Management Routes
     Route::get('/properties/{id}/schedule-homecheck', [App\Http\Controllers\AdminController::class, 'showScheduleHomeCheck'])->name('properties.schedule-homecheck');
     Route::post('/properties/{id}/schedule-homecheck', [App\Http\Controllers\AdminController::class, 'storeScheduleHomeCheck'])->name('properties.schedule-homecheck.store');
+    Route::get('/homechecks/{id}/edit', [App\Http\Controllers\AdminController::class, 'editHomeCheck'])->name('homechecks.edit');
+    Route::put('/homechecks/{id}', [App\Http\Controllers\AdminController::class, 'updateHomeCheck'])->name('homechecks.update');
     Route::get('/properties/{id}/complete-homecheck', [App\Http\Controllers\AdminController::class, 'showCompleteHomeCheck'])->name('properties.complete-homecheck');
     Route::post('/properties/{id}/complete-homecheck', [App\Http\Controllers\AdminController::class, 'storeCompleteHomeCheck'])->name('properties.complete-homecheck.store');
     

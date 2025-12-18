@@ -328,28 +328,82 @@
             <em>Form will be saved directly to the seller's profile with status "Property Details Captured".</em>
         </p>
         <a href="{{ route('admin.valuations.valuation-form', $valuation->id) }}" class="btn btn-main" style="margin-top: 15px;">Start Valuation Form</a>
-        @php
-            // Check if property already exists for this valuation
-            $existingProperty = \App\Models\Property::where('seller_id', $valuation->seller_id)
-                ->where('address', $valuation->property_address)
-                ->first();
-        @endphp
-        @if($existingProperty)
-            <a href="{{ route('admin.properties.show', $existingProperty->id) }}" class="btn" style="background: var(--abodeology-teal); margin-top: 15px; margin-left: 10px;">View Property</a>
+        @if($property)
+            <a href="{{ route('admin.properties.show', $property->id) }}" class="btn" style="background: var(--abodeology-teal); margin-top: 15px; margin-left: 10px;">View Property</a>
         @endif
     </div>
     @else
     <div class="card" style="background: #d4edda;">
         <h3 style="color: #28a745; margin-top: 0;">✓ Valuation Completed</h3>
         <p>This valuation has been completed. The Valuation Form has been submitted and property details have been captured.</p>
-        @php
-            $property = \App\Models\Property::where('seller_id', $valuation->seller_id)
-                ->where('address', $valuation->property_address)
-                ->first();
-        @endphp
         @if($property)
             <a href="{{ route('admin.properties.show', $property->id) }}" class="btn btn-main" style="margin-top: 15px;">View Property</a>
         @endif
+    </div>
+    @endif
+
+    {{-- HomeCheck Status Section --}}
+    @if($property)
+    <div class="card" style="background: #F9F9F9; border-left: 4px solid #2CB8B4;">
+        <h3 style="color: var(--abodeology-teal); margin-top: 0;">HomeCheck Status</h3>
+        
+        @if($completedHomeCheck)
+            <div style="padding: 15px; background: #d4edda; border-radius: 6px; margin-bottom: 15px;">
+                <p style="color: #28a745; font-weight: 600; margin: 0 0 10px 0;">
+                    ✓ HomeCheck Completed
+                </p>
+                <p style="font-size: 13px; color: #666; margin: 5px 0;">
+                    <strong>Completed:</strong> {{ $completedHomeCheck->completed_at ? \Carbon\Carbon::parse($completedHomeCheck->completed_at)->format('l, F j, Y g:i A') : 'N/A' }}
+                    @if($completedHomeCheck->completer)
+                        <br><strong>By:</strong> {{ $completedHomeCheck->completer->name ?? 'Agent' }}
+                    @endif
+                </p>
+                <div style="margin-top: 10px;">
+                    <a href="{{ route('admin.homechecks.edit', $completedHomeCheck->id) }}" class="btn" style="background: #6c757d; color: #fff; margin-right: 10px;">Edit HomeCheck</a>
+                    <a href="{{ route('admin.properties.show', $property->id) }}" class="btn btn-main">View Property Details</a>
+                </div>
+            </div>
+        @elseif($activeHomeCheck)
+            <div style="padding: 15px; background: #fff3cd; border-radius: 6px; margin-bottom: 15px;">
+                <p style="color: #856404; font-weight: 600; margin: 0 0 10px 0;">
+                    ⏳ HomeCheck {{ ucfirst(str_replace('_', ' ', $activeHomeCheck->status)) }}
+                </p>
+                <p style="font-size: 13px; color: #666; margin: 5px 0;">
+                    @if($activeHomeCheck->scheduled_date)
+                        <strong>Scheduled:</strong> {{ \Carbon\Carbon::parse($activeHomeCheck->scheduled_date)->format('l, F j, Y') }}
+                    @endif
+                </p>
+                <div style="margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap;">
+                    @if($activeHomeCheck->status === 'pending')
+                        <a href="{{ route('admin.properties.complete-homecheck', $property->id) }}" class="btn btn-main">Start HomeCheck Upload</a>
+                    @elseif($activeHomeCheck->status === 'scheduled')
+                        <a href="{{ route('admin.properties.complete-homecheck', $property->id) }}" class="btn btn-main">Complete HomeCheck</a>
+                    @elseif($activeHomeCheck->status === 'in_progress')
+                        <a href="{{ route('admin.properties.complete-homecheck', $property->id) }}" class="btn btn-main">Continue HomeCheck Upload</a>
+                    @endif
+                    <a href="{{ route('admin.homechecks.edit', $activeHomeCheck->id) }}" class="btn" style="background: #6c757d; color: #fff;">Edit HomeCheck</a>
+                    <a href="{{ route('admin.properties.show', $property->id) }}" class="btn" style="background: var(--abodeology-teal); color: #fff;">View Property</a>
+                </div>
+            </div>
+        @else
+            <div style="padding: 15px; background: #fff; border-radius: 6px; margin-bottom: 15px;">
+                <p style="font-size: 14px; color: #666; margin-bottom: 15px;">
+                    No HomeCheck has been scheduled yet. Schedule a HomeCheck appointment to capture 360° images and photos of the property.
+                </p>
+                @if(in_array(auth()->user()->role, ['admin', 'agent']))
+                    <a href="{{ route('admin.properties.schedule-homecheck', $property->id) }}" class="btn btn-main">Schedule HomeCheck</a>
+                    <a href="{{ route('admin.properties.show', $property->id) }}" class="btn" style="background: var(--abodeology-teal); color: #fff; margin-left: 10px;">View Property</a>
+                @endif
+            </div>
+        @endif
+    </div>
+    @elseif($valuation->status === 'completed')
+    <div class="card" style="background: #F9F9F9; border-left: 4px solid #ffc107;">
+        <h3 style="color: #856404; margin-top: 0;">HomeCheck Status</h3>
+        <p style="font-size: 14px; color: #666; margin-bottom: 10px;">
+            Property must be created first before scheduling a HomeCheck. Complete the Valuation Form to create the property.
+        </p>
+        <a href="{{ route('admin.valuations.valuation-form', $valuation->id) }}" class="btn btn-main">Complete Valuation Form</a>
     </div>
     @endif
 </div>
