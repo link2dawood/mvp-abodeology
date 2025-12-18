@@ -359,8 +359,9 @@
                     @endif
                 </p>
                 <div style="margin-top: 10px;">
-                    <a href="{{ route('admin.homechecks.edit', $completedHomeCheck->id) }}" class="btn" style="background: #6c757d; color: #fff; margin-right: 10px;">Edit HomeCheck</a>
-                    <a href="{{ route('admin.properties.show', $property->id) }}" class="btn btn-main">View Property Details</a>
+                    <a href="{{ route('admin.homechecks.show', $completedHomeCheck->id) }}" class="btn btn-main" style="margin-right: 10px;">View HomeCheck</a>
+                    <a href="{{ route('admin.homechecks.edit', $completedHomeCheck->id) }}" class="btn" style="background: #6c757d; color: #fff; margin-right: 10px;">Edit</a>
+                    <a href="{{ route('admin.properties.show', $property->id) }}" class="btn btn-secondary">View Property</a>
                 </div>
             </div>
         @elseif($activeHomeCheck)
