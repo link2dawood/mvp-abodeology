@@ -1434,7 +1434,14 @@ class AdminController extends Controller
                 ->with('error', 'You do not have permission to perform this action.');
         }
 
-        $homecheckReport = \App\Models\HomecheckReport::with(['property', 'scheduler', 'completer'])->findOrFail($id);
+        $homecheckReport = \App\Models\HomecheckReport::with([
+            'property', 
+            'scheduler', 
+            'completer',
+            'homecheckData' => function($query) {
+                $query->orderBy('room_name')->orderBy('created_at');
+            }
+        ])->findOrFail($id);
         $property = $homecheckReport->property;
         
         // For agents, verify they have access to this property
@@ -1445,7 +1452,10 @@ class AdminController extends Controller
             }
         }
 
-        return view('admin.homechecks.edit', compact('homecheckReport', 'property'));
+        // Get existing homecheck data grouped by room
+        $homecheckData = $homecheckReport->homecheckData;
+
+        return view('admin.homechecks.edit', compact('homecheckReport', 'property', 'homecheckData'));
     }
 
     /**
@@ -1479,13 +1489,25 @@ class AdminController extends Controller
             'scheduled_date' => ['nullable', 'date'],
             'status' => ['required', 'in:' . implode(',', \App\Models\HomecheckReport::getValidStatuses())],
             'notes' => ['nullable', 'string', 'max:1000'],
+            'rooms' => ['nullable', 'array'],
+            'rooms.*.name' => ['required_with:rooms', 'string', 'max:255'],
+            'rooms.*.images' => ['required_with:rooms', 'array', 'min:1'],
+            'rooms.*.images.*' => ['required_with:rooms', 'image', 'mimes:jpeg,png,jpg', 'max:10240'], // 10MB max
+            'rooms.*.is_360' => ['nullable', 'boolean'],
+            'rooms.*.moisture_reading' => ['nullable', 'numeric', 'min:0', 'max:100'],
         ], [
             'scheduled_date.date' => 'Please provide a valid date.',
             'status.required' => 'Please select a status.',
             'status.in' => 'Invalid status selected.',
+            'rooms.*.name.required_with' => 'Room name is required when adding rooms.',
+            'rooms.*.images.required_with' => 'At least one image is required for each room.',
+            'rooms.*.images.*.image' => 'Only image files are allowed.',
+            'rooms.*.images.*.max' => 'Image size must not exceed 10MB.',
         ]);
 
         try {
+            \DB::beginTransaction();
+
             $updateData = [
                 'status' => $validated['status'],
                 'notes' => $validated['notes'] ?? $homecheckReport->notes,
@@ -1510,11 +1532,61 @@ class AdminController extends Controller
 
             $homecheckReport->update($updateData);
 
-            return redirect()->route('admin.properties.show', $property->id)
-                ->with('success', 'HomeCheck updated successfully!');
+            // Handle room/image uploads if provided
+            if (!empty($validated['rooms']) && is_array($validated['rooms'])) {
+                $disk = $this->getStorageDisk();
+
+                foreach ($validated['rooms'] as $roomData) {
+                    $roomName = trim($roomData['name']);
+                    if (empty($roomName)) {
+                        continue;
+                    }
+
+                    $is360 = isset($roomData['is_360']) && $roomData['is_360'] == '1';
+                    $moistureReading = isset($roomData['moisture_reading']) && $roomData['moisture_reading'] !== '' 
+                        ? floatval($roomData['moisture_reading']) 
+                        : null;
+
+                    // Process images for this room
+                    if (!empty($roomData['images']) && is_array($roomData['images'])) {
+                        $imageOptimizer = new \App\Services\ImageOptimizationService();
+                        
+                        foreach ($roomData['images'] as $image) {
+                            // Store image in property-specific folder
+                            $imagePath = $image->store('homechecks/' . $property->id . '/rooms/' . $roomName . '/' . ($is360 ? '360' : 'photos'), $disk);
+                            
+                            // Optimize the image (max width 1920px, quality 85%)
+                            try {
+                                $imageOptimizer->optimizeExisting($imagePath, $disk, 1920, 85);
+                            } catch (\Exception $e) {
+                                \Log::warning('Image optimization failed for homecheck image: ' . $e->getMessage());
+                                // Continue even if optimization fails
+                            }
+                            
+                            // Create homecheck data record
+                            \App\Models\HomecheckData::create([
+                                'property_id' => $property->id,
+                                'homecheck_report_id' => $homecheckReport->id,
+                                'room_name' => $roomName,
+                                'image_path' => $imagePath,
+                                'is_360' => $is360,
+                                'moisture_reading' => $moistureReading,
+                                'created_at' => now(),
+                            ]);
+                        }
+                    }
+                }
+            }
+
+            \DB::commit();
+
+            return redirect()->route('admin.homechecks.show', $homecheckReport->id)
+                ->with('success', 'HomeCheck updated successfully!' . (!empty($validated['rooms']) ? ' New rooms and images have been added.' : ''));
 
         } catch (\Exception $e) {
+            \DB::rollBack();
             \Log::error('HomeCheck update error: ' . $e->getMessage());
+            \Log::error('HomeCheck update error trace: ' . $e->getTraceAsString());
 
             return back()
                 ->withInput()
