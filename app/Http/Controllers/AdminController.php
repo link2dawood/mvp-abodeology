@@ -27,17 +27,112 @@ class AdminController extends Controller
     }
 
     /**
+     * Check if agent can access a property.
+     * Centralized access control for agents.
+     *
+     * @param int $propertyId
+     * @param int|null $agentId Optional agent ID (defaults to current user)
+     * @return bool
+     */
+    private function canAccessProperty(int $propertyId, ?int $agentId = null): bool
+    {
+        $user = auth()->user();
+        $agentId = $agentId ?? $user->id;
+
+        // Admins can access all properties
+        if ($user->role === 'admin') {
+            return true;
+        }
+
+        // Agents can only access assigned properties
+        if ($user->role === 'agent') {
+            $agentPropertyIds = $this->getAgentPropertyIds($agentId);
+            return in_array($propertyId, $agentPropertyIds);
+        }
+
+        return false;
+    }
+
+    /**
      * Get agent's assigned property IDs.
-     * Agents are assigned to properties via PropertyInstruction requested_by field.
+     * Uses both direct assignment (assigned_agent_id) and pivot table (property_agents).
+     * Falls back to PropertyInstruction.requested_by for backward compatibility.
      *
      * @param int $agentId
      * @return array
      */
     private function getAgentPropertyIds($agentId): array
     {
-        return \App\Models\PropertyInstruction::where('requested_by', $agentId)
+        // Method 1: Direct assignment via assigned_agent_id (primary method)
+        $directAssignments = Property::where('assigned_agent_id', $agentId)
+            ->pluck('id')
+            ->toArray();
+        
+        // Method 2: Via property_agents pivot table (supports multiple agents per property)
+        $pivotAssignments = \DB::table('property_agents')
+            ->where('agent_id', $agentId)
             ->pluck('property_id')
             ->toArray();
+        
+        // Method 3: Fallback to PropertyInstruction.requested_by (for backward compatibility)
+        $instructionAssignments = \App\Models\PropertyInstruction::where('requested_by', $agentId)
+            ->pluck('property_id')
+            ->toArray();
+        
+        // Merge all methods and remove duplicates
+        return array_unique(array_merge($directAssignments, $pivotAssignments, $instructionAssignments));
+    }
+
+    /**
+     * Assign an agent to a property.
+     * Creates both direct assignment (assigned_agent_id) and pivot table entry.
+     *
+     * @param int $propertyId
+     * @param int $agentId
+     * @param int|null $assignedBy User ID who is making the assignment (defaults to current user)
+     * @param bool $isPrimary Whether this is the primary agent
+     * @param string|null $notes Optional notes about the assignment
+     * @return void
+     */
+    private function assignAgentToProperty(int $propertyId, int $agentId, ?int $assignedBy = null, bool $isPrimary = true, ?string $notes = null): void
+    {
+        $assignedBy = $assignedBy ?? auth()->id();
+        
+        // Verify agent exists and has correct role
+        $agent = User::find($agentId);
+        if (!$agent || !in_array($agent->role, ['admin', 'agent'])) {
+            throw new \InvalidArgumentException("User ID {$agentId} is not a valid agent or admin.");
+        }
+        
+        $property = Property::findOrFail($propertyId);
+        
+        // Update direct assignment (primary agent)
+        if ($isPrimary) {
+            $property->update(['assigned_agent_id' => $agentId]);
+        }
+        
+        // Add to pivot table (supports multiple agents)
+        \DB::table('property_agents')->updateOrInsert(
+            [
+                'property_id' => $propertyId,
+                'agent_id' => $agentId,
+            ],
+            [
+                'assigned_by' => $assignedBy,
+                'assigned_at' => now(),
+                'is_primary' => $isPrimary,
+                'notes' => $notes,
+                'updated_at' => now(),
+            ]
+        );
+        
+        // If this is set as primary, unset other primary agents for this property
+        if ($isPrimary) {
+            \DB::table('property_agents')
+                ->where('property_id', $propertyId)
+                ->where('agent_id', '!=', $agentId)
+                ->update(['is_primary' => false]);
+        }
     }
 
     /**
@@ -510,12 +605,11 @@ class AdminController extends Controller
         
         // For agents, verify they have access to this valuation's property
         if ($user->role === 'agent') {
-            $agentPropertyIds = $this->getAgentPropertyIds($user->id);
             $property = Property::where('seller_id', $valuation->seller_id)
                 ->where('address', $valuation->property_address)
                 ->first();
             
-            if (!$property || !in_array($property->id, $agentPropertyIds)) {
+            if (!$property || !$this->canAccessProperty($property->id, $user->id)) {
                 return redirect()->route('admin.valuations.index')
                     ->with('error', 'You do not have permission to view this valuation.');
             }
@@ -790,6 +884,11 @@ class AdminController extends Controller
 
             // Immediately send Terms & Conditions (instruction request) to seller after valuation
             try {
+                // Assign agent to property (if user is agent/admin)
+                if (in_array($user->role, ['admin', 'agent'])) {
+                    $this->assignAgentToProperty($property->id, $user->id, $user->id, true, 'Assigned during valuation onboarding');
+                }
+                
                 // Create or update instruction record
                 $instruction = \App\Models\PropertyInstruction::updateOrCreate(
                     ['property_id' => $property->id],
@@ -881,7 +980,7 @@ class AdminController extends Controller
         // For agents, verify they have access to this property
         if ($user->role === 'agent') {
             $agentPropertyIds = $this->getAgentPropertyIds($user->id);
-            if (!in_array($property->id, $agentPropertyIds)) {
+            if (!$this->canAccessProperty($property->id, $user->id)) {
                 return redirect()->route('admin.properties.index')
                     ->with('error', 'You do not have permission to view this property.');
             }
@@ -914,6 +1013,11 @@ class AdminController extends Controller
             return back()->with('error', 'This property already has a signed instruction.');
         }
 
+        // Assign agent to property (if user is agent/admin)
+        if (in_array($user->role, ['admin', 'agent'])) {
+            $this->assignAgentToProperty($property->id, $user->id, $user->id, true, 'Assigned when instruction requested');
+        }
+        
         // Create or update instruction request
         $instruction = \App\Models\PropertyInstruction::updateOrCreate(
             ['property_id' => $property->id],
@@ -963,6 +1067,11 @@ class AdminController extends Controller
             return back()->with('error', 'This property already has a signed instruction.');
         }
 
+        // Assign agent to property (if user is agent/admin)
+        if (in_array($user->role, ['admin', 'agent'])) {
+            $this->assignAgentToProperty($property->id, $user->id, $user->id, true, 'Assigned when post-valuation email sent');
+        }
+        
         // Create or update instruction request (pending status - not yet requested)
         if (!$instruction) {
             $instruction = \App\Models\PropertyInstruction::create([
@@ -1011,7 +1120,7 @@ class AdminController extends Controller
         // For agents, verify they have access to this property
         if ($user->role === 'agent') {
             $agentPropertyIds = $this->getAgentPropertyIds($user->id);
-            if (!in_array($property->id, $agentPropertyIds)) {
+            if (!$this->canAccessProperty($property->id, $user->id)) {
                 return redirect()->route('admin.properties.index')
                     ->with('error', 'You do not have permission to schedule a HomeCheck for this property.');
             }
@@ -1046,7 +1155,7 @@ class AdminController extends Controller
         // For agents, verify they have access to this property
         if ($user->role === 'agent') {
             $agentPropertyIds = $this->getAgentPropertyIds($user->id);
-            if (!in_array($property->id, $agentPropertyIds)) {
+            if (!$this->canAccessProperty($property->id, $user->id)) {
                 return redirect()->route('admin.properties.index')
                     ->with('error', 'You do not have permission to schedule a HomeCheck for this property.');
             }
@@ -1131,7 +1240,7 @@ class AdminController extends Controller
         // For agents, verify they have access to this property
         if ($user->role === 'agent') {
             $agentPropertyIds = $this->getAgentPropertyIds($user->id);
-            if (!in_array($property->id, $agentPropertyIds)) {
+            if (!$this->canAccessProperty($property->id, $user->id)) {
                 return redirect()->route('admin.properties.index')
                     ->with('error', 'You do not have permission to complete a HomeCheck for this property.');
             }
@@ -1177,7 +1286,7 @@ class AdminController extends Controller
         // For agents, verify they have access to this property
         if ($user->role === 'agent') {
             $agentPropertyIds = $this->getAgentPropertyIds($user->id);
-            if (!in_array($property->id, $agentPropertyIds)) {
+            if (!$this->canAccessProperty($property->id, $user->id)) {
                 return redirect()->route('admin.properties.index')
                     ->with('error', 'You do not have permission to complete a HomeCheck for this property.');
             }
@@ -1350,7 +1459,7 @@ class AdminController extends Controller
         // For agents, verify they have access to this property
         if ($user->role === 'agent') {
             $agentPropertyIds = $this->getAgentPropertyIds($user->id);
-            if (!in_array($property->id, $agentPropertyIds)) {
+            if (!$this->canAccessProperty($property->id, $user->id)) {
                 return redirect()->route('admin.properties.index')
                     ->with('error', 'You do not have permission to upload listing materials for this property.');
             }
@@ -1456,9 +1565,21 @@ class AdminController extends Controller
                 }
             }
 
-            // Update property status to 'draft' (listing draft ready)
+            // Update property status to 'draft' (listing draft ready) using service
             if ($property->status === 'signed') {
-                $property->update(['status' => 'draft']);
+                $statusService = new \App\Services\PropertyStatusTransitionService();
+                $statusResult = $statusService->changeStatus(
+                    $property,
+                    'draft',
+                    $user->id,
+                    'Listing draft prepared'
+                );
+                
+                if (!$statusResult['success']) {
+                    \DB::rollBack();
+                    return back()
+                        ->with('error', 'Failed to update property status: ' . $statusResult['message']);
+                }
             }
 
             \DB::commit();
@@ -1508,7 +1629,7 @@ class AdminController extends Controller
         // For agents, verify they have access to this property
         if ($user->role === 'agent') {
             $agentPropertyIds = $this->getAgentPropertyIds($user->id);
-            if (!in_array($property->id, $agentPropertyIds)) {
+            if (!$this->canAccessProperty($property->id, $user->id)) {
                 return redirect()->route('admin.properties.index')
                     ->with('error', 'You do not have permission to publish this listing.');
             }
@@ -1884,7 +2005,7 @@ class AdminController extends Controller
         // For agents, verify they have access to this property
         if ($user->role === 'agent') {
             $agentPropertyIds = $this->getAgentPropertyIds($user->id);
-            if (!in_array($offer->property_id, $agentPropertyIds)) {
+            if (!$this->canAccessProperty($offer->property_id, $user->id)) {
                 return redirect()->route('admin.properties.show', $offer->property_id)
                     ->with('error', 'You do not have permission to release this offer.');
             }
@@ -2103,7 +2224,7 @@ class AdminController extends Controller
         // For agents, verify they have access to this viewing's property
         if ($user->role === 'agent') {
             $agentPropertyIds = $this->getAgentPropertyIds($user->id);
-            if (!in_array($viewing->property_id, $agentPropertyIds)) {
+            if (!$this->canAccessProperty($viewing->property_id, $user->id)) {
                 return redirect()->route('admin.viewings.index')
                     ->with('error', 'You do not have permission to assign this viewing.');
             }

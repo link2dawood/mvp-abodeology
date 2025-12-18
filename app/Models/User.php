@@ -207,6 +207,26 @@ class User extends Authenticatable implements MustVerifyEmail, JWTSubject
     }
 
     /**
+     * Get properties assigned to this agent (via assigned_agent_id).
+     * Only applicable for users with 'agent' or 'admin' role.
+     */
+    public function assignedProperties()
+    {
+        return $this->hasMany(Property::class, 'assigned_agent_id');
+    }
+
+    /**
+     * Get properties assigned to this agent via property_agents pivot table.
+     * Supports multiple agents per property.
+     */
+    public function managedProperties()
+    {
+        return $this->belongsToMany(Property::class, 'property_agents', 'agent_id', 'property_id')
+            ->withPivot(['assigned_by', 'assigned_at', 'is_primary', 'notes'])
+            ->withTimestamps();
+    }
+
+    /**
      * Get notes created by this user.
      */
     public function notes()

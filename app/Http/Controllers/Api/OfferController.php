@@ -169,6 +169,15 @@ class OfferController extends Controller
             ], 404);
         }
 
+        // Validate property status allows buyer interactions
+        $statusService = new \App\Services\PropertyStatusTransitionService();
+        if ($statusService->blocksBuyerInteractions($property)) {
+            return response()->json([
+                'error' => 'Invalid property status',
+                'message' => 'This property is no longer available. Status: ' . ucfirst($property->status),
+            ], 400);
+        }
+        
         if ($property->status !== 'live') {
             return response()->json([
                 'error' => 'Invalid property status',
@@ -254,32 +263,37 @@ class OfferController extends Controller
             ], 422);
         }
 
-        // Map decision to status
-        $statusMap = [
+        // Map API decision format to service format
+        $decisionMap = [
             'accept' => 'accepted',
-            'decline' => 'rejected',
-            'counter' => 'countered',
+            'decline' => 'declined',
+            'counter' => 'counter',
         ];
 
-        $newStatus = $statusMap[$request->decision];
+        $serviceDecision = $decisionMap[$request->decision] ?? $request->decision;
 
-        // Update offer status
-        $offer->update([
-            'status' => $newStatus,
-        ]);
+        // Use OfferDecisionService for consistent logic
+        $offerDecisionService = new \App\Services\OfferDecisionService();
+        
+        $result = $offerDecisionService->processDecision(
+            $offer,
+            $serviceDecision,
+            $user->role === 'seller' || $user->role === 'both' ? $user->id : $offer->property->seller_id,
+            [
+                'comments' => $request->comments,
+            ]
+        );
 
-        // Create offer decision record
-        \App\Models\OfferDecision::create([
-            'offer_id' => $offer->id,
-            'seller_id' => $user->role === 'seller' || $user->role === 'both' ? $user->id : $offer->property->seller_id,
-            'decision' => $request->decision,
-            'comments' => $request->comments,
-            'decided_at' => now(),
-        ]);
+        if (!$result['success']) {
+            return response()->json([
+                'error' => 'Failed to process offer decision',
+                'message' => $result['message'],
+            ], 400);
+        }
 
         return response()->json([
-            'message' => 'Offer updated successfully',
-            'data' => $offer->load(['buyer', 'property.seller', 'decisions.seller']),
+            'message' => 'Offer decision processed successfully',
+            'data' => $result['offer'],
         ]);
     }
 

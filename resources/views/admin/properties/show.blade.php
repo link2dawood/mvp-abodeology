@@ -505,8 +505,8 @@
                                     <span style="background: #ffc107; color: #000; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">Pending</span>
                                 @elseif($offer->status === 'accepted')
                                     <span style="background: #28a745; color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">Accepted</span>
-                                @elseif($offer->status === 'rejected')
-                                    <span style="background: #dc3545; color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">Rejected</span>
+                                @elseif($offer->status === 'declined')
+                                    <span style="background: #dc3545; color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">Declined</span>
                                 @elseif($offer->status === 'countered')
                                     <span style="background: #17a2b8; color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">Countered</span>
                                 @else

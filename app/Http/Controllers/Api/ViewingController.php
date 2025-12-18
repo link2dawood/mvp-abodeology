@@ -124,6 +124,15 @@ class ViewingController extends Controller
             ], 404);
         }
 
+        // Validate property status allows buyer interactions
+        $statusService = new \App\Services\PropertyStatusTransitionService();
+        if ($statusService->blocksBuyerInteractions($property)) {
+            return response()->json([
+                'error' => 'Invalid property status',
+                'message' => 'This property is no longer available for viewings. Status: ' . ucfirst($property->status),
+            ], 400);
+        }
+        
         if ($property->status !== 'live') {
             return response()->json([
                 'error' => 'Invalid property status',

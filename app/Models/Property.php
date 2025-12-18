@@ -11,8 +11,59 @@ class Property extends Model
 {
     use Ownable;
 
+    /**
+     * Property status constants.
+     * These define all valid property statuses in the system.
+     * 
+     * Status Workflow:
+     * draft → property_details_captured → pre_marketing → signed → awaiting_aml → live → sstc → sold
+     *                                                                              ↓
+     *                                                                         withdrawn
+     */
+    public const STATUS_DRAFT = 'draft';
+    public const STATUS_PROPERTY_DETAILS_CAPTURED = 'property_details_captured';
+    public const STATUS_PRE_MARKETING = 'pre_marketing';
+    public const STATUS_SIGNED = 'signed';
+    public const STATUS_AWAITING_AML = 'awaiting_aml';
+    public const STATUS_LIVE = 'live';
+    public const STATUS_SSTC = 'sstc';
+    public const STATUS_WITHDRAWN = 'withdrawn';
+    public const STATUS_SOLD = 'sold';
+
+    /**
+     * Get all valid property statuses.
+     * 
+     * @return array
+     */
+    public static function getValidStatuses(): array
+    {
+        return [
+            self::STATUS_DRAFT,
+            self::STATUS_PROPERTY_DETAILS_CAPTURED,
+            self::STATUS_PRE_MARKETING,
+            self::STATUS_SIGNED,
+            self::STATUS_AWAITING_AML,
+            self::STATUS_LIVE,
+            self::STATUS_SSTC,
+            self::STATUS_WITHDRAWN,
+            self::STATUS_SOLD,
+        ];
+    }
+
+    /**
+     * Check if a status value is valid.
+     * 
+     * @param string $status
+     * @return bool
+     */
+    public static function isValidStatus(string $status): bool
+    {
+        return in_array($status, self::getValidStatuses());
+    }
+
     protected $fillable = [
         'seller_id',
+        'assigned_agent_id',
         'seller2_name',
         'seller2_email',
         'seller2_phone',
@@ -51,6 +102,27 @@ class Property extends Model
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Boot the model.
+     * Add validation for status field.
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        // Validate status when saving
+        static::saving(function ($property) {
+            if ($property->isDirty('status')) {
+                if (!self::isValidStatus($property->status)) {
+                    throw new \InvalidArgumentException(
+                        "Invalid property status: '{$property->status}'. Valid statuses: " . 
+                        implode(', ', self::getValidStatuses())
+                    );
+                }
+            }
+        });
     }
 
     /**
@@ -147,5 +219,36 @@ class Property extends Model
     public function instruction()
     {
         return $this->hasOne(PropertyInstruction::class);
+    }
+
+    /**
+     * Get the assigned agent (primary agent) for this property.
+     */
+    public function assignedAgent(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_agent_id');
+    }
+
+    /**
+     * Get all agents assigned to this property (via pivot table).
+     */
+    public function agents()
+    {
+        return $this->belongsToMany(User::class, 'property_agents', 'property_id', 'agent_id')
+            ->withPivot(['assigned_by', 'assigned_at', 'is_primary', 'notes'])
+            ->withTimestamps()
+            ->whereIn('role', ['admin', 'agent']); // Only agents and admins
+    }
+
+    /**
+     * Get primary agent for this property (via pivot table).
+     */
+    public function primaryAgent()
+    {
+        return $this->belongsToMany(User::class, 'property_agents', 'property_id', 'agent_id')
+            ->withPivot(['assigned_by', 'assigned_at', 'is_primary', 'notes'])
+            ->wherePivot('is_primary', true)
+            ->whereIn('role', ['admin', 'agent'])
+            ->first();
     }
 }

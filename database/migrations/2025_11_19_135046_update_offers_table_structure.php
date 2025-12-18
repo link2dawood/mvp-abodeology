@@ -59,7 +59,7 @@ return new class extends Migration
                 $table->text('conditions')->nullable()->after('chain_position');
             }
             if (!in_array('status', $existingColumns)) {
-                $table->enum('status', ['pending', 'accepted', 'rejected', 'withdrawn', 'countered'])->default('pending')->after('conditions');
+                $table->enum('status', ['pending', 'accepted', 'declined', 'withdrawn', 'countered'])->default('pending')->after('conditions');
             }
         });
     }

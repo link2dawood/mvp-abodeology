@@ -289,6 +289,13 @@ class BuyerController extends Controller
             ->with(['seller', 'photos'])
             ->findOrFail($id);
 
+        // Validate property status allows buyer interactions
+        $statusService = new \App\Services\PropertyStatusTransitionService();
+        if ($statusService->blocksBuyerInteractions($property)) {
+            return redirect()->route('buyer.dashboard')
+                ->with('error', 'This property is no longer available. Status: ' . ucfirst($property->status));
+        }
+
         // Prevent buyers from making offers on their own properties
         if ($property->seller_id === $user->id) {
             return redirect()->route('buyer.dashboard')
@@ -329,6 +336,21 @@ class BuyerController extends Controller
 
         $user = auth()->user();
         $property = \App\Models\Property::where('status', 'live')->findOrFail($id);
+        
+        // Validate property status allows buyer interactions
+        $statusService = new \App\Services\PropertyStatusTransitionService();
+        if ($statusService->blocksBuyerInteractions($property)) {
+            return redirect()->route('buyer.dashboard')
+                ->with('error', 'This property is no longer available for viewings. Status: ' . ucfirst($property->status));
+        }
+
+        // Validate property status allows buyer interactions
+        $statusService = new \App\Services\PropertyStatusTransitionService();
+        if ($statusService->blocksBuyerInteractions($property)) {
+            return back()
+                ->withInput()
+                ->with('error', 'This property is no longer available. Status: ' . ucfirst($property->status));
+        }
 
         // Prevent buyers from making offers on their own properties
         if ($property->seller_id === $user->id) {
@@ -426,6 +448,13 @@ class BuyerController extends Controller
                 $property = \App\Models\Property::where('status', 'live')
                     ->with(['seller', 'photos'])
                     ->findOrFail($id);
+                
+                // Validate property status allows buyer interactions
+                $statusService = new \App\Services\PropertyStatusTransitionService();
+                if ($statusService->blocksBuyerInteractions($property)) {
+                    return redirect()->route('buyer.dashboard')
+                        ->with('error', 'This property is no longer available for viewings. Status: ' . ucfirst($property->status));
+                }
             } elseif ($user->role === 'seller') {
                 // Sellers can view their own live properties
                 $property = \App\Models\Property::where('status', 'live')
@@ -482,6 +511,13 @@ class BuyerController extends Controller
         }
 
         $property = \App\Models\Property::where('status', 'live')->findOrFail($id);
+        
+        // Validate property status allows buyer interactions
+        $statusService = new \App\Services\PropertyStatusTransitionService();
+        if ($statusService->blocksBuyerInteractions($property)) {
+            return redirect()->route('buyer.dashboard')
+                ->with('error', 'This property is no longer available for viewings. Status: ' . ucfirst($property->status));
+        }
 
         $validated = $request->validate([
             'viewing_date' => ['required', 'date', 'after:today'],

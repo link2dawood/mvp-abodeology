@@ -767,125 +767,28 @@ class SellerController extends Controller
         ]);
 
         try {
-            \DB::beginTransaction();
+            // Use OfferDecisionService for consistent logic
+            $offerDecisionService = new \App\Services\OfferDecisionService();
+            
+            $result = $offerDecisionService->processDecision(
+                $offer,
+                $validated['decision'],
+                $user->id,
+                [
+                    'notes' => $validated['notes'] ?? null,
+                    'counter_amount' => ($validated['decision'] === 'counter' && isset($validated['counter_amount'])) 
+                        ? $validated['counter_amount'] 
+                        : null,
+                ]
+            );
 
-            // Map decision to status
-            $statusMap = [
-                'accepted' => 'accepted',
-                'declined' => 'declined',
-                'counter' => 'countered',
-            ];
-
-            $newStatus = $statusMap[$validated['decision']];
-
-            // Update offer status
-            $offer->update([
-                'status' => $newStatus,
-            ]);
-
-            // Create offer decision record
-            $offerDecision = \App\Models\OfferDecision::create([
-                'offer_id' => $offer->id,
-                'seller_id' => $user->id,
-                'decision' => $validated['decision'],
-                'comments' => $validated['notes'] ?? null,
-                'counter_amount' => ($validated['decision'] === 'counter' && isset($validated['counter_amount'])) ? $validated['counter_amount'] : null,
-                'decided_at' => now(),
-            ]);
-
-            // If accepted, update property status and create sales progression
-            if ($validated['decision'] === 'accepted') {
-                // Update property status to SSTC
-                $offer->property->update([
-                    'status' => 'sstc',
-                ]);
-
-                // Create sales progression record
-                $salesProgression = \App\Models\SalesProgression::create([
-                    'property_id' => $offer->property_id,
-                    'buyer_id' => $offer->buyer_id,
-                    'offer_id' => $offer->id,
-                    'solicitor_seller' => $offer->property->solicitor_email ?? null,
-                    // Buyer solicitor would be stored separately or in offer details
-                ]);
-
-                // Check if buyer and seller have completed required information for MoS
-                $sellerInfoComplete = $offer->property->solicitor_details_completed ?? false;
-                $buyerInfoComplete = $this->checkBuyerInfoComplete($offer->buyer);
-
-                // Generate and send Memorandum of Sale only if both parties have completed their info
-                if ($sellerInfoComplete && $buyerInfoComplete) {
-                    try {
-                        $memorandumService = new \App\Services\MemorandumOfSaleService();
-                        $memorandumPath = $memorandumService->generateAndSave($offer, $offer->property, $salesProgression);
-
-                    // Update sales progression with memorandum path
-                    $salesProgression->update([
-                        'memorandum_of_sale_issued' => true,
-                        'memorandum_path' => $memorandumPath,
-                    ]);
-
-                    // Send Memorandum of Sale to both solicitors
-                    if ($offer->property->solicitor_email) {
-                        \Mail::to($offer->property->solicitor_email)->send(
-                            new \App\Mail\MemorandumOfSale($offer, $offer->property, $memorandumPath, 'seller')
-                        );
-                    }
-
-                    // Send to buyer solicitor (if available in offer or buyer profile)
-                    // For now, we'll send to buyer email as placeholder
-                    \Mail::to($offer->buyer->email)->send(
-                        new \App\Mail\MemorandumOfSale($offer, $offer->property, $memorandumPath, 'buyer')
-                    );
-
-                    } catch (\Exception $e) {
-                        \Log::error('Memorandum of Sale generation error: ' . $e->getMessage());
-                        // Don't fail the transaction if memorandum generation fails
-                    }
-                } else {
-                    // Mark that MoS is pending completion of required info
-                    $salesProgression->update([
-                        'memorandum_pending_info' => true,
-                    ]);
-                    
-                    // Notify both parties that they need to complete their information
-                    try {
-                        if (!$sellerInfoComplete) {
-                            \Mail::to($offer->property->seller->email)->send(
-                                new \App\Mail\MemorandumPendingInfo($offer, $offer->property, 'seller')
-                            );
-                        }
-                        if (!$buyerInfoComplete) {
-                            \Mail::to($offer->buyer->email)->send(
-                                new \App\Mail\MemorandumPendingInfo($offer, $offer->property, 'buyer')
-                            );
-                        }
-                    } catch (\Exception $e) {
-                        \Log::error('Failed to send MoS pending info notifications: ' . $e->getMessage());
-                    }
-                }
+            if (!$result['success']) {
+                return back()
+                    ->withInput()
+                    ->with('error', $result['message']);
             }
 
-            \DB::commit();
-
-            // Trigger Keap automation if offer was accepted
-            if ($validated['decision'] === 'accepted') {
-                try {
-                    $keapService = new \App\Services\KeapService();
-                    $keapService->triggerOfferAccepted($offer, $offerDecision);
-                } catch (\Exception $e) {
-                    \Log::error('Keap trigger error for offer acceptance: ' . $e->getMessage());
-                }
-            }
-
-            // Send notification to buyer
-            try {
-                \Mail::to($offer->buyer->email)->send(
-                    new \App\Mail\OfferDecisionNotification($offer, $offer->property, $offer->buyer, $validated['decision'])
-                );
-            } catch (\Exception $e) {
-                \Log::error('Failed to send offer decision notification to buyer: ' . $e->getMessage());
-            }
+            $offerDecision = $result['decision'];
 
             $decisionMessages = [
                 'accepted' => 'You have accepted the offer! A Memorandum of Sale has been generated and sent to both solicitors.',
