@@ -508,17 +508,39 @@ class AdminController extends Controller
             }
         }
         
+        // Find the property associated with this valuation
+        $property = Property::where('seller_id', $valuation->seller_id)
+            ->where('address', $valuation->property_address)
+            ->first();
+        
         // For agents, verify they have access to this valuation's property
         if ($user->role === 'agent') {
             $agentPropertyIds = $this->getAgentPropertyIds($user->id);
-            $property = Property::where('seller_id', $valuation->seller_id)
-                ->where('address', $valuation->property_address)
-                ->first();
             
             if (!$property || !in_array($property->id, $agentPropertyIds)) {
                 return redirect()->route('admin.valuations.index')
                     ->with('error', 'You do not have permission to view this valuation.');
             }
+        }
+
+        // Load HomeCheck data if property exists
+        $completedHomeCheck = null;
+        $activeHomeCheck = null;
+        
+        if ($property) {
+            // Get completed HomeCheck (if any)
+            $completedHomeCheck = \App\Models\HomecheckReport::where('property_id', $property->id)
+                ->where('status', 'completed')
+                ->with(['completer'])
+                ->orderBy('completed_at', 'desc')
+                ->first();
+            
+            // Get active HomeCheck (pending, scheduled, or in_progress)
+            $activeHomeCheck = \App\Models\HomecheckReport::where('property_id', $property->id)
+                ->whereIn('status', ['pending', 'scheduled', 'in_progress'])
+                ->with(['scheduler'])
+                ->orderBy('created_at', 'desc')
+                ->first();
         }
 
         // Get all PVA users for the assignment dropdown (only show for admin/agent)
@@ -527,7 +549,7 @@ class AdminController extends Controller
             $agents = User::where('role', 'pva')->orderBy('name')->get();
         }
 
-        return view('admin.valuations.show', compact('valuation', 'agents'));
+        return view('admin.valuations.show', compact('valuation', 'agents', 'property', 'completedHomeCheck', 'activeHomeCheck'));
     }
 
     /**
