@@ -99,7 +99,7 @@ class HomeCheckReportService
      * @param Property $property
      * @return array
      */
-    protected function generateAIAnalysis($homecheckData, Property $property): array
+    public function generateAIAnalysis($homecheckData, Property $property): array
     {
         $apiKey = config('services.openai.api_key');
         $assistantId = config('services.openai.assistant_id');

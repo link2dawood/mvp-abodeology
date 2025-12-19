@@ -1476,9 +1476,15 @@ class AdminController extends Controller
         $homecheckReport = \App\Models\HomecheckReport::with(['property', 'homecheckData'])->findOrFail($id);
         $property = $homecheckReport->property;
         
+        if (!$property) {
+            return redirect()->route('admin.homechecks.index')
+                ->with('error', 'Property not found for this HomeCheck.');
+        }
+        
         // For agents, verify they have access to this property
         if ($user->role === 'agent') {
-            if (!$this->canAccessProperty($property->id, $user->id)) {
+            $agentPropertyIds = $this->getAgentPropertyIds($user->id);
+            if (!in_array($property->id, $agentPropertyIds)) {
                 return redirect()->route('admin.homechecks.index')
                     ->with('error', 'You do not have permission to process AI analysis for this HomeCheck.');
             }
