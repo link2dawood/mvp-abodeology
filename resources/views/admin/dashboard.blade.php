@@ -522,7 +522,7 @@
                             </td>
                             <td>{{ $homecheck->property->seller->name ?? 'N/A' }}</td>
                             <td>
-                                <span class="status status-pending">{{ ucfirst($homecheck->status) }}</span>
+                                <span class="status status-pending">{{ ucfirst(str_replace('_', ' ', $homecheck->status)) }}</span>
                             </td>
                             <td style="font-size: 12px; color: #666;">
                                 {{ $homecheck->created_at->format('M j, Y') }}

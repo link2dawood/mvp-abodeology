@@ -93,13 +93,89 @@
         padding: 20px;
         background: #f9f9f9;
         border-radius: 8px;
+        border: 1px solid var(--line-grey);
+    }
+
+    .room-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: pointer;
+        padding: 10px;
+        margin: -10px -10px 15px -10px;
+        border-radius: 6px;
+        transition: background 0.2s;
+    }
+
+    .room-header:hover {
+        background: rgba(0,0,0,0.05);
     }
 
     .room-title {
         font-size: 20px;
         font-weight: 600;
-        margin-bottom: 15px;
+        margin: 0;
         color: var(--dark-text);
+        flex: 1;
+    }
+
+    .room-toggle-icon {
+        font-size: 18px;
+        color: var(--abodeology-teal);
+        transition: transform 0.3s ease;
+        margin-left: 15px;
+    }
+
+    .room-section.collapsed .room-toggle-icon {
+        transform: rotate(-90deg);
+    }
+
+    .room-content {
+        overflow: hidden;
+        transition: max-height 0.3s ease, opacity 0.3s ease;
+        max-height: 5000px;
+        opacity: 1;
+    }
+
+    .room-section.collapsed .room-content {
+        max-height: 0;
+        opacity: 0;
+        margin: 0;
+        padding: 0;
+    }
+
+    .room-controls {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid var(--line-grey);
+    }
+
+    .room-controls h3 {
+        margin: 0;
+    }
+
+    .room-controls-buttons {
+        display: flex;
+        gap: 10px;
+    }
+
+    .btn-control {
+        padding: 8px 16px;
+        background: var(--abodeology-teal);
+        color: var(--white);
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 600;
+        transition: background 0.2s;
+    }
+
+    .btn-control:hover {
+        background: #1a9a96;
     }
 
     .image-gallery {
@@ -324,9 +400,22 @@
 
     <!-- Room Data -->
     @if($roomsData->count() > 0)
+        <div class="card">
+            <div class="room-controls">
+                <h3>Rooms ({{ $roomsData->count() }})</h3>
+                <div class="room-controls-buttons">
+                    <button type="button" class="btn-control" onclick="expandAllRooms()">Expand All</button>
+                    <button type="button" class="btn-control" onclick="collapseAllRooms()">Collapse All</button>
+                </div>
+            </div>
+        </div>
         @foreach($roomsData as $roomName => $roomImages)
             <div class="room-section">
-                <div class="room-title">{{ ucfirst($roomName) }}</div>
+                <div class="room-header" onclick="toggleRoomCollapse(this)">
+                    <div class="room-title">{{ ucfirst($roomName) }}</div>
+                    <span class="room-toggle-icon">▼</span>
+                </div>
+                <div class="room-content">
                 
                 @php
                     $firstImage = $roomImages->first();
@@ -384,6 +473,7 @@
                         @endif
                     @endforeach
                 </div>
+                </div>
             </div>
         @endforeach
     @else
@@ -423,6 +513,23 @@
             closeModal();
         }
     });
+
+    function toggleRoomCollapse(header) {
+        const roomSection = header.closest('.room-section');
+        roomSection.classList.toggle('collapsed');
+    }
+
+    function expandAllRooms() {
+        document.querySelectorAll('.room-section').forEach(section => {
+            section.classList.remove('collapsed');
+        });
+    }
+
+    function collapseAllRooms() {
+        document.querySelectorAll('.room-section').forEach(section => {
+            section.classList.add('collapsed');
+        });
+    }
 </script>
 @endpush
 @endsection
