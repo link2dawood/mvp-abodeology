@@ -1417,6 +1417,48 @@ class AdminController extends Controller
     }
 
     /**
+     * Show edit form for HomeCheck report.
+     *
+     * @param  int  $id  HomeCheck Report ID
+     * @return \Illuminate\Contracts\Support\Renderable
+     */
+    public function editHomeCheck($id)
+    {
+        $user = auth()->user();
+        
+        if (!in_array($user->role, ['admin', 'agent'])) {
+            return redirect()->route($this->getRoleDashboard($user->role))
+                ->with('error', 'You do not have permission to access this page.');
+        }
+
+        $homecheckReport = \App\Models\HomecheckReport::with([
+            'property.seller',
+            'scheduler',
+            'completer',
+            'homecheckData' => function($query) {
+                $query->orderBy('room_name')->orderBy('created_at');
+            }
+        ])->findOrFail($id);
+
+        $property = $homecheckReport->property;
+        
+        // For agents, verify they have access to this property
+        if ($user->role === 'agent') {
+            $agentPropertyIds = $this->getAgentPropertyIds($user->id);
+            if (!in_array($property->id, $agentPropertyIds)) {
+                return redirect()->route('admin.homechecks.index')
+                    ->with('error', 'You do not have permission to edit this HomeCheck.');
+            }
+        }
+
+        // Get HomeCheck data grouped by room
+        $homecheckData = $homecheckReport->homecheckData;
+        $roomsData = $homecheckData->groupBy('room_name');
+
+        return view('admin.homechecks.edit', compact('homecheckReport', 'property', 'roomsData', 'homecheckData'));
+    }
+
+    /**
      * Process AI analysis for a HomeCheck report.
      *
      * @param  int  $id  HomeCheck Report ID
