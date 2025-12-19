@@ -1289,6 +1289,134 @@ class AdminController extends Controller
     }
 
     /**
+     * List all HomeCheck reports.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Contracts\Support\Renderable
+     */
+    public function homechecks(Request $request)
+    {
+        $user = auth()->user();
+        
+        if (!in_array($user->role, ['admin', 'agent'])) {
+            return redirect()->route($this->getRoleDashboard($user->role))
+                ->with('error', 'You do not have permission to access this page.');
+        }
+
+        // Build query
+        $query = \App\Models\HomecheckReport::with([
+            'property.seller',
+            'homecheckData'
+        ]);
+
+        // For agents, filter by their assigned properties
+        if ($user->role === 'agent') {
+            $agentPropertyIds = $this->getAgentPropertyIds($user->id);
+            if (empty($agentPropertyIds)) {
+                // Agent has no assigned properties, return empty result
+                $homechecks = \App\Models\HomecheckReport::whereRaw('1 = 0')->paginate(20);
+                return view('admin.homechecks.index', compact('homechecks'));
+            }
+            $query->whereIn('property_id', $agentPropertyIds);
+        }
+
+        // Filter by status if provided
+        if ($request->has('status') && $request->status !== '') {
+            $query->where('status', $request->status);
+        }
+
+        // Order by most recent first
+        $query->orderBy('created_at', 'desc');
+
+        // Paginate results
+        $homechecks = $query->paginate(20)->withQueryString();
+
+        return view('admin.homechecks.index', compact('homechecks'));
+    }
+
+    /**
+     * Show HomeCheck report details.
+     *
+     * @param  int  $id  HomeCheck Report ID
+     * @return \Illuminate\Contracts\Support\Renderable
+     */
+    public function showHomeCheck($id)
+    {
+        $user = auth()->user();
+        
+        if (!in_array($user->role, ['admin', 'agent'])) {
+            return redirect()->route($this->getRoleDashboard($user->role))
+                ->with('error', 'You do not have permission to access this page.');
+        }
+
+        $homecheckReport = \App\Models\HomecheckReport::with([
+            'property.seller',
+            'scheduler',
+            'completer',
+            'homecheckData' => function($query) {
+                $query->orderBy('room_name')->orderBy('created_at');
+            }
+        ])->findOrFail($id);
+
+        $property = $homecheckReport->property;
+        
+        // For agents, verify they have access to this property
+        if ($user->role === 'agent') {
+            $agentPropertyIds = $this->getAgentPropertyIds($user->id);
+            if (!in_array($property->id, $agentPropertyIds)) {
+                return redirect()->route('admin.homechecks.index')
+                    ->with('error', 'You do not have permission to view this HomeCheck.');
+            }
+        }
+
+        // Get HomeCheck data grouped by room
+        $homecheckData = $homecheckReport->homecheckData;
+        $roomsData = $homecheckData->groupBy('room_name');
+
+        // Get AI analysis if available
+        $aiAnalysis = null;
+        if ($homecheckReport->report_path) {
+            try {
+                $reportService = new \App\Services\HomeCheckReportService();
+                // Try to get AI analysis from report or generate summary
+                $aiAnalysis = $this->getHomeCheckAnalysis($homecheckReport, $homecheckData);
+            } catch (\Exception $e) {
+                \Log::warning('Failed to load AI analysis: ' . $e->getMessage());
+            }
+        }
+
+        return view('admin.homechecks.show', compact('homecheckReport', 'property', 'roomsData', 'homecheckData', 'aiAnalysis'));
+    }
+
+    /**
+     * Get HomeCheck AI analysis summary.
+     *
+     * @param \App\Models\HomecheckReport $homecheckReport
+     * @param \Illuminate\Support\Collection $homecheckData
+     * @return array|null
+     */
+    private function getHomeCheckAnalysis($homecheckReport, $homecheckData)
+    {
+        // Extract AI analysis from homecheck data
+        $analysis = [
+            'overall_rating' => null,
+            'rooms' => [],
+        ];
+
+        foreach ($homecheckData->groupBy('room_name') as $roomName => $roomImages) {
+            $firstImage = $roomImages->first();
+            $analysis['rooms'][$roomName] = [
+                'rating' => $firstImage->ai_rating ?? null,
+                'comments' => $firstImage->ai_comments ?? null,
+                'moisture' => $firstImage->moisture_reading ?? null,
+                'image_count' => $roomImages->count(),
+            ];
+        }
+
+        return $analysis;
+    }
+
+    /**
      * Process AI analysis for a HomeCheck report.
      *
      * @param  int  $id  HomeCheck Report ID
