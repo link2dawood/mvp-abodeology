@@ -1360,6 +1360,11 @@ class AdminController extends Controller
 
         $property = $homecheckReport->property;
         
+        if (!$property) {
+            return redirect()->route('admin.homechecks.index')
+                ->with('error', 'Property not found for this HomeCheck.');
+        }
+        
         // For agents, verify they have access to this property
         if ($user->role === 'agent') {
             $agentPropertyIds = $this->getAgentPropertyIds($user->id);
@@ -1370,7 +1375,7 @@ class AdminController extends Controller
         }
 
         // Get HomeCheck data grouped by room
-        $homecheckData = $homecheckReport->homecheckData;
+        $homecheckData = $homecheckReport->homecheckData ?? collect();
         $roomsData = $homecheckData->groupBy('room_name');
 
         // Get AI analysis if available
@@ -1403,14 +1408,20 @@ class AdminController extends Controller
             'rooms' => [],
         ];
 
+        if (!$homecheckData || $homecheckData->isEmpty()) {
+            return $analysis;
+        }
+
         foreach ($homecheckData->groupBy('room_name') as $roomName => $roomImages) {
             $firstImage = $roomImages->first();
-            $analysis['rooms'][$roomName] = [
-                'rating' => $firstImage->ai_rating ?? null,
-                'comments' => $firstImage->ai_comments ?? null,
-                'moisture' => $firstImage->moisture_reading ?? null,
-                'image_count' => $roomImages->count(),
-            ];
+            if ($firstImage) {
+                $analysis['rooms'][$roomName] = [
+                    'rating' => $firstImage->ai_rating ?? null,
+                    'comments' => $firstImage->ai_comments ?? null,
+                    'moisture' => $firstImage->moisture_reading ?? null,
+                    'image_count' => $roomImages->count(),
+                ];
+            }
         }
 
         return $analysis;
@@ -1456,6 +1467,246 @@ class AdminController extends Controller
         $roomsData = $homecheckData->groupBy('room_name');
 
         return view('admin.homechecks.edit', compact('homecheckReport', 'property', 'roomsData', 'homecheckData'));
+    }
+
+    /**
+     * Update HomeCheck report.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  int  $id  HomeCheck Report ID
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function updateHomeCheck(Request $request, $id)
+    {
+        $user = auth()->user();
+        
+        if (!in_array($user->role, ['admin', 'agent'])) {
+            return redirect()->route($this->getRoleDashboard($user->role))
+                ->with('error', 'You do not have permission to perform this action.');
+        }
+
+        $homecheckReport = \App\Models\HomecheckReport::with(['property', 'homecheckData'])->findOrFail($id);
+        $property = $homecheckReport->property;
+        
+        if (!$property) {
+            return redirect()->route('admin.homechecks.index')
+                ->with('error', 'Property not found for this HomeCheck.');
+        }
+        
+        // For agents, verify they have access to this property
+        if ($user->role === 'agent') {
+            $agentPropertyIds = $this->getAgentPropertyIds($user->id);
+            if (!in_array($property->id, $agentPropertyIds)) {
+                return redirect()->route('admin.homechecks.index')
+                    ->with('error', 'You do not have permission to update this HomeCheck.');
+            }
+        }
+
+        // Validate basic fields
+        $validated = $request->validate([
+            'scheduled_date' => 'nullable|date',
+            'status' => 'required|in:pending,scheduled,in_progress,completed,cancelled',
+            'notes' => 'nullable|string|max:1000',
+            'existing_rooms' => 'nullable|array',
+            'existing_rooms.*.name' => 'nullable|string|max:255',
+            'existing_rooms.*.delete_room' => 'nullable|in:0,1',
+            'existing_rooms.*.delete_images' => 'nullable|array',
+            'existing_rooms.*.delete_images.*' => 'nullable|integer|exists:homecheck_data,id',
+            'existing_rooms.*.new_images.*' => 'nullable|image|mimes:jpeg,jpg,png|max:10240',
+            'existing_rooms.*.is_360' => 'nullable|in:0,1',
+            'existing_rooms.*.moisture_reading' => 'nullable|numeric|min:0|max:100',
+            'rooms' => 'nullable|array',
+            'rooms.*.name' => 'required_with:rooms|string|max:255',
+            'rooms.*.images.*' => 'nullable|image|mimes:jpeg,jpg,png|max:10240',
+            'rooms.*.is_360' => 'nullable|in:0,1',
+            'rooms.*.moisture_reading' => 'nullable|numeric|min:0|max:100',
+        ]);
+
+        try {
+            \DB::beginTransaction();
+
+            // Update basic HomeCheck details
+            $homecheckReport->update([
+                'scheduled_date' => $validated['scheduled_date'] ?? $homecheckReport->scheduled_date,
+                'status' => $validated['status'],
+                'notes' => $validated['notes'] ?? $homecheckReport->notes,
+            ]);
+
+            // Determine storage disk
+            $disk = $this->getStorageDisk();
+            $imageOptimizer = new \App\Services\ImageOptimizationService();
+
+            // Process existing rooms
+            if (isset($validated['existing_rooms']) && is_array($validated['existing_rooms'])) {
+                foreach ($validated['existing_rooms'] as $roomId => $roomData) {
+                    // Check if entire room should be deleted
+                    if (isset($roomData['delete_room']) && $roomData['delete_room'] == '1') {
+                        // Find all images for this room
+                        $firstImage = \App\Models\HomecheckData::find($roomId);
+                        if ($firstImage) {
+                            $roomName = $firstImage->room_name;
+                            $roomImages = \App\Models\HomecheckData::where('homecheck_report_id', $homecheckReport->id)
+                                ->where('room_name', $roomName)
+                                ->get();
+                            
+                            // Delete all images for this room
+                            foreach ($roomImages as $image) {
+                                // Delete file from storage
+                                try {
+                                    if ($disk === 's3') {
+                                        \Storage::disk('s3')->delete($image->image_path);
+                                    } else {
+                                        \Storage::disk('public')->delete($image->image_path);
+                                    }
+                                } catch (\Exception $e) {
+                                    \Log::warning('Failed to delete image file: ' . $e->getMessage());
+                                }
+                                
+                                // Delete database record
+                                $image->delete();
+                            }
+                        }
+                        continue;
+                    }
+
+                    // Update room name if changed
+                    $firstImage = \App\Models\HomecheckData::find($roomId);
+                    if ($firstImage) {
+                        $oldRoomName = $firstImage->room_name;
+                        $newRoomName = isset($roomData['name']) && !empty($roomData['name']) ? $roomData['name'] : $oldRoomName;
+                        
+                        if ($oldRoomName !== $newRoomName) {
+                            // Update all images in this room with new name
+                            \App\Models\HomecheckData::where('homecheck_report_id', $homecheckReport->id)
+                                ->where('room_name', $oldRoomName)
+                                ->update(['room_name' => $newRoomName]);
+                        }
+                        
+                        // Use the (potentially updated) room name for subsequent operations
+                        $roomName = $newRoomName;
+                    } else {
+                        // If first image not found, skip this room
+                        continue;
+                    }
+
+                    // Delete specified images
+                    if (isset($roomData['delete_images']) && is_array($roomData['delete_images'])) {
+                        foreach ($roomData['delete_images'] as $imageId) {
+                            if (empty($imageId)) continue;
+                            
+                            $image = \App\Models\HomecheckData::find($imageId);
+                            if ($image && $image->homecheck_report_id == $homecheckReport->id) {
+                                // Delete file from storage
+                                try {
+                                    if ($disk === 's3') {
+                                        \Storage::disk('s3')->delete($image->image_path);
+                                    } else {
+                                        \Storage::disk('public')->delete($image->image_path);
+                                    }
+                                } catch (\Exception $e) {
+                                    \Log::warning('Failed to delete image file: ' . $e->getMessage());
+                                }
+                                
+                                // Delete database record
+                                $image->delete();
+                            }
+                        }
+                    }
+
+                    // Add new images to existing room
+                    if (isset($roomData['new_images']) && is_array($roomData['new_images'])) {
+                        $is360 = isset($roomData['is_360']) && $roomData['is_360'] == '1';
+                        $moistureReading = isset($roomData['moisture_reading']) && $roomData['moisture_reading'] !== '' 
+                            ? (float) $roomData['moisture_reading'] 
+                            : null;
+
+                        foreach ($roomData['new_images'] as $image) {
+                            if (!$image->isValid()) continue;
+                            
+                            $imagePath = $image->store('homechecks/' . $property->id . '/rooms/' . $roomName . '/' . ($is360 ? '360' : 'photos'), $disk);
+                            
+                            // Optimize the image
+                            try {
+                                $imageOptimizer->optimizeExisting($imagePath, $disk, 1920, 85);
+                            } catch (\Exception $e) {
+                                \Log::warning('Image optimization failed: ' . $e->getMessage());
+                            }
+                            
+                            // Create homecheck data record
+                            \App\Models\HomecheckData::create([
+                                'property_id' => $property->id,
+                                'homecheck_report_id' => $homecheckReport->id,
+                                'room_name' => $roomName,
+                                'image_path' => $imagePath,
+                                'is_360' => $is360,
+                                'moisture_reading' => $moistureReading,
+                            ]);
+                        }
+
+                        // Update moisture reading for all images in the room if provided
+                        if ($moistureReading !== null) {
+                            \App\Models\HomecheckData::where('homecheck_report_id', $homecheckReport->id)
+                                ->where('room_name', $roomName)
+                                ->update(['moisture_reading' => $moistureReading]);
+                        }
+                    }
+                }
+            }
+
+            // Process new rooms
+            if (isset($validated['rooms']) && is_array($validated['rooms'])) {
+                foreach ($validated['rooms'] as $roomIndex => $roomData) {
+                    if (empty($roomData['name'])) continue;
+                    
+                    $roomName = $roomData['name'];
+                    $is360 = isset($roomData['is_360']) && $roomData['is_360'] == '1';
+                    $moistureReading = isset($roomData['moisture_reading']) && $roomData['moisture_reading'] !== '' 
+                        ? (float) $roomData['moisture_reading'] 
+                        : null;
+
+                    if (isset($roomData['images']) && is_array($roomData['images'])) {
+                        foreach ($roomData['images'] as $image) {
+                            if (!$image->isValid()) continue;
+                            
+                            $imagePath = $image->store('homechecks/' . $property->id . '/rooms/' . $roomName . '/' . ($is360 ? '360' : 'photos'), $disk);
+                            
+                            // Optimize the image
+                            try {
+                                $imageOptimizer->optimizeExisting($imagePath, $disk, 1920, 85);
+                            } catch (\Exception $e) {
+                                \Log::warning('Image optimization failed: ' . $e->getMessage());
+                            }
+                            
+                            // Create homecheck data record
+                            \App\Models\HomecheckData::create([
+                                'property_id' => $property->id,
+                                'homecheck_report_id' => $homecheckReport->id,
+                                'room_name' => $roomName,
+                                'image_path' => $imagePath,
+                                'is_360' => $is360,
+                                'moisture_reading' => $moistureReading,
+                            ]);
+                        }
+                    }
+                }
+            }
+
+            \DB::commit();
+
+            return redirect()->route('admin.homechecks.show', $id)
+                ->with('success', 'HomeCheck updated successfully!');
+
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            \Log::error('Error updating HomeCheck: ' . $e->getMessage(), [
+                'homecheck_id' => $id,
+                'trace' => $e->getTraceAsString(),
+            ]);
+            
+            return redirect()->route('admin.homechecks.edit', $id)
+                ->with('error', 'An error occurred while updating the HomeCheck: ' . $e->getMessage())
+                ->withInput();
+        }
     }
 
     /**
