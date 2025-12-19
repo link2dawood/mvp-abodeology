@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Schema;
 use App\Models\Valuation;
 use App\Models\Property;
 use App\Models\PropertyMaterialInformation;
@@ -28,124 +27,17 @@ class AdminController extends Controller
     }
 
     /**
-     * Check if agent can access a property.
-     * Centralized access control for agents.
-     *
-     * @param int $propertyId
-     * @param int|null $agentId Optional agent ID (defaults to current user)
-     * @return bool
-     */
-    private function canAccessProperty(int $propertyId, ?int $agentId = null): bool
-    {
-        $user = auth()->user();
-        $agentId = $agentId ?? $user->id;
-
-        // Admins can access all properties
-        if ($user->role === 'admin') {
-            return true;
-        }
-
-        // Agents can only access assigned properties
-        if ($user->role === 'agent') {
-            $agentPropertyIds = $this->getAgentPropertyIds($agentId);
-            return in_array($propertyId, $agentPropertyIds);
-        }
-
-        return false;
-    }
-
-    /**
      * Get agent's assigned property IDs.
-     * Uses both direct assignment (assigned_agent_id) and pivot table (property_agents).
-     * Falls back to PropertyInstruction.requested_by for backward compatibility.
+     * Agents are assigned to properties via PropertyInstruction requested_by field.
      *
      * @param int $agentId
      * @return array
      */
     private function getAgentPropertyIds($agentId): array
     {
-        // Method 1: Direct assignment via assigned_agent_id (primary method)
-        $directAssignments = Property::where('assigned_agent_id', $agentId)
-            ->pluck('id')
-            ->toArray();
-        
-        // Method 2: Via property_agents pivot table (supports multiple agents per property)
-        $pivotAssignments = \DB::table('property_agents')
-            ->where('agent_id', $agentId)
+        return \App\Models\PropertyInstruction::where('requested_by', $agentId)
             ->pluck('property_id')
             ->toArray();
-        
-        // Method 3: Fallback to PropertyInstruction.requested_by (for backward compatibility)
-        $instructionAssignments = \App\Models\PropertyInstruction::where('requested_by', $agentId)
-            ->pluck('property_id')
-            ->toArray();
-        
-        // Merge all methods and remove duplicates
-        return array_unique(array_merge($directAssignments, $pivotAssignments, $instructionAssignments));
-    }
-
-    /**
-     * Assign an agent to a property.
-     * Creates both direct assignment (assigned_agent_id) and pivot table entry.
-     *
-     * @param int $propertyId
-     * @param int $agentId
-     * @param int|null $assignedBy User ID who is making the assignment (defaults to current user)
-     * @param bool $isPrimary Whether this is the primary agent
-     * @param string|null $notes Optional notes about the assignment
-     * @return void
-     */
-    private function assignAgentToProperty(int $propertyId, int $agentId, ?int $assignedBy = null, bool $isPrimary = true, ?string $notes = null): void
-    {
-        $assignedBy = $assignedBy ?? auth()->id();
-        
-        // Verify agent exists and has correct role
-        $agent = User::find($agentId);
-        if (!$agent || !in_array($agent->role, ['admin', 'agent'])) {
-            throw new \InvalidArgumentException("User ID {$agentId} is not a valid agent or admin.");
-        }
-        
-        $property = Property::findOrFail($propertyId);
-        
-        // Update direct assignment (primary agent) - only if column exists
-        if ($isPrimary && Schema::hasColumn('properties', 'assigned_agent_id')) {
-            try {
-                $property->update(['assigned_agent_id' => $agentId]);
-            } catch (\Exception $e) {
-                \Log::warning('Failed to update assigned_agent_id: ' . $e->getMessage());
-                // Continue even if this fails
-            }
-        }
-        
-        // Add to pivot table (supports multiple agents) - only if table exists
-        if (Schema::hasTable('property_agents')) {
-            try {
-                \DB::table('property_agents')->updateOrInsert(
-                    [
-                        'property_id' => $propertyId,
-                        'agent_id' => $agentId,
-                    ],
-                    [
-                        'assigned_by' => $assignedBy,
-                        'assigned_at' => now(),
-                        'is_primary' => $isPrimary,
-                        'notes' => $notes,
-                        'updated_at' => now(),
-                    ]
-                );
-                
-                // If this is set as primary, unset other primary agents for this property
-                if ($isPrimary) {
-                    \DB::table('property_agents')
-                        ->where('property_id', $propertyId)
-                        ->where('agent_id', '!=', $agentId)
-                        ->update(['is_primary' => false]);
-                }
-            } catch (\Exception $e) {
-                \Log::warning('Failed to update property_agents table: ' . $e->getMessage());
-                // Continue even if this fails
-            }
-        }
     }
 
     /**
@@ -618,11 +510,12 @@ class AdminController extends Controller
         
         // For agents, verify they have access to this valuation's property
         if ($user->role === 'agent') {
+            $agentPropertyIds = $this->getAgentPropertyIds($user->id);
             $property = Property::where('seller_id', $valuation->seller_id)
                 ->where('address', $valuation->property_address)
                 ->first();
             
-            if (!$property || !$this->canAccessProperty($property->id, $user->id)) {
+            if (!$property || !in_array($property->id, $agentPropertyIds)) {
                 return redirect()->route('admin.valuations.index')
                     ->with('error', 'You do not have permission to view this valuation.');
             }
@@ -634,27 +527,7 @@ class AdminController extends Controller
             $agents = User::where('role', 'pva')->orderBy('name')->get();
         }
 
-        // Get property associated with this valuation (if exists)
-        $property = Property::where('seller_id', $valuation->seller_id)
-            ->where('address', $valuation->property_address)
-            ->with(['homecheckReports' => function($query) {
-                $query->orderBy('created_at', 'desc');
-            }])
-            ->first();
-
-        // Get active and completed HomeCheck reports
-        $activeHomeCheck = null;
-        $completedHomeCheck = null;
-        if ($property) {
-            $activeHomeCheck = $property->homecheckReports
-                ->whereIn('status', ['pending', 'scheduled', 'in_progress'])
-                ->first();
-            $completedHomeCheck = $property->homecheckReports
-                ->where('status', 'completed')
-                ->first();
-        }
-
-        return view('admin.valuations.show', compact('valuation', 'agents', 'property', 'activeHomeCheck', 'completedHomeCheck'));
+        return view('admin.valuations.show', compact('valuation', 'agents'));
     }
 
     /**
@@ -917,11 +790,6 @@ class AdminController extends Controller
 
             // Immediately send Terms & Conditions (instruction request) to seller after valuation
             try {
-                // Assign agent to property (if user is agent/admin)
-                if (in_array($user->role, ['admin', 'agent'])) {
-                    $this->assignAgentToProperty($property->id, $user->id, $user->id, true, 'Assigned during valuation onboarding');
-                }
-                
                 // Create or update instruction record
                 $instruction = \App\Models\PropertyInstruction::updateOrCreate(
                     ['property_id' => $property->id],
@@ -1013,7 +881,7 @@ class AdminController extends Controller
         // For agents, verify they have access to this property
         if ($user->role === 'agent') {
             $agentPropertyIds = $this->getAgentPropertyIds($user->id);
-            if (!$this->canAccessProperty($property->id, $user->id)) {
+            if (!in_array($property->id, $agentPropertyIds)) {
                 return redirect()->route('admin.properties.index')
                     ->with('error', 'You do not have permission to view this property.');
             }
@@ -1046,54 +914,25 @@ class AdminController extends Controller
             return back()->with('error', 'This property already has a signed instruction.');
         }
 
+        // Create or update instruction request
+        $instruction = \App\Models\PropertyInstruction::updateOrCreate(
+            ['property_id' => $property->id],
+            [
+                'seller_id' => $property->seller_id,
+                'status' => 'pending',
+                'requested_by' => $user->id,
+                'requested_at' => now(),
+                'fee_percentage' => 1.5, // Default fee
+            ]
+        );
+
+        // Send notification email to seller with link to sign instruction
         try {
-            \DB::beginTransaction();
-
-            // Assign agent to property (if user is agent/admin)
-            if (in_array($user->role, ['admin', 'agent'])) {
-                try {
-                    $this->assignAgentToProperty($property->id, $user->id, $user->id, true, 'Assigned when instruction requested');
-                } catch (\Exception $e) {
-                    \Log::warning('Failed to assign agent to property: ' . $e->getMessage());
-                    // Continue even if assignment fails
-                }
-            }
-            
-            // Create or update instruction request
-            $instruction = \App\Models\PropertyInstruction::updateOrCreate(
-                ['property_id' => $property->id],
-                [
-                    'seller_id' => $property->seller_id,
-                    'status' => 'pending',
-                    'requested_by' => $user->id,
-                    'requested_at' => now(),
-                    'fee_percentage' => 1.5, // Default fee
-                ]
+            \Mail::to($property->seller->email)->send(
+                new \App\Mail\InstructionRequestNotification($property->seller, $property, $instruction)
             );
-
-            \DB::commit();
-
-            // Send notification email to seller with link to sign instruction
-            try {
-                \Mail::to($property->seller->email)->send(
-                    new \App\Mail\InstructionRequestNotification($property->seller, $property, $instruction)
-                );
-            } catch (\Exception $e) {
-                \Log::error('Failed to send instruction request notification email: ' . $e->getMessage());
-                // Don't fail the request if email fails
-            }
         } catch (\Exception $e) {
-            \DB::rollBack();
-            \Log::error('Failed to request instruction: ' . $e->getMessage());
-            \Log::error('Stack trace: ' . $e->getTraceAsString());
-            
-            $errorMessage = 'An error occurred while requesting instruction. Please try again.';
-            if (config('app.debug')) {
-                $errorMessage .= ' Error: ' . $e->getMessage();
-            }
-            
-            return back()
-                ->with('error', $errorMessage);
+            \Log::error('Failed to send instruction request notification email: ' . $e->getMessage());
         }
 
         return redirect()->route('admin.properties.show', $property->id)
@@ -1124,56 +963,28 @@ class AdminController extends Controller
             return back()->with('error', 'This property already has a signed instruction.');
         }
 
+        // Create or update instruction request (pending status - not yet requested)
+        if (!$instruction) {
+            $instruction = \App\Models\PropertyInstruction::create([
+                'property_id' => $property->id,
+                'seller_id' => $property->seller_id,
+                'status' => 'pending',
+                'requested_by' => $user->id,
+                'requested_at' => null, // Will be set when seller clicks from email
+                'fee_percentage' => 1.5, // Default fee
+            ]);
+        }
+
+        // Send post-valuation email to seller with "Instruct Abodeology" button
         try {
-            \DB::beginTransaction();
-
-            // Assign agent to property (if user is agent/admin)
-            if (in_array($user->role, ['admin', 'agent'])) {
-                try {
-                    $this->assignAgentToProperty($property->id, $user->id, $user->id, true, 'Assigned when post-valuation email sent');
-                } catch (\Exception $e) {
-                    \Log::warning('Failed to assign agent to property: ' . $e->getMessage());
-                    // Continue even if assignment fails
-                }
-            }
-            
-            // Create or update instruction request (pending status - not yet requested)
-            if (!$instruction) {
-                $instruction = \App\Models\PropertyInstruction::create([
-                    'property_id' => $property->id,
-                    'seller_id' => $property->seller_id,
-                    'status' => 'pending',
-                    'requested_by' => $user->id,
-                    'requested_at' => null, // Will be set when seller clicks from email
-                    'fee_percentage' => 1.5, // Default fee
-                ]);
-            }
-
-            \DB::commit();
-
-            // Send post-valuation email to seller with "Instruct Abodeology" button
-            try {
-                \Mail::to($property->seller->email)->send(
-                    new \App\Mail\PostValuationEmail($property->seller, $property)
-                );
-            } catch (\Exception $e) {
-                \Log::error('Failed to send post-valuation email: ' . $e->getMessage());
-                // Don't fail the request if email fails, but show warning
-                return redirect()->route('admin.properties.show', $property->id)
-                    ->with('warning', 'Post-valuation email sent, but email delivery failed. Please check email configuration.');
-            }
+            \Mail::to($property->seller->email)->send(
+                new \App\Mail\PostValuationEmail($property->seller, $property)
+            );
         } catch (\Exception $e) {
-            \DB::rollBack();
             \Log::error('Failed to send post-valuation email: ' . $e->getMessage());
-            \Log::error('Stack trace: ' . $e->getTraceAsString());
-
-            $errorMessage = 'An error occurred while sending post-valuation email. Please try again.';
-            if (config('app.debug')) {
-                $errorMessage .= ' Error: ' . $e->getMessage();
-            }
 
             return back()
-                ->with('error', $errorMessage);
+                ->with('error', 'Failed to send post-valuation email. Please try again.');
         }
 
         return redirect()->route('admin.properties.show', $property->id)
@@ -1200,7 +1011,7 @@ class AdminController extends Controller
         // For agents, verify they have access to this property
         if ($user->role === 'agent') {
             $agentPropertyIds = $this->getAgentPropertyIds($user->id);
-            if (!$this->canAccessProperty($property->id, $user->id)) {
+            if (!in_array($property->id, $agentPropertyIds)) {
                 return redirect()->route('admin.properties.index')
                     ->with('error', 'You do not have permission to schedule a HomeCheck for this property.');
             }
@@ -1235,7 +1046,7 @@ class AdminController extends Controller
         // For agents, verify they have access to this property
         if ($user->role === 'agent') {
             $agentPropertyIds = $this->getAgentPropertyIds($user->id);
-            if (!$this->canAccessProperty($property->id, $user->id)) {
+            if (!in_array($property->id, $agentPropertyIds)) {
                 return redirect()->route('admin.properties.index')
                     ->with('error', 'You do not have permission to schedule a HomeCheck for this property.');
             }
@@ -1301,420 +1112,6 @@ class AdminController extends Controller
     }
 
     /**
-     * List all HomeCheck reports.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Contracts\Support\Renderable
-     */
-    public function homechecks(Request $request)
-    {
-        $user = auth()->user();
-        
-        if (!in_array($user->role, ['admin', 'agent'])) {
-            return redirect()->route($this->getRoleDashboard($user->role))
-                ->with('error', 'You do not have permission to access this page.');
-        }
-
-        $homechecksQuery = \App\Models\HomecheckReport::with(['property.seller', 'scheduler', 'completer', 'homecheckData'])
-            ->orderBy('created_at', 'desc');
-
-        // For agents, only show HomeChecks for their assigned properties
-        if ($user->role === 'agent') {
-            $agentPropertyIds = $this->getAgentPropertyIds($user->id);
-            if (empty($agentPropertyIds)) {
-                $homechecks = collect([])->paginate(20);
-            } else {
-                $homechecksQuery->whereIn('property_id', $agentPropertyIds);
-            }
-        }
-
-        // Filter by status if provided
-        if ($request->has('status') && $request->status) {
-            $homechecksQuery->where('status', $request->status);
-        }
-
-        $homechecks = $homechecksQuery->paginate(20);
-
-        return view('admin.homechecks.index', compact('homechecks'));
-    }
-
-    /**
-     * Show HomeCheck report details.
-     *
-     * @param  int  $id  HomeCheck Report ID
-     * @return \Illuminate\Contracts\Support\Renderable
-     */
-    public function showHomeCheck($id)
-    {
-        $user = auth()->user();
-        
-        if (!in_array($user->role, ['admin', 'agent'])) {
-            return redirect()->route($this->getRoleDashboard($user->role))
-                ->with('error', 'You do not have permission to access this page.');
-        }
-
-        $homecheckReport = \App\Models\HomecheckReport::with([
-            'property.seller',
-            'scheduler',
-            'completer',
-            'homecheckData' => function($query) {
-                $query->orderBy('room_name')->orderBy('created_at');
-            }
-        ])->findOrFail($id);
-
-        $property = $homecheckReport->property;
-        
-        // For agents, verify they have access to this property
-        if ($user->role === 'agent') {
-            if (!$this->canAccessProperty($property->id, $user->id)) {
-                return redirect()->route('admin.homechecks.index')
-                    ->with('error', 'You do not have permission to view this HomeCheck.');
-            }
-        }
-
-        // Get HomeCheck data grouped by room
-        $homecheckData = $homecheckReport->homecheckData;
-        $roomsData = $homecheckData->groupBy('room_name');
-
-        // Get AI analysis if available
-        $aiAnalysis = null;
-        if ($homecheckReport->report_path) {
-            try {
-                $reportService = new \App\Services\HomeCheckReportService();
-                // Try to get AI analysis from report or generate summary
-                $aiAnalysis = $this->getHomeCheckAnalysis($homecheckReport, $homecheckData);
-            } catch (\Exception $e) {
-                \Log::warning('Failed to load AI analysis: ' . $e->getMessage());
-            }
-        }
-
-        return view('admin.homechecks.show', compact('homecheckReport', 'property', 'roomsData', 'homecheckData', 'aiAnalysis'));
-    }
-
-    /**
-     * Get HomeCheck AI analysis summary.
-     *
-     * @param \App\Models\HomecheckReport $homecheckReport
-     * @param \Illuminate\Support\Collection $homecheckData
-     * @return array|null
-     */
-    private function getHomeCheckAnalysis($homecheckReport, $homecheckData)
-    {
-        // Extract AI analysis from homecheck data
-        $analysis = [
-            'overall_rating' => null,
-            'rooms' => [],
-        ];
-
-        foreach ($homecheckData->groupBy('room_name') as $roomName => $roomImages) {
-            $firstImage = $roomImages->first();
-            $analysis['rooms'][$roomName] = [
-                'rating' => $firstImage->ai_rating ?? null,
-                'comments' => $firstImage->ai_comments ?? null,
-                'moisture' => $firstImage->moisture_reading ?? null,
-                'image_count' => $roomImages->count(),
-            ];
-        }
-
-        return $analysis;
-    }
-
-    /**
-     * Show edit form for HomeCheck report.
-     *
-     * @param  int  $id  HomeCheck Report ID
-     * @return \Illuminate\Contracts\Support\Renderable
-     */
-    public function editHomeCheck($id)
-    {
-        $user = auth()->user();
-        
-        if (!in_array($user->role, ['admin', 'agent'])) {
-            return redirect()->route($this->getRoleDashboard($user->role))
-                ->with('error', 'You do not have permission to perform this action.');
-        }
-
-        $homecheckReport = \App\Models\HomecheckReport::with([
-            'property', 
-            'scheduler', 
-            'completer',
-            'homecheckData' => function($query) {
-                $query->orderBy('room_name')->orderBy('created_at');
-            }
-        ])->findOrFail($id);
-        $property = $homecheckReport->property;
-        
-        // For agents, verify they have access to this property
-        if ($user->role === 'agent') {
-            if (!$this->canAccessProperty($property->id, $user->id)) {
-                return redirect()->route('admin.properties.index')
-                    ->with('error', 'You do not have permission to edit this HomeCheck.');
-            }
-        }
-
-        // Get existing homecheck data grouped by room
-        $homecheckData = $homecheckReport->homecheckData;
-        $roomsData = $homecheckData->groupBy('room_name');
-
-        return view('admin.homechecks.edit', compact('homecheckReport', 'property', 'homecheckData', 'roomsData'));
-    }
-
-    /**
-     * Update HomeCheck report.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  int  $id  HomeCheck Report ID
-     * @return \Illuminate\Http\RedirectResponse
-     */
-    public function updateHomeCheck(Request $request, $id)
-    {
-        $user = auth()->user();
-        
-        if (!in_array($user->role, ['admin', 'agent'])) {
-            return redirect()->route($this->getRoleDashboard($user->role))
-                ->with('error', 'You do not have permission to perform this action.');
-        }
-
-        $homecheckReport = \App\Models\HomecheckReport::with('property')->findOrFail($id);
-        $property = $homecheckReport->property;
-        
-        // For agents, verify they have access to this property
-        if ($user->role === 'agent') {
-            if (!$this->canAccessProperty($property->id, $user->id)) {
-                return redirect()->route('admin.properties.index')
-                    ->with('error', 'You do not have permission to edit this HomeCheck.');
-            }
-        }
-
-        $validated = $request->validate([
-            'scheduled_date' => ['nullable', 'date'],
-            'status' => ['required', 'in:' . implode(',', \App\Models\HomecheckReport::getValidStatuses())],
-            'notes' => ['nullable', 'string', 'max:1000'],
-            'existing_rooms' => ['nullable', 'array'],
-            'existing_rooms.*.id' => ['nullable', 'exists:homecheck_data,id'],
-            'existing_rooms.*.name' => ['nullable', 'string', 'max:255'],
-            'existing_rooms.*.delete_room' => ['nullable', 'boolean'],
-            'existing_rooms.*.delete_images' => ['nullable', 'array'],
-            'existing_rooms.*.delete_images.*' => ['nullable', 'exists:homecheck_data,id'],
-            'existing_rooms.*.new_images' => ['nullable', 'array'],
-            'existing_rooms.*.new_images.*' => ['nullable', 'image', 'mimes:jpeg,png,jpg', 'max:10240'],
-            'existing_rooms.*.is_360' => ['nullable', 'boolean'],
-            'existing_rooms.*.moisture_reading' => ['nullable', 'numeric', 'min:0', 'max:100'],
-            'rooms' => ['nullable', 'array'],
-            'rooms.*.name' => ['required_with:rooms', 'string', 'max:255'],
-            'rooms.*.images' => ['required_with:rooms', 'array', 'min:1'],
-            'rooms.*.images.*' => ['required_with:rooms', 'image', 'mimes:jpeg,png,jpg', 'max:10240'], // 10MB max
-            'rooms.*.is_360' => ['nullable', 'boolean'],
-            'rooms.*.moisture_reading' => ['nullable', 'numeric', 'min:0', 'max:100'],
-        ], [
-            'scheduled_date.date' => 'Please provide a valid date.',
-            'status.required' => 'Please select a status.',
-            'status.in' => 'Invalid status selected.',
-            'rooms.*.name.required_with' => 'Room name is required when adding rooms.',
-            'rooms.*.images.required_with' => 'At least one image is required for each new room.',
-            'rooms.*.images.*.image' => 'Only image files are allowed.',
-            'rooms.*.images.*.max' => 'Image size must not exceed 10MB.',
-        ]);
-
-        try {
-            \DB::beginTransaction();
-
-            $updateData = [
-                'status' => $validated['status'],
-                'notes' => $validated['notes'] ?? $homecheckReport->notes,
-            ];
-
-            // Update scheduled_date if provided
-            if (!empty($validated['scheduled_date'])) {
-                $updateData['scheduled_date'] = \Carbon\Carbon::parse($validated['scheduled_date'])->startOfDay();
-            }
-
-            // Update completed_at if status changed to completed
-            if ($validated['status'] === 'completed' && $homecheckReport->status !== 'completed') {
-                $updateData['completed_by'] = $user->id;
-                $updateData['completed_at'] = now();
-            }
-
-            // Clear completed fields if status changed from completed
-            if ($homecheckReport->status === 'completed' && $validated['status'] !== 'completed') {
-                $updateData['completed_by'] = null;
-                $updateData['completed_at'] = null;
-            }
-
-            $homecheckReport->update($updateData);
-
-            $disk = $this->getStorageDisk();
-            $imageOptimizer = new \App\Services\ImageOptimizationService();
-
-            // Handle existing room updates
-            if (!empty($validated['existing_rooms']) && is_array($validated['existing_rooms'])) {
-                foreach ($validated['existing_rooms'] as $roomData) {
-                    if (empty($roomData['id'])) {
-                        continue;
-                    }
-
-                    // Get the first image of this room to identify the room
-                    $firstImage = \App\Models\HomecheckData::find($roomData['id']);
-                    if (!$firstImage) {
-                        continue;
-                    }
-
-                    $oldRoomName = $firstImage->room_name;
-                    
-                    // Check if entire room should be deleted
-                    if (!empty($roomData['delete_room']) && $roomData['delete_room'] == '1') {
-                        // Get all images for this room
-                        $roomImages = \App\Models\HomecheckData::where('homecheck_report_id', $homecheckReport->id)
-                            ->where('room_name', $oldRoomName)
-                            ->get();
-                        
-                        // Delete all images in this room
-                        foreach ($roomImages as $imageToDelete) {
-                            // Delete file from storage
-                            try {
-                                if ($disk === 's3') {
-                                    \Storage::disk('s3')->delete($imageToDelete->image_path);
-                                } else {
-                                    \Storage::disk('public')->delete($imageToDelete->image_path);
-                                }
-                            } catch (\Exception $e) {
-                                \Log::warning('Failed to delete homecheck image file: ' . $e->getMessage());
-                            }
-                            // Delete record
-                            $imageToDelete->delete();
-                        }
-                        continue; // Skip to next room
-                    }
-                    
-                    $newRoomName = !empty($roomData['name']) ? trim($roomData['name']) : $oldRoomName;
-
-                    // Get all images for this room
-                    $roomImages = \App\Models\HomecheckData::where('homecheck_report_id', $homecheckReport->id)
-                        ->where('room_name', $oldRoomName)
-                        ->get();
-
-                    // Delete individual images if specified
-                    if (!empty($roomData['delete_images']) && is_array($roomData['delete_images'])) {
-                        foreach ($roomData['delete_images'] as $imageId) {
-                            $imageToDelete = \App\Models\HomecheckData::find($imageId);
-                            if ($imageToDelete && $imageToDelete->homecheck_report_id == $homecheckReport->id) {
-                                // Delete file from storage
-                                try {
-                                    if ($disk === 's3') {
-                                        \Storage::disk('s3')->delete($imageToDelete->image_path);
-                                    } else {
-                                        \Storage::disk('public')->delete($imageToDelete->image_path);
-                                    }
-                                } catch (\Exception $e) {
-                                    \Log::warning('Failed to delete homecheck image file: ' . $e->getMessage());
-                                }
-                                // Delete record
-                                $imageToDelete->delete();
-                            }
-                        }
-                    }
-
-                    // Update room name for all remaining images in this room
-                    if ($newRoomName !== $oldRoomName) {
-                        \App\Models\HomecheckData::where('homecheck_report_id', $homecheckReport->id)
-                            ->where('room_name', $oldRoomName)
-                            ->update(['room_name' => $newRoomName]);
-                    }
-
-                    // Add new images to existing room
-                    if (!empty($roomData['new_images']) && is_array($roomData['new_images'])) {
-                        $is360 = isset($roomData['is_360']) && $roomData['is_360'] == '1';
-                        $moistureReading = isset($roomData['moisture_reading']) && $roomData['moisture_reading'] !== '' 
-                            ? floatval($roomData['moisture_reading']) 
-                            : null;
-
-                        foreach ($roomData['new_images'] as $image) {
-                            // Store image in property-specific folder
-                            $imagePath = $image->store('homechecks/' . $property->id . '/rooms/' . $newRoomName . '/' . ($is360 ? '360' : 'photos'), $disk);
-                            
-                            // Optimize the image
-                            try {
-                                $imageOptimizer->optimizeExisting($imagePath, $disk, 1920, 85);
-                            } catch (\Exception $e) {
-                                \Log::warning('Image optimization failed for homecheck image: ' . $e->getMessage());
-                            }
-                            
-                            // Create homecheck data record
-                            \App\Models\HomecheckData::create([
-                                'property_id' => $property->id,
-                                'homecheck_report_id' => $homecheckReport->id,
-                                'room_name' => $newRoomName,
-                                'image_path' => $imagePath,
-                                'is_360' => $is360,
-                                'moisture_reading' => $moistureReading,
-                                'created_at' => now(),
-                            ]);
-                        }
-                    }
-                }
-            }
-
-            // Handle new room/image uploads
-            if (!empty($validated['rooms']) && is_array($validated['rooms'])) {
-                foreach ($validated['rooms'] as $roomData) {
-                    $roomName = trim($roomData['name']);
-                    if (empty($roomName)) {
-                        continue;
-                    }
-
-                    $is360 = isset($roomData['is_360']) && $roomData['is_360'] == '1';
-                    $moistureReading = isset($roomData['moisture_reading']) && $roomData['moisture_reading'] !== '' 
-                        ? floatval($roomData['moisture_reading']) 
-                        : null;
-
-                    // Process images for this room
-                    if (!empty($roomData['images']) && is_array($roomData['images'])) {
-                        $imageOptimizer = new \App\Services\ImageOptimizationService();
-                        
-                        foreach ($roomData['images'] as $image) {
-                            // Store image in property-specific folder
-                            $imagePath = $image->store('homechecks/' . $property->id . '/rooms/' . $roomName . '/' . ($is360 ? '360' : 'photos'), $disk);
-                            
-                            // Optimize the image (max width 1920px, quality 85%)
-                            try {
-                                $imageOptimizer->optimizeExisting($imagePath, $disk, 1920, 85);
-                            } catch (\Exception $e) {
-                                \Log::warning('Image optimization failed for homecheck image: ' . $e->getMessage());
-                                // Continue even if optimization fails
-                            }
-                            
-                            // Create homecheck data record
-                            \App\Models\HomecheckData::create([
-                                'property_id' => $property->id,
-                                'homecheck_report_id' => $homecheckReport->id,
-                                'room_name' => $roomName,
-                                'image_path' => $imagePath,
-                                'is_360' => $is360,
-                                'moisture_reading' => $moistureReading,
-                                'created_at' => now(),
-                            ]);
-                        }
-                    }
-                }
-            }
-
-            \DB::commit();
-
-            return redirect()->route('admin.homechecks.show', $homecheckReport->id)
-                ->with('success', 'HomeCheck updated successfully!' . (!empty($validated['rooms']) ? ' New rooms and images have been added.' : ''));
-
-        } catch (\Exception $e) {
-            \DB::rollBack();
-            \Log::error('HomeCheck update error: ' . $e->getMessage());
-            \Log::error('HomeCheck update error trace: ' . $e->getTraceAsString());
-
-            return back()
-                ->withInput()
-                ->with('error', 'An error occurred while updating the HomeCheck. Please try again.');
-        }
-    }
-
-    /**
      * Show HomeCheck completion form (upload 360 images + photos).
      *
      * @param  int  $id  Property ID
@@ -1734,7 +1131,7 @@ class AdminController extends Controller
         // For agents, verify they have access to this property
         if ($user->role === 'agent') {
             $agentPropertyIds = $this->getAgentPropertyIds($user->id);
-            if (!$this->canAccessProperty($property->id, $user->id)) {
+            if (!in_array($property->id, $agentPropertyIds)) {
                 return redirect()->route('admin.properties.index')
                     ->with('error', 'You do not have permission to complete a HomeCheck for this property.');
             }
@@ -1780,7 +1177,7 @@ class AdminController extends Controller
         // For agents, verify they have access to this property
         if ($user->role === 'agent') {
             $agentPropertyIds = $this->getAgentPropertyIds($user->id);
-            if (!$this->canAccessProperty($property->id, $user->id)) {
+            if (!in_array($property->id, $agentPropertyIds)) {
                 return redirect()->route('admin.properties.index')
                     ->with('error', 'You do not have permission to complete a HomeCheck for this property.');
             }
@@ -1878,23 +1275,8 @@ class AdminController extends Controller
 
             \DB::commit();
 
-            // Process HomeCheck and generate AI report asynchronously (or synchronously for now)
-            try {
-                $reportService = new \App\Services\HomeCheckReportService();
-                $reportGenerated = $reportService->processAndGenerateReport($homecheckReport);
-                
-                if ($reportGenerated) {
-                    \Log::info('AI report generated successfully for HomeCheck ID: ' . $homecheckReport->id);
-                } else {
-                    \Log::warning('AI report generation failed for HomeCheck ID: ' . $homecheckReport->id);
-                }
-            } catch (\Exception $e) {
-                \Log::error('Error generating AI report: ' . $e->getMessage());
-                // Don't fail the request if report generation fails
-            }
-
             return redirect()->route('admin.properties.show', $property->id)
-                ->with('success', 'HomeCheck completed successfully! All images have been uploaded. AI report is being generated and will be available shortly.');
+                ->with('success', 'HomeCheck completed successfully! All images have been uploaded. You can now process AI analysis from the HomeCheck page.');
 
         } catch (\Exception $e) {
             \DB::rollBack();
@@ -1903,6 +1285,87 @@ class AdminController extends Controller
             return back()
                 ->withInput()
                 ->with('error', 'An error occurred while completing the HomeCheck. Please try again.');
+        }
+    }
+
+    /**
+     * Process AI analysis for a HomeCheck report.
+     *
+     * @param  int  $id  HomeCheck Report ID
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function processHomeCheckAI($id)
+    {
+        $user = auth()->user();
+        
+        if (!in_array($user->role, ['admin', 'agent'])) {
+            return redirect()->route($this->getRoleDashboard($user->role))
+                ->with('error', 'You do not have permission to perform this action.');
+        }
+
+        $homecheckReport = \App\Models\HomecheckReport::with(['property', 'homecheckData'])->findOrFail($id);
+        $property = $homecheckReport->property;
+        
+        // For agents, verify they have access to this property
+        if ($user->role === 'agent') {
+            if (!$this->canAccessProperty($property->id, $user->id)) {
+                return redirect()->route('admin.homechecks.index')
+                    ->with('error', 'You do not have permission to process AI analysis for this HomeCheck.');
+            }
+        }
+
+        // Check if HomeCheck has images
+        if ($homecheckReport->homecheckData->isEmpty()) {
+            return redirect()->route('admin.homechecks.show', $id)
+                ->with('error', 'No images found. Please upload images before processing AI analysis.');
+        }
+
+        try {
+            // Process AI analysis
+            $reportService = new \App\Services\HomeCheckReportService();
+            
+            // Get all HomeCheck data for this report
+            $homecheckData = \App\Models\HomecheckData::where('homecheck_report_id', $homecheckReport->id)
+                ->orWhere('property_id', $property->id)
+                ->orderBy('room_name')
+                ->orderBy('created_at')
+                ->get();
+
+            // Generate AI analysis
+            $aiAnalysis = $reportService->generateAIAnalysis($homecheckData, $property);
+
+            // Update AI analysis in HomecheckData records (per image)
+            foreach ($homecheckData as $data) {
+                $roomName = $data->room_name;
+                if (isset($aiAnalysis['rooms'][$roomName])) {
+                    $roomAnalysis = $aiAnalysis['rooms'][$roomName];
+                    
+                    // Update each image in the room with AI analysis
+                    $data->update([
+                        'ai_rating' => $roomAnalysis['rating'] ?? null,
+                        'ai_comments' => $roomAnalysis['comments'] ?? null,
+                        // Keep existing moisture reading if set
+                    ]);
+                }
+            }
+
+            // Generate and save the full report
+            $reportGenerated = $reportService->processAndGenerateReport($homecheckReport);
+            
+            if ($reportGenerated) {
+                \Log::info('AI analysis processed successfully for HomeCheck ID: ' . $homecheckReport->id);
+                return redirect()->route('admin.homechecks.show', $id)
+                    ->with('success', 'AI analysis completed successfully! Analysis has been added to each image.');
+            } else {
+                \Log::warning('AI report generation failed for HomeCheck ID: ' . $homecheckReport->id);
+                return redirect()->route('admin.homechecks.show', $id)
+                    ->with('warning', 'AI analysis was processed but report generation failed. Analysis has been saved to images.');
+            }
+
+        } catch (\Exception $e) {
+            \Log::error('Error processing AI analysis: ' . $e->getMessage());
+            return redirect()->route('admin.homechecks.show', $id)
+                ->with('error', 'An error occurred while processing AI analysis: ' . $e->getMessage());
         }
     }
 
@@ -1953,7 +1416,7 @@ class AdminController extends Controller
         // For agents, verify they have access to this property
         if ($user->role === 'agent') {
             $agentPropertyIds = $this->getAgentPropertyIds($user->id);
-            if (!$this->canAccessProperty($property->id, $user->id)) {
+            if (!in_array($property->id, $agentPropertyIds)) {
                 return redirect()->route('admin.properties.index')
                     ->with('error', 'You do not have permission to upload listing materials for this property.');
             }
@@ -2059,21 +1522,9 @@ class AdminController extends Controller
                 }
             }
 
-            // Update property status to 'draft' (listing draft ready) using service
+            // Update property status to 'draft' (listing draft ready)
             if ($property->status === 'signed') {
-                $statusService = new \App\Services\PropertyStatusTransitionService();
-                $statusResult = $statusService->changeStatus(
-                    $property,
-                    'draft',
-                    $user->id,
-                    'Listing draft prepared'
-                );
-                
-                if (!$statusResult['success']) {
-                    \DB::rollBack();
-                    return back()
-                        ->with('error', 'Failed to update property status: ' . $statusResult['message']);
-                }
+                $property->update(['status' => 'draft']);
             }
 
             \DB::commit();
@@ -2123,7 +1574,7 @@ class AdminController extends Controller
         // For agents, verify they have access to this property
         if ($user->role === 'agent') {
             $agentPropertyIds = $this->getAgentPropertyIds($user->id);
-            if (!$this->canAccessProperty($property->id, $user->id)) {
+            if (!in_array($property->id, $agentPropertyIds)) {
                 return redirect()->route('admin.properties.index')
                     ->with('error', 'You do not have permission to publish this listing.');
             }
@@ -2499,7 +1950,7 @@ class AdminController extends Controller
         // For agents, verify they have access to this property
         if ($user->role === 'agent') {
             $agentPropertyIds = $this->getAgentPropertyIds($user->id);
-            if (!$this->canAccessProperty($offer->property_id, $user->id)) {
+            if (!in_array($offer->property_id, $agentPropertyIds)) {
                 return redirect()->route('admin.properties.show', $offer->property_id)
                     ->with('error', 'You do not have permission to release this offer.');
             }
@@ -2718,7 +2169,7 @@ class AdminController extends Controller
         // For agents, verify they have access to this viewing's property
         if ($user->role === 'agent') {
             $agentPropertyIds = $this->getAgentPropertyIds($user->id);
-            if (!$this->canAccessProperty($viewing->property_id, $user->id)) {
+            if (!in_array($viewing->property_id, $agentPropertyIds)) {
                 return redirect()->route('admin.viewings.index')
                     ->with('error', 'You do not have permission to assign this viewing.');
             }

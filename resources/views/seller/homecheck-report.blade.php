@@ -76,6 +76,98 @@
         background: #f0f0f0;
     }
 
+    /* IMAGE GALLERY */
+    .image-gallery {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 15px;
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 1px solid var(--line-grey);
+    }
+
+    .gallery-item {
+        position: relative;
+        border-radius: 8px;
+        overflow: hidden;
+        border: 2px solid var(--line-grey);
+        cursor: pointer;
+        transition: transform 0.2s, border-color 0.2s;
+        aspect-ratio: 4/3;
+        background: #f0f0f0;
+    }
+
+    .gallery-item:hover {
+        transform: scale(1.05);
+        border-color: var(--abodeology-teal);
+    }
+
+    .gallery-item img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+
+    .gallery-badge {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        background: rgba(0,0,0,0.7);
+        color: #fff;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+
+    /* 360 VIEWER */
+    #pano-viewer {
+        width: 100%;
+        height: 500px;
+        border-radius: 8px;
+        overflow: hidden;
+        margin-top: 20px;
+        display: none;
+    }
+
+    #pano-viewer.active {
+        display: block;
+    }
+
+    .viewer-controls {
+        margin-top: 15px;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
+
+    .btn-viewer {
+        padding: 8px 16px;
+        background: var(--abodeology-teal);
+        color: var(--white);
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 600;
+        transition: background 0.2s;
+    }
+
+    .btn-viewer:hover {
+        background: #1a9a96;
+    }
+
+    .section-label-images {
+        font-size: 14px;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: var(--abodeology-teal);
+        margin-top: 25px;
+        margin-bottom: 12px;
+        letter-spacing: 0.5px;
+    }
+
     .room-content {
         width: 55%;
         padding: 35px 35px 40px;
@@ -212,14 +304,28 @@
             padding: 25px;
         }
 
+        .image-gallery {
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 10px;
+        }
+
         .modal-content {
             flex-direction: column;
             width: 95%;
         }
 
+        #modal-image-container {
+            width: 100% !important;
+        }
+
         .modal-img {
             width: 100%;
             max-height: 50vh;
+        }
+
+        #pano-viewer {
+            width: 100%;
+            height: 300px;
         }
 
         .modal-text {
@@ -319,6 +425,26 @@
                             • {{ $rec }}<br>
                         @endforeach
                     </div>
+                    
+                    @if($roomImages->count() > 0)
+                        <div class="section-label-images">Images ({{ $roomImages->count() }})</div>
+                        <div class="image-gallery">
+                            @foreach($roomImages as $image)
+                                @if($image->image_url)
+                                    <div class="gallery-item" 
+                                         onclick="openImageModal('{{ $image->image_url }}', '{{ $roomName }}', {{ $image->is_360 ? 'true' : 'false' }})">
+                                        <img src="{{ $image->image_url }}" 
+                                             alt="{{ $roomName }} Image" 
+                                             loading="lazy"
+                                             onerror="this.src='{{ asset('media/placeholder-room.jpg') }}'">
+                                        @if($image->is_360)
+                                            <div class="gallery-badge">360°</div>
+                                        @endif
+                                    </div>
+                                @endif
+                            @endforeach
+                        </div>
+                    @endif
                 </div>
             </div>
             <div class="icon-bar">
@@ -349,17 +475,31 @@
     <div id="modal" class="modal" onclick="if(event.target.id === 'modal') closeModal();">
         <div class="close-modal" onclick="closeModal()">×</div>
         <div class="modal-content">
-            <img id="modal-img" class="modal-img" src="" alt="Room Image" onerror="if(this.src !== '{{ asset('media/placeholder-room.jpg') }}') { this.src = '{{ asset('media/placeholder-room.jpg') }}'; this.onerror = null; }">
+            <div id="modal-image-container" style="width: 50%; position: relative;">
+                <img id="modal-img" class="modal-img" src="" alt="Room Image" style="display: block;" onerror="if(this.src !== '{{ asset('media/placeholder-room.jpg') }}') { this.src = '{{ asset('media/placeholder-room.jpg') }}'; this.onerror = null; }">
+                <div id="pano-viewer"></div>
+            </div>
             <div class="modal-text">
                 <h2 id="modal-title"></h2>
                 <div id="modal-body"></div>
+                <div class="viewer-controls" id="viewer-controls" style="display: none;">
+                    <button class="btn-viewer" onclick="toggleViewer()">Toggle 360° Viewer</button>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
 @push('scripts')
+<!-- Pannellum 360° Viewer -->
+<script src="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.css">
+
 <script>
+    let currentViewer = null;
+    let currentImageUrl = null;
+    let is360Image = false;
+
     /* TEXT-TO-SPEECH */
     function speakText(id) {
         const textElement = document.getElementById(id + "-text");
@@ -383,11 +523,129 @@
         document.getElementById("modal-title").innerText = roomName;
         document.getElementById("modal-body").innerHTML = bodyText.replace(/\n/g, '<br>');
         modal.style.display = "flex";
+        
+        // Hide 360 viewer controls for regular images
+        document.getElementById("viewer-controls").style.display = "none";
+        document.getElementById("pano-viewer").classList.remove("active");
+        modalImg.style.display = "block";
+        
+        // Destroy any existing viewer
+        if (currentViewer) {
+            currentViewer.destroy();
+            currentViewer = null;
+        }
+    }
+
+    /* OPEN IMAGE MODAL (from gallery) */
+    function openImageModal(imageUrl, roomName, is360) {
+        const modal = document.getElementById("modal");
+        const modalImg = document.getElementById("modal-img");
+        const panoViewer = document.getElementById("pano-viewer");
+        const viewerControls = document.getElementById("viewer-controls");
+        
+        currentImageUrl = imageUrl;
+        is360Image = is360;
+        
+        document.getElementById("modal-title").innerText = roomName;
+        document.getElementById("modal-body").innerHTML = "";
+        
+        if (is360) {
+            // Show 360 viewer controls
+            viewerControls.style.display = "flex";
+            modalImg.style.display = "none";
+            panoViewer.classList.add("active");
+            
+            // Initialize or update 360 viewer
+            if (currentViewer) {
+                currentViewer.destroy();
+            }
+            
+            currentViewer = pannellum.viewer('pano-viewer', {
+                "type": "equirectangular",
+                "panorama": imageUrl,
+                "autoLoad": true,
+                "autoRotate": 0,
+                "compass": true,
+                "showControls": true,
+                "keyboardZoom": true,
+                "mouseZoom": true,
+                "hfov": 100,
+                "minHfov": 50,
+                "maxHfov": 120
+            });
+        } else {
+            // Show regular image
+            viewerControls.style.display = "none";
+            panoViewer.classList.remove("active");
+            modalImg.style.display = "block";
+            modalImg.src = imageUrl;
+            
+            // Destroy any existing viewer
+            if (currentViewer) {
+                currentViewer.destroy();
+                currentViewer = null;
+            }
+        }
+        
+        modal.style.display = "flex";
+    }
+
+    /* TOGGLE 360 VIEWER */
+    function toggleViewer() {
+        const modalImg = document.getElementById("modal-img");
+        const panoViewer = document.getElementById("pano-viewer");
+        
+        if (!is360Image) return;
+        
+        if (panoViewer.classList.contains("active")) {
+            // Switch to regular image
+            panoViewer.classList.remove("active");
+            modalImg.style.display = "block";
+            modalImg.src = currentImageUrl;
+            
+            if (currentViewer) {
+                currentViewer.destroy();
+                currentViewer = null;
+            }
+        } else {
+            // Switch to 360 viewer
+            modalImg.style.display = "none";
+            panoViewer.classList.add("active");
+            
+            if (!currentViewer) {
+                currentViewer = pannellum.viewer('pano-viewer', {
+                    "type": "equirectangular",
+                    "panorama": currentImageUrl,
+                    "autoLoad": true,
+                    "autoRotate": 0,
+                    "compass": true,
+                    "showControls": true,
+                    "keyboardZoom": true,
+                    "mouseZoom": true,
+                    "hfov": 100,
+                    "minHfov": 50,
+                    "maxHfov": 120
+                });
+            }
+        }
     }
 
     /* CLOSE MODAL */
     function closeModal() {
-        document.getElementById("modal").style.display = "none";
+        const modal = document.getElementById("modal");
+        modal.style.display = "none";
+        
+        // Destroy viewer when closing
+        if (currentViewer) {
+            currentViewer.destroy();
+            currentViewer = null;
+        }
+        
+        // Reset
+        document.getElementById("pano-viewer").classList.remove("active");
+        document.getElementById("viewer-controls").style.display = "none";
+        is360Image = false;
+        currentImageUrl = null;
     }
 
     /* Close modal on ESC key */

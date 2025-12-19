@@ -90,10 +90,11 @@ Route::middleware(['auth', 'role.web:admin,agent'])->prefix('admin')->name('admi
     Route::post('/properties/{id}/send-post-valuation-email', [App\Http\Controllers\AdminController::class, 'sendPostValuationEmail'])->name('properties.send-post-valuation-email');
     
     // HomeCheck Management Routes
-    Route::get('/homechecks', [App\Http\Controllers\AdminController::class, 'homechecks'])->name('homechecks.index');
-    Route::get('/homechecks/{id}', [App\Http\Controllers\AdminController::class, 'showHomeCheck'])->name('homechecks.show');
-    Route::get('/homechecks/{id}/edit', [App\Http\Controllers\AdminController::class, 'editHomeCheck'])->name('homechecks.edit');
-    Route::put('/homechecks/{id}', [App\Http\Controllers\AdminController::class, 'updateHomeCheck'])->name('homechecks.update');
+        Route::get('/homechecks', [App\Http\Controllers\AdminController::class, 'homechecks'])->name('homechecks.index');
+        Route::get('/homechecks/{id}', [App\Http\Controllers\AdminController::class, 'showHomeCheck'])->name('homechecks.show');
+        Route::get('/homechecks/{id}/edit', [App\Http\Controllers\AdminController::class, 'editHomeCheck'])->name('homechecks.edit');
+        Route::put('/homechecks/{id}', [App\Http\Controllers\AdminController::class, 'updateHomeCheck'])->name('homechecks.update');
+        Route::post('/homechecks/{id}/process-ai', [App\Http\Controllers\AdminController::class, 'processHomeCheckAI'])->name('homechecks.process-ai');
     Route::get('/properties/{id}/schedule-homecheck', [App\Http\Controllers\AdminController::class, 'showScheduleHomeCheck'])->name('properties.schedule-homecheck');
     Route::post('/properties/{id}/schedule-homecheck', [App\Http\Controllers\AdminController::class, 'storeScheduleHomeCheck'])->name('properties.schedule-homecheck.store');
     Route::get('/properties/{id}/complete-homecheck', [App\Http\Controllers\AdminController::class, 'showCompleteHomeCheck'])->name('properties.complete-homecheck');

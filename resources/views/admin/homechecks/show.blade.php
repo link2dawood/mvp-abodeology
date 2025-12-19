@@ -307,6 +307,12 @@
         <h2>HomeCheck Report Details</h2>
         <div>
             <a href="{{ route('admin.homechecks.index') }}" class="btn btn-secondary">← Back to List</a>
+            @if($homecheckData->count() > 0 && !$homecheckReport->report_path)
+                <form action="{{ route('admin.homechecks.process-ai', $homecheckReport->id) }}" method="POST" style="display: inline-block;" onsubmit="return confirm('This will process all images through AI analysis. This may take a few moments. Continue?');">
+                    @csrf
+                    <button type="submit" class="btn" style="background: #28a745; color: #fff;">🤖 Process AI Analysis</button>
+                </form>
+            @endif
             <a href="{{ route('admin.homechecks.edit', $homecheckReport->id) }}" class="btn btn-main">Edit HomeCheck</a>
             <a href="{{ route('admin.properties.show', $property->id) }}" class="btn btn-secondary">View Property</a>
         </div>
@@ -463,10 +469,19 @@
                                 @endif
                                 <div class="image-info">
                                     @if($image->moisture_reading)
-                                        Moisture: {{ $image->moisture_reading }}%
+                                        <strong>Moisture:</strong> {{ $image->moisture_reading }}%<br>
+                                    @endif
+                                    @if($image->ai_rating)
+                                        <strong>AI Rating:</strong> {{ $image->ai_rating }}/10<br>
+                                    @endif
+                                    @if($image->ai_comments)
+                                        <div style="margin-top: 8px; padding: 8px; background: #f0f0f0; border-radius: 4px; font-size: 11px; color: #333; text-align: left; max-height: 80px; overflow-y: auto;">
+                                            <strong>AI Notes:</strong><br>
+                                            {{ Str::limit($image->ai_comments, 150) }}
+                                        </div>
                                     @endif
                                     @if($image->created_at)
-                                        <br>{{ $image->created_at->format('M j, Y g:i A') }}
+                                        <br><small style="color: #999;">{{ $image->created_at->format('M j, Y g:i A') }}</small>
                                     @endif
                                 </div>
                             </div>
