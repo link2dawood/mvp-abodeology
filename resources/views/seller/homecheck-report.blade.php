@@ -432,7 +432,7 @@
                             @foreach($roomImages as $image)
                                 @if($image->image_url)
                                     <div class="gallery-item" 
-                                         onclick="openImageModal('{{ $image->image_url }}', '{{ $roomName }}', {{ $image->is_360 ? 'true' : 'false' }})">
+                                         onclick="openImageModal('{{ $image->image_url }}', '{{ $roomName }}', {{ $image->is_360 ? 'true' : 'false' }}, {{ $image->id }})">
                                         <img src="{{ $image->image_url }}" 
                                              alt="{{ $roomName }} Image" 
                                              loading="lazy"
@@ -537,13 +537,18 @@
     }
 
     /* OPEN IMAGE MODAL (from gallery) */
-    function openImageModal(imageUrl, roomName, is360) {
+    function openImageModal(imageUrl, roomName, is360, imageId) {
         const modal = document.getElementById("modal");
         const modalImg = document.getElementById("modal-img");
         const panoViewer = document.getElementById("pano-viewer");
         const viewerControls = document.getElementById("viewer-controls");
         
-        currentImageUrl = imageUrl;
+        // For 360 images, use proxy endpoint to avoid CORS issues
+        if (is360 && imageId) {
+            currentImageUrl = "{{ route('seller.homecheck.image', ['id' => 'PLACEHOLDER']) }}".replace('PLACEHOLDER', imageId);
+        } else {
+            currentImageUrl = imageUrl;
+        }
         is360Image = is360;
         
         document.getElementById("modal-title").innerText = roomName;
@@ -560,19 +565,26 @@
                 currentViewer.destroy();
             }
             
-            currentViewer = pannellum.viewer('pano-viewer', {
-                "type": "equirectangular",
-                "panorama": imageUrl,
-                "autoLoad": true,
-                "autoRotate": 0,
-                "compass": true,
-                "showControls": true,
-                "keyboardZoom": true,
-                "mouseZoom": true,
-                "hfov": 100,
-                "minHfov": 50,
-                "maxHfov": 120
-            });
+            try {
+                currentViewer = pannellum.viewer('pano-viewer', {
+                    "type": "equirectangular",
+                    "panorama": imageUrl,
+                    "autoLoad": true,
+                    "autoRotate": 0,
+                    "compass": true,
+                    "showControls": true,
+                    "keyboardZoom": true,
+                    "mouseZoom": true,
+                    "hfov": 100,
+                    "minHfov": 50,
+                    "maxHfov": 120,
+                    "crossOrigin": "anonymous"
+                });
+            } catch (error) {
+                console.error('Error initializing 360 viewer:', error);
+                // Show error message to user
+                panoViewer.innerHTML = '<div style="padding: 20px; text-align: center; color: #dc3545;"><p>Unable to load 360° image. This may be due to CORS restrictions.</p><p>Please ensure the S3 bucket has CORS configured to allow requests from this domain.</p></div>';
+            }
         } else {
             // Show regular image
             viewerControls.style.display = "none";
@@ -613,19 +625,26 @@
             panoViewer.classList.add("active");
             
             if (!currentViewer) {
-                currentViewer = pannellum.viewer('pano-viewer', {
-                    "type": "equirectangular",
-                    "panorama": currentImageUrl,
-                    "autoLoad": true,
-                    "autoRotate": 0,
-                    "compass": true,
-                    "showControls": true,
-                    "keyboardZoom": true,
-                    "mouseZoom": true,
-                    "hfov": 100,
-                    "minHfov": 50,
-                    "maxHfov": 120
-                });
+                try {
+                    currentViewer = pannellum.viewer('pano-viewer', {
+                        "type": "equirectangular",
+                        "panorama": currentImageUrl,
+                        "autoLoad": true,
+                        "autoRotate": 0,
+                        "compass": true,
+                        "showControls": true,
+                        "keyboardZoom": true,
+                        "mouseZoom": true,
+                        "hfov": 100,
+                        "minHfov": 50,
+                        "maxHfov": 120,
+                        "crossOrigin": "anonymous"
+                    });
+                } catch (error) {
+                    console.error('Error initializing 360 viewer:', error);
+                    const panoViewer = document.getElementById("pano-viewer");
+                    panoViewer.innerHTML = '<div style="padding: 20px; text-align: center; color: #dc3545;"><p>Unable to load 360° image. This may be due to CORS restrictions.</p><p>Please ensure the S3 bucket has CORS configured to allow requests from this domain.</p></div>';
+                }
             }
         }
     }

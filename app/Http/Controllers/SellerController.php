@@ -928,6 +928,58 @@ class SellerController extends Controller
     }
 
     /**
+     * Proxy endpoint to serve HomeCheck images with proper CORS headers for 360° viewer.
+     *
+     * @param  int  $id  HomecheckData ID
+     * @return \Illuminate\Http\Response
+     */
+    public function getHomecheckImage($id)
+    {
+        $user = auth()->user();
+        
+        // Get the homecheck data
+        $homecheckData = \App\Models\HomecheckData::with('property')->findOrFail($id);
+        
+        // Verify seller owns the property
+        if ($homecheckData->property->seller_id !== $user->id) {
+            abort(403, 'Unauthorized access to this image.');
+        }
+        
+        // Determine storage disk
+        $s3Configured = !empty(config('filesystems.disks.s3.key')) && 
+                       !empty(config('filesystems.disks.s3.secret')) && 
+                       !empty(config('filesystems.disks.s3.bucket'));
+        
+        if ($s3Configured && \Illuminate\Support\Facades\Storage::disk('s3')->exists($homecheckData->image_path)) {
+            // Get file from S3
+            $file = \Illuminate\Support\Facades\Storage::disk('s3')->get($homecheckData->image_path);
+            $mimeType = \Illuminate\Support\Facades\Storage::disk('s3')->mimeType($homecheckData->image_path);
+            
+            return response($file, 200)
+                ->header('Content-Type', $mimeType)
+                ->header('Access-Control-Allow-Origin', '*')
+                ->header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+                ->header('Access-Control-Allow-Headers', 'Content-Type')
+                ->header('Cache-Control', 'public, max-age=3600');
+        }
+        
+        // Fallback to local storage
+        if (\Illuminate\Support\Facades\Storage::disk('public')->exists($homecheckData->image_path)) {
+            $file = \Illuminate\Support\Facades\Storage::disk('public')->get($homecheckData->image_path);
+            $mimeType = \Illuminate\Support\Facades\Storage::disk('public')->mimeType($homecheckData->image_path);
+            
+            return response($file, 200)
+                ->header('Content-Type', $mimeType)
+                ->header('Access-Control-Allow-Origin', '*')
+                ->header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+                ->header('Access-Control-Allow-Headers', 'Content-Type')
+                ->header('Cache-Control', 'public, max-age=3600');
+        }
+        
+        abort(404, 'Image not found.');
+    }
+
+    /**
      * Show the room upload page for HomeCheck.
      *
      * @param  int  $id

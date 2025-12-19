@@ -167,6 +167,7 @@ Route::middleware(['auth', 'role.web:seller,both'])->prefix('seller')->name('sel
     
     // HomeCheck report is view-only for sellers. Upload is performed by Abodeology during on-site visit.
     Route::get('/property/{id}/homecheck-report', [App\Http\Controllers\SellerController::class, 'showHomecheckReport'])->name('homecheck.report');
+    Route::get('/homecheck-image/{id}', [App\Http\Controllers\SellerController::class, 'getHomecheckImage'])->name('homecheck.image');
     
     // AML Documents & Solicitor Details Routes
     Route::get('/property/{id}/aml-upload', [App\Http\Controllers\SellerController::class, 'showAmlUpload'])->name('aml.upload');

@@ -70,9 +70,12 @@ class HomecheckData extends Model
                     // For S3, use temporary signed URL (valid for 1 hour) to avoid permission issues
                     // This works even if bucket is private
                     try {
+                        // For 360 images, we need a longer expiration and proper CORS
+                        // Use a longer expiration time (24 hours) for better compatibility
+                        $expiration = $this->is_360 ? now()->addDay() : now()->addHour();
                         $signedUrl = Storage::disk('s3')->temporaryUrl(
                             $this->image_path,
-                            now()->addHour()
+                            $expiration
                         );
                         return $signedUrl;
                     } catch (\Exception $e) {
