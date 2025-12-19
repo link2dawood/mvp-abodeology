@@ -227,6 +227,18 @@
     .icon-btn img {
         width: 18px;
         opacity: 0.85;
+        display: block;
+    }
+
+    .icon-btn svg {
+        width: 20px;
+        height: 20px;
+        color: #333;
+        opacity: 0.85;
+    }
+
+    .icon-btn:hover svg {
+        opacity: 1;
     }
 
     /* MODAL */
@@ -448,11 +460,15 @@
                 </div>
             </div>
             <div class="icon-bar">
-                <div class="icon-btn" onclick="speakText('{{ $roomId }}')">
-                    <img src="https://img.icons8.com/ios-filled/50/speaker.png" alt="Speak">
+                <div class="icon-btn" onclick="speakText('{{ $roomId }}')" title="Read aloud">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2C8.13 2 5 5.13 5 9C5 11.38 6.19 13.47 8 14.74V17C8 17.55 8.45 18 9 18H15C15.55 18 16 17.55 16 17V14.74C17.81 13.47 19 11.38 19 9C19 5.13 15.87 2 12 2ZM15 12.7V16H9V12.7C7.84 12.16 7 11.14 7 9.9C7 6.24 9.24 4 12 4C14.76 4 17 6.24 17 9.9C17 11.14 16.16 12.16 15 12.7ZM14 20H10V22H14V20Z" fill="currentColor"/>
+                    </svg>
                 </div>
-                <div class="icon-btn" onclick="openModal('{{ $roomId }}', '{{ $roomName }}', '{{ $imageUrl }}', '{{ addslashes($aiComments) }}')">
-                    <img src="https://img.icons8.com/ios-filled/50/fit-to-width.png" alt="Expand">
+                <div class="icon-btn" onclick="openModal('{{ $roomId }}', '{{ $roomName }}', '{{ $imageUrl }}', '{{ addslashes($aiComments) }}')" title="Expand view">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M4 4H10V6H6V10H4V4ZM20 4H14V6H18V10H20V4ZM4 20H10V18H6V14H4V20ZM20 20H14V18H18V14H20V20Z" fill="currentColor"/>
+                    </svg>
                 </div>
             </div>
         </div>
