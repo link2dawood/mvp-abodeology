@@ -1524,7 +1524,7 @@ class AdminController extends Controller
             }
         }
 
-        // Validate basic fields
+        // Validate basic fields (files are validated separately)
         $validated = $request->validate([
             'scheduled_date' => 'nullable|date',
             'status' => 'required|in:pending,scheduled,in_progress,completed,cancelled',
@@ -1534,15 +1534,30 @@ class AdminController extends Controller
             'existing_rooms.*.delete_room' => 'nullable|in:0,1',
             'existing_rooms.*.delete_images' => 'nullable|array',
             'existing_rooms.*.delete_images.*' => 'nullable|integer|exists:homecheck_data,id',
-            'existing_rooms.*.new_images.*' => 'nullable|image|mimes:jpeg,jpg,png|max:10240',
             'existing_rooms.*.is_360' => 'nullable|in:0,1',
             'existing_rooms.*.moisture_reading' => 'nullable|numeric|min:0|max:100',
             'rooms' => 'nullable|array',
             'rooms.*.name' => 'required_with:rooms|string|max:255',
-            'rooms.*.images.*' => 'nullable|image|mimes:jpeg,jpg,png|max:10240',
             'rooms.*.is_360' => 'nullable|in:0,1',
             'rooms.*.moisture_reading' => 'nullable|numeric|min:0|max:100',
         ]);
+
+        // Validate file uploads separately
+        $fileValidationRules = [];
+        if ($request->has('existing_rooms')) {
+            foreach ($request->input('existing_rooms', []) as $roomId => $roomData) {
+                $fileValidationRules["existing_rooms.{$roomId}.new_images.*"] = 'nullable|image|mimes:jpeg,jpg,png|max:10240';
+            }
+        }
+        if ($request->has('rooms')) {
+            foreach ($request->input('rooms', []) as $roomIndex => $roomData) {
+                $fileValidationRules["rooms.{$roomIndex}.images.*"] = 'nullable|image|mimes:jpeg,jpg,png|max:10240';
+            }
+        }
+        
+        if (!empty($fileValidationRules)) {
+            $request->validate($fileValidationRules);
+        }
 
         try {
             \DB::beginTransaction();
@@ -1636,33 +1651,60 @@ class AdminController extends Controller
                     }
 
                     // Add new images to existing room
-                    if (isset($roomData['new_images']) && is_array($roomData['new_images'])) {
+                    if ($request->hasFile("existing_rooms.{$roomId}.new_images")) {
                         $is360 = isset($roomData['is_360']) && $roomData['is_360'] == '1';
                         $moistureReading = isset($roomData['moisture_reading']) && $roomData['moisture_reading'] !== '' 
                             ? (float) $roomData['moisture_reading'] 
                             : null;
 
-                        foreach ($roomData['new_images'] as $image) {
-                            if (!$image->isValid()) continue;
-                            
-                            $imagePath = $image->store('homechecks/' . $property->id . '/rooms/' . $roomName . '/' . ($is360 ? '360' : 'photos'), $disk);
-                            
-                            // Optimize the image
-                            try {
-                                $imageOptimizer->optimizeExisting($imagePath, $disk, 1920, 85);
-                            } catch (\Exception $e) {
-                                \Log::warning('Image optimization failed: ' . $e->getMessage());
+                        $newImages = $request->file("existing_rooms.{$roomId}.new_images");
+                        
+                        // Handle single file or array of files
+                        if (!is_array($newImages)) {
+                            $newImages = [$newImages];
+                        }
+
+                        foreach ($newImages as $image) {
+                            if (!$image || !$image->isValid()) {
+                                \Log::warning('Invalid image file in HomeCheck update', [
+                                    'room_id' => $roomId,
+                                    'room_name' => $roomName,
+                                ]);
+                                continue;
                             }
                             
-                            // Create homecheck data record
-                            \App\Models\HomecheckData::create([
-                                'property_id' => $property->id,
-                                'homecheck_report_id' => $homecheckReport->id,
-                                'room_name' => $roomName,
-                                'image_path' => $imagePath,
-                                'is_360' => $is360,
-                                'moisture_reading' => $moistureReading,
-                            ]);
+                            try {
+                                $imagePath = $image->store('homechecks/' . $property->id . '/rooms/' . $roomName . '/' . ($is360 ? '360' : 'photos'), $disk);
+                                
+                                // Optimize the image
+                                try {
+                                    $imageOptimizer->optimizeExisting($imagePath, $disk, 1920, 85);
+                                } catch (\Exception $e) {
+                                    \Log::warning('Image optimization failed: ' . $e->getMessage());
+                                }
+                                
+                                // Create homecheck data record
+                                \App\Models\HomecheckData::create([
+                                    'property_id' => $property->id,
+                                    'homecheck_report_id' => $homecheckReport->id,
+                                    'room_name' => $roomName,
+                                    'image_path' => $imagePath,
+                                    'is_360' => $is360,
+                                    'moisture_reading' => $moistureReading,
+                                ]);
+                                
+                                \Log::info('New image added to HomeCheck room', [
+                                    'homecheck_id' => $homecheckReport->id,
+                                    'room_name' => $roomName,
+                                    'image_path' => $imagePath,
+                                ]);
+                            } catch (\Exception $e) {
+                                \Log::error('Error uploading image to HomeCheck room', [
+                                    'homecheck_id' => $homecheckReport->id,
+                                    'room_name' => $roomName,
+                                    'error' => $e->getMessage(),
+                                ]);
+                            }
                         }
 
                         // Update moisture reading for all images in the room if provided
@@ -1676,8 +1718,8 @@ class AdminController extends Controller
             }
 
             // Process new rooms
-            if (isset($validated['rooms']) && is_array($validated['rooms'])) {
-                foreach ($validated['rooms'] as $roomIndex => $roomData) {
+            if ($request->has('rooms') && is_array($request->input('rooms'))) {
+                foreach ($request->input('rooms') as $roomIndex => $roomData) {
                     if (empty($roomData['name'])) continue;
                     
                     $roomName = $roomData['name'];
@@ -1686,28 +1728,55 @@ class AdminController extends Controller
                         ? (float) $roomData['moisture_reading'] 
                         : null;
 
-                    if (isset($roomData['images']) && is_array($roomData['images'])) {
-                        foreach ($roomData['images'] as $image) {
-                            if (!$image->isValid()) continue;
-                            
-                            $imagePath = $image->store('homechecks/' . $property->id . '/rooms/' . $roomName . '/' . ($is360 ? '360' : 'photos'), $disk);
-                            
-                            // Optimize the image
-                            try {
-                                $imageOptimizer->optimizeExisting($imagePath, $disk, 1920, 85);
-                            } catch (\Exception $e) {
-                                \Log::warning('Image optimization failed: ' . $e->getMessage());
+                    if ($request->hasFile("rooms.{$roomIndex}.images")) {
+                        $newImages = $request->file("rooms.{$roomIndex}.images");
+                        
+                        // Handle single file or array of files
+                        if (!is_array($newImages)) {
+                            $newImages = [$newImages];
+                        }
+
+                        foreach ($newImages as $image) {
+                            if (!$image || !$image->isValid()) {
+                                \Log::warning('Invalid image file in new HomeCheck room', [
+                                    'room_index' => $roomIndex,
+                                    'room_name' => $roomName,
+                                ]);
+                                continue;
                             }
                             
-                            // Create homecheck data record
-                            \App\Models\HomecheckData::create([
-                                'property_id' => $property->id,
-                                'homecheck_report_id' => $homecheckReport->id,
-                                'room_name' => $roomName,
-                                'image_path' => $imagePath,
-                                'is_360' => $is360,
-                                'moisture_reading' => $moistureReading,
-                            ]);
+                            try {
+                                $imagePath = $image->store('homechecks/' . $property->id . '/rooms/' . $roomName . '/' . ($is360 ? '360' : 'photos'), $disk);
+                                
+                                // Optimize the image
+                                try {
+                                    $imageOptimizer->optimizeExisting($imagePath, $disk, 1920, 85);
+                                } catch (\Exception $e) {
+                                    \Log::warning('Image optimization failed: ' . $e->getMessage());
+                                }
+                                
+                                // Create homecheck data record
+                                \App\Models\HomecheckData::create([
+                                    'property_id' => $property->id,
+                                    'homecheck_report_id' => $homecheckReport->id,
+                                    'room_name' => $roomName,
+                                    'image_path' => $imagePath,
+                                    'is_360' => $is360,
+                                    'moisture_reading' => $moistureReading,
+                                ]);
+                                
+                                \Log::info('New image added to new HomeCheck room', [
+                                    'homecheck_id' => $homecheckReport->id,
+                                    'room_name' => $roomName,
+                                    'image_path' => $imagePath,
+                                ]);
+                            } catch (\Exception $e) {
+                                \Log::error('Error uploading image to new HomeCheck room', [
+                                    'homecheck_id' => $homecheckReport->id,
+                                    'room_name' => $roomName,
+                                    'error' => $e->getMessage(),
+                                ]);
+                            }
                         }
                     }
                 }
