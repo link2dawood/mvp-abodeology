@@ -561,7 +561,8 @@
         
         // For 360 images, use proxy endpoint to avoid CORS issues
         if (is360 && imageId) {
-            currentImageUrl = "{{ route('seller.homecheck.image', ['id' => 'PLACEHOLDER']) }}".replace('PLACEHOLDER', imageId);
+            // Use proxy endpoint for 360° images to avoid CORS issues
+            currentImageUrl = "{{ url('/seller/homecheck-image') }}/" + imageId;
         } else {
             currentImageUrl = imageUrl;
         }
@@ -584,7 +585,7 @@
             try {
                 currentViewer = pannellum.viewer('pano-viewer', {
                     "type": "equirectangular",
-                    "panorama": imageUrl,
+                    "panorama": currentImageUrl, // Use proxy URL for 360° images
                     "autoLoad": true,
                     "autoRotate": 0,
                     "compass": true,
