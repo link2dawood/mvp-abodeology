@@ -458,6 +458,20 @@
                     <div class="error-message">{{ $message }}</div>
                 @enderror
             </div>
+
+            <div style="margin-top: 15px; padding: 15px; background: #f0f8ff; border-radius: 6px; border: 1px solid #b3d9ff;">
+                <label style="display: flex; align-items: center; cursor: pointer; font-weight: 600; color: #0066cc;">
+                    <input type="checkbox" 
+                           name="process_ai" 
+                           value="1" 
+                           id="process_ai"
+                           style="margin-right: 10px; width: 18px; height: 18px; cursor: pointer;">
+                    <span>🤖 Process AI Analysis After Update</span>
+                </label>
+                <p style="margin: 8px 0 0 30px; font-size: 13px; color: #666;">
+                    If checked, AI analysis will be automatically processed for all images (including newly uploaded ones) after saving changes. This may take a few moments.
+                </p>
+            </div>
         </div>
 
         <!-- Existing Rooms (Editable) -->
@@ -549,7 +563,7 @@
                                 📤 Drag & drop images here or click to upload
                             </p>
                             <p style="margin: 10px 0 0 0; font-size: 13px; color: #999;">
-                                Supported formats: JPG, PNG (Max 10MB per image)
+                                Supported formats: JPG, PNG
                             </p>
                         </div>
                         

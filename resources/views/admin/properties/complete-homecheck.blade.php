@@ -431,7 +431,7 @@ function addRoomBlock() {
                 📤 Drag & drop images here or click to upload
             </p>
             <p style="margin: 10px 0 0 0; font-size: 13px; color: #999;">
-                Supported formats: JPG, PNG (Max 10MB per image)
+                Supported formats: JPG, PNG
             </p>
         </div>
         

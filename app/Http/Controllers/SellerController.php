@@ -1026,7 +1026,7 @@ class SellerController extends Controller
             'rooms' => ['required', 'array', 'min:1'],
             'rooms.*.name' => ['required', 'string', 'max:255'],
             'rooms.*.images' => ['required', 'array', 'min:1'],
-            'rooms.*.images.*' => ['required', 'image', 'mimes:jpeg,png,jpg', 'max:10240'], // 10MB max
+            'rooms.*.images.*' => ['required', 'image', 'mimes:jpeg,png,jpg'],
             'rooms.*.moisture_reading' => ['nullable', 'numeric', 'min:0', 'max:100'],
         ], [
             'rooms.required' => 'Please add at least one room.',
@@ -1035,7 +1035,6 @@ class SellerController extends Controller
             'rooms.*.images.required' => 'Please upload at least one image for each room.',
             'rooms.*.images.min' => 'Please upload at least one image for each room.',
             'rooms.*.images.*.image' => 'All files must be images.',
-            'rooms.*.images.*.max' => 'Image size must not exceed 10MB.',
             'rooms.*.moisture_reading.numeric' => 'Moisture reading must be a number.',
             'rooms.*.moisture_reading.min' => 'Moisture reading must be between 0 and 100.',
             'rooms.*.moisture_reading.max' => 'Moisture reading must be between 0 and 100.',

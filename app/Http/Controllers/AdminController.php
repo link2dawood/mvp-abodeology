@@ -1219,7 +1219,7 @@ class AdminController extends Controller
             'rooms' => ['required', 'array', 'min:1'],
             'rooms.*.name' => ['required', 'string', 'max:255'],
             'rooms.*.images' => ['required', 'array', 'min:1'],
-            'rooms.*.images.*' => ['required', 'image', 'mimes:jpeg,png,jpg', 'max:10240'], // 10MB max
+            'rooms.*.images.*' => ['required', 'image', 'mimes:jpeg,png,jpg'],
             'rooms.*.is_360' => ['nullable', 'boolean'], // Flag for 360 images
             'rooms.*.moisture_reading' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'notes' => ['nullable', 'string', 'max:1000'],
@@ -1230,7 +1230,6 @@ class AdminController extends Controller
             'rooms.*.images.required' => 'Please upload at least one image for each room.',
             'rooms.*.images.min' => 'Please upload at least one image for each room.',
             'rooms.*.images.*.image' => 'All files must be images.',
-            'rooms.*.images.*.max' => 'Image size must not exceed 10MB.',
             'rooms.*.moisture_reading.numeric' => 'Moisture reading must be a number.',
             'rooms.*.moisture_reading.min' => 'Moisture reading must be between 0 and 100.',
             'rooms.*.moisture_reading.max' => 'Moisture reading must be between 0 and 100.',
@@ -1546,12 +1545,12 @@ class AdminController extends Controller
         $fileValidationRules = [];
         if ($request->has('existing_rooms')) {
             foreach ($request->input('existing_rooms', []) as $roomId => $roomData) {
-                $fileValidationRules["existing_rooms.{$roomId}.new_images.*"] = 'nullable|image|mimes:jpeg,jpg,png|max:10240';
+                $fileValidationRules["existing_rooms.{$roomId}.new_images.*"] = 'nullable|image|mimes:jpeg,jpg,png';
             }
         }
         if ($request->has('rooms')) {
             foreach ($request->input('rooms', []) as $roomIndex => $roomData) {
-                $fileValidationRules["rooms.{$roomIndex}.images.*"] = 'nullable|image|mimes:jpeg,jpg,png|max:10240';
+                $fileValidationRules["rooms.{$roomIndex}.images.*"] = 'nullable|image|mimes:jpeg,jpg,png';
             }
         }
         
@@ -1783,6 +1782,40 @@ class AdminController extends Controller
             }
 
             \DB::commit();
+
+            // Check if AI processing was requested
+            $processAI = $request->has('process_ai') && $request->input('process_ai') == '1';
+            
+            if ($processAI) {
+                // Check if there are new images that need AI processing
+                $hasNewImages = false;
+                if ($request->has('existing_rooms')) {
+                    foreach ($request->input('existing_rooms', []) as $roomId => $roomData) {
+                        if ($request->hasFile("existing_rooms.{$roomId}.new_images")) {
+                            $hasNewImages = true;
+                            break;
+                        }
+                    }
+                }
+                if (!$hasNewImages && $request->has('rooms')) {
+                    foreach ($request->input('rooms', []) as $roomIndex => $roomData) {
+                        if ($request->hasFile("rooms.{$roomIndex}.images")) {
+                            $hasNewImages = true;
+                            break;
+                        }
+                    }
+                }
+
+                if ($hasNewImages) {
+                    // Redirect to AI processing
+                    return redirect()->route('admin.homechecks.process-ai', $id)
+                        ->with('info', 'HomeCheck updated successfully! Processing AI analysis for new images...');
+                } else {
+                    // No new images, but user requested AI processing - process all images
+                    return redirect()->route('admin.homechecks.process-ai', $id)
+                        ->with('info', 'HomeCheck updated successfully! Processing AI analysis...');
+                }
+            }
 
             return redirect()->route('admin.homechecks.show', $id)
                 ->with('success', 'HomeCheck updated successfully!');
