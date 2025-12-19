@@ -444,7 +444,7 @@
                             @foreach($roomImages as $image)
                                 @if($image->image_url)
                                     <div class="gallery-item" 
-                                         onclick="openImageModal('{{ $image->image_url }}', '{{ $roomName }}', {{ $image->is_360 ? 'true' : 'false' }}, {{ $image->id }})">
+                                         onclick="openImageModal('{{ $image->image_url }}', '{{ $roomName }}', {{ $image->is_360 ? 'true' : 'false' }}, {{ $image->id }}, '{{ addslashes($image->ai_comments ?? '') }}', '{{ addslashes($homecheckReport->notes ?? '') }}')">
                                         <img src="{{ $image->image_url }}" 
                                              alt="{{ $roomName }} Image" 
                                              loading="lazy"
@@ -553,11 +553,12 @@
     }
 
     /* OPEN IMAGE MODAL (from gallery) */
-    function openImageModal(imageUrl, roomName, is360, imageId) {
+    function openImageModal(imageUrl, roomName, is360, imageId, aiComments, officialNotes) {
         const modal = document.getElementById("modal");
         const modalImg = document.getElementById("modal-img");
         const panoViewer = document.getElementById("pano-viewer");
         const viewerControls = document.getElementById("viewer-controls");
+        const modalBody = document.getElementById("modal-body");
         
         // For 360 images, use proxy endpoint to avoid CORS issues
         if (is360 && imageId) {
@@ -569,7 +570,23 @@
         is360Image = is360;
         
         document.getElementById("modal-title").innerText = roomName;
-        document.getElementById("modal-body").innerHTML = "";
+        
+        // Build modal body content with AI notes and official notes
+        let bodyContent = '';
+        
+        if (aiComments && aiComments.trim() !== '') {
+            bodyContent += '<div style="margin-bottom: 20px;"><h4 style="margin-bottom: 8px; color: var(--abodeology-teal); font-size: 16px;">AI Analysis</h4><p style="line-height: 1.6; color: #333;">' + aiComments.replace(/\n/g, '<br>') + '</p></div>';
+        }
+        
+        if (officialNotes && officialNotes.trim() !== '') {
+            bodyContent += '<div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd;"><h4 style="margin-bottom: 8px; color: var(--abodeology-teal); font-size: 16px;">Official Notes</h4><p style="line-height: 1.6; color: #333;">' + officialNotes.replace(/\n/g, '<br>') + '</p></div>';
+        }
+        
+        if (!bodyContent) {
+            bodyContent = '<p style="color: #666; font-style: italic;">No additional notes available for this image.</p>';
+        }
+        
+        modalBody.innerHTML = bodyContent;
         
         if (is360) {
             // Show 360 viewer controls
@@ -616,6 +633,7 @@
             }
         }
         
+        // Modal body content is already set above with AI notes and official notes
         modal.style.display = "flex";
     }
 
