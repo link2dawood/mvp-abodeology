@@ -33,6 +33,23 @@ class LoginController extends Controller
     }
 
     /**
+     * Show the application's login form.
+     * Redirect authenticated users to their dashboard.
+     *
+     * @return \Illuminate\Http\RedirectResponse|\Illuminate\View\View
+     */
+    public function showLoginForm()
+    {
+        // If user is already authenticated, redirect to their dashboard
+        if (auth()->check()) {
+            $user = auth()->user();
+            return redirect($this->redirectTo($user));
+        }
+
+        return view('auth.login');
+    }
+
+    /**
      * The user has been authenticated.
      * Redirect to role-specific dashboard after login.
      *
@@ -75,8 +92,8 @@ class LoginController extends Controller
                 return route('pva.dashboard');
             
             default:
-                // Fallback to home for unknown roles
-                return '/home';
+                // Fallback to root for unknown roles (will redirect appropriately)
+                return '/';
         }
     }
 }

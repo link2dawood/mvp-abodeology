@@ -4,6 +4,27 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProfileController;
 
 Route::get('/', function () {
+    // If user is authenticated, redirect to their dashboard
+    if (auth()->check()) {
+        $user = auth()->user();
+        $dashboardRoutes = [
+            'admin' => route('admin.dashboard'),
+            'agent' => route('admin.agent.dashboard'),
+            'buyer' => route('buyer.dashboard'),
+            'seller' => route('seller.dashboard'),
+            'both' => route('combined.dashboard'),
+            'pva' => route('pva.dashboard'),
+        ];
+        
+        // If role is unknown, show error instead of redirecting to login (which would cause loop)
+        if (!isset($dashboardRoutes[$user->role])) {
+            abort(403, 'Your account has an invalid role. Please contact support.');
+        }
+        
+        return redirect($dashboardRoutes[$user->role]);
+    }
+    
+    // Not authenticated, redirect to login
     return redirect()->route('login');
 });
 
