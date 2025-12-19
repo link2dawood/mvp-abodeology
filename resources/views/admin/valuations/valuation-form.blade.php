@@ -209,12 +209,23 @@
             </div>
             <div class="form-group">
                 <label class="required">Property Address</label>
-                <input type="text" name="property_address" value="{{ old('property_address', $onboarding->property_address ?? $valuation->property_address ?? '') }}" required>
+                <input type="text" 
+                       id="property_address" 
+                       name="property_address" 
+                       placeholder="Start typing your address..."
+                       value="{{ old('property_address', $onboarding->property_address ?? $valuation->property_address ?? '') }}" 
+                       required
+                       autocomplete="address-line1">
             </div>
             <div class="form-row">
                 <div class="form-group">
                     <label>Postcode</label>
-                    <input type="text" name="postcode" value="{{ old('postcode', $onboarding->postcode ?? $valuation->postcode ?? '') }}">
+                    <input type="text" 
+                           id="postcode" 
+                           name="postcode" 
+                           placeholder="Postcode"
+                           value="{{ old('postcode', $onboarding->postcode ?? $valuation->postcode ?? '') }}"
+                           autocomplete="postal-code">
                 </div>
                 <div class="form-group">
                     <label class="required">Property Type</label>
@@ -490,6 +501,80 @@ document.addEventListener('DOMContentLoaded', function() {
     if (tenureSelect) {
         tenureSelect.dispatchEvent(new Event('change'));
     }
+
+    @if(config('services.google.maps_api_key'))
+    // Initialize Google Places Autocomplete
+    function initAddressAutocomplete() {
+        if (typeof google === 'undefined' || typeof google.maps === 'undefined' || typeof google.maps.places === 'undefined') {
+            setTimeout(initAddressAutocomplete, 100);
+            return;
+        }
+
+        const addressInput = document.getElementById('property_address');
+        const postcodeInput = document.getElementById('postcode');
+
+        if (addressInput) {
+            const addressAutocomplete = new google.maps.places.Autocomplete(addressInput, {
+                types: ['address'],
+                componentRestrictions: { country: 'gb' },
+                fields: ['address_components', 'formatted_address']
+            });
+
+            addressAutocomplete.addListener('place_changed', function() {
+                const place = addressAutocomplete.getPlace();
+                
+                if (!place.address_components) {
+                    return;
+                }
+
+                let postcode = '';
+                for (const component of place.address_components) {
+                    if (component.types.includes('postal_code')) {
+                        postcode = component.long_name;
+                        break;
+                    }
+                }
+
+                if (postcode && postcodeInput) {
+                    postcodeInput.value = postcode;
+                }
+
+                addressInput.value = place.formatted_address || addressInput.value;
+            });
+        }
+
+        if (postcodeInput) {
+            const postcodeAutocomplete = new google.maps.places.Autocomplete(postcodeInput, {
+                types: ['(regions)'],
+                componentRestrictions: { country: 'gb' }
+            });
+
+            postcodeAutocomplete.addListener('place_changed', function() {
+                const place = postcodeAutocomplete.getPlace();
+                
+                if (!place.address_components) {
+                    return;
+                }
+
+                for (const component of place.address_components) {
+                    if (component.types.includes('postal_code')) {
+                        postcodeInput.value = component.long_name;
+                        break;
+                    }
+                }
+            });
+        }
+    }
+
+    if (typeof google !== 'undefined' && typeof google.maps !== 'undefined' && typeof google.maps.places !== 'undefined') {
+        initAddressAutocomplete();
+    } else {
+        window.addEventListener('load', initAddressAutocomplete);
+    }
+    @endif
 });
 </script>
+@if(config('services.google.maps_api_key'))
+<script src="https://maps.googleapis.com/maps/api/js?key={{ config('services.google.maps_api_key') }}&libraries=places" async defer></script>
+@endif
 @endsection

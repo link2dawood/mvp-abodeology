@@ -40,4 +40,8 @@ return [
         'assistant_id' => env('OPENAI_ASSISTANT_ID'),
     ],
 
+    'google' => [
+        'maps_api_key' => env('GOOGLE_MAPS_API_KEY'),
+    ],
+
 ];

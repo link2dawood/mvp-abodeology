@@ -151,6 +151,7 @@
         border-radius: 8px;
         padding: 20px;
         margin-bottom: 20px;
+        transition: all 0.3s ease;
     }
 
     .room-header {
@@ -158,6 +159,50 @@
         justify-content: space-between;
         align-items: center;
         margin-bottom: 15px;
+        cursor: pointer;
+        padding: 10px;
+        margin: -10px -10px 15px -10px;
+        border-radius: 6px;
+        transition: background 0.2s ease;
+    }
+
+    .room-header:hover {
+        background: rgba(44, 184, 180, 0.1);
+    }
+
+    .room-header-content {
+        display: flex;
+        align-items: center;
+        flex: 1;
+        gap: 10px;
+    }
+
+    .room-toggle-icon {
+        font-size: 18px;
+        color: var(--abodeology-teal);
+        transition: transform 0.3s ease;
+        min-width: 20px;
+    }
+
+    .room-block.collapsed .room-toggle-icon {
+        transform: rotate(-90deg);
+    }
+
+    .room-content {
+        transition: max-height 0.3s ease, opacity 0.3s ease;
+        overflow: hidden;
+    }
+
+    .room-block.collapsed .room-content {
+        max-height: 0;
+        opacity: 0;
+        margin: 0;
+        padding: 0;
+    }
+
+    .room-block:not(.collapsed) .room-content {
+        max-height: 5000px;
+        opacity: 1;
     }
 
     .room-name-input {
@@ -417,9 +462,18 @@
 
         <!-- Existing Rooms (Editable) -->
         @if($roomsData && $roomsData->count() > 0)
-        <div class="card">
-            <h3>Edit Existing Rooms</h3>
+        <div style="margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h3 style="margin: 0; color: var(--abodeology-teal);">Add/Remove Rooms</h3>
+                <div style="display: flex; gap: 10px;">
+                    <button type="button" onclick="expandAllRooms()" style="background: #28a745; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px;">Expand All</button>
+                    <button type="button" onclick="collapseAllRooms()" style="background: #6c757d; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px;">Collapse All</button>
+                </div>
+            </div>
             <p style="color: #666; margin-bottom: 15px;">View, edit room names, delete individual images, delete entire rooms, or add new images to existing rooms.</p>
+        </div>
+        
+        <div class="card" style="padding: 0; background: transparent; border: none; box-shadow: none;">
 
             @foreach($roomsData as $roomName => $roomImages)
                 @php
@@ -429,23 +483,28 @@
                 @endphp
 
                 <div class="room-block" data-room-name="{{ $roomName }}" id="existing_room_block_{{ $firstImage->id }}">
-                    <div class="room-header">
-                        <input type="text" 
-                               name="existing_rooms[{{ $firstImage->id }}][name]" 
-                               value="{{ old('existing_rooms.' . $firstImage->id . '.name', $roomName) }}"
-                               class="room-name-input" 
-                               placeholder="Room Name" 
-                               required>
-                        <input type="hidden" name="existing_rooms[{{ $firstImage->id }}][id]" value="{{ $firstImage->id }}">
-                        <input type="hidden" name="existing_rooms[{{ $firstImage->id }}][delete_room]" id="delete_room_{{ $firstImage->id }}" value="0">
+                    <div class="room-header" onclick="toggleRoomCollapse('{{ $firstImage->id }}')">
+                        <div class="room-header-content">
+                            <span class="room-toggle-icon">▼</span>
+                            <input type="text" 
+                                   name="existing_rooms[{{ $firstImage->id }}][name]" 
+                                   value="{{ old('existing_rooms.' . $firstImage->id . '.name', $roomName) }}"
+                                   class="room-name-input" 
+                                   placeholder="Room Name" 
+                                   required
+                                   onclick="event.stopPropagation();">
+                            <input type="hidden" name="existing_rooms[{{ $firstImage->id }}][id]" value="{{ $firstImage->id }}">
+                            <input type="hidden" name="existing_rooms[{{ $firstImage->id }}][delete_room]" id="delete_room_{{ $firstImage->id }}" value="0">
+                        </div>
                         <button type="button" 
                                 class="remove-room-btn" 
-                                onclick="deleteRoom('{{ $firstImage->id }}', '{{ $roomName }}')"
+                                onclick="event.stopPropagation(); deleteRoom('{{ $firstImage->id }}', '{{ $roomName }}')"
                                 style="background: #dc3545; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: 600; margin-left: 10px;">
                             🗑️ Delete Entire Room
                         </button>
                     </div>
 
+                    <div class="room-content">
                     <!-- Existing Images -->
                     <div style="margin-bottom: 20px;">
                         <label style="font-weight: 600; margin-bottom: 10px; display: block;">Existing Images (click × to delete)</label>
@@ -520,15 +579,19 @@
                                style="width: 100%; padding: 10px; border: 1px solid #dcdcdc; border-radius: 6px; font-size: 15px; box-sizing: border-box;">
                         <p style="font-size: 12px; color: #666; margin-top: 5px;">Optional: Enter moisture reading for this room (0-100%)</p>
                     </div>
+                    </div>
                 </div>
             @endforeach
         </div>
         @endif
 
         <!-- Add New Rooms Section -->
-        <div class="card">
-            <h3>Add New Rooms (Optional)</h3>
+        <div style="margin-top: 30px; margin-bottom: 20px;">
+            <h3 style="margin-bottom: 10px; color: var(--abodeology-teal);">Add New Rooms (Optional)</h3>
             <p style="color: #666; margin-bottom: 15px;">Add additional rooms and images to this HomeCheck report.</p>
+        </div>
+        
+        <div class="card" style="padding: 0; background: transparent; border: none; box-shadow: none;">
 
             <!-- Rooms Container -->
             <div id="roomsContainer">
@@ -844,6 +907,30 @@ function removeImage(roomId, index) {
         updateFileInput(roomId);
         displayPreviews(roomId);
     }
+}
+
+// Toggle Room Collapse
+function toggleRoomCollapse(roomId) {
+    const roomBlock = document.getElementById('existing_room_block_' + roomId);
+    if (roomBlock) {
+        roomBlock.classList.toggle('collapsed');
+    }
+}
+
+// Expand All Rooms
+function expandAllRooms() {
+    const roomBlocks = document.querySelectorAll('.room-block');
+    roomBlocks.forEach(block => {
+        block.classList.remove('collapsed');
+    });
+}
+
+// Collapse All Rooms
+function collapseAllRooms() {
+    const roomBlocks = document.querySelectorAll('.room-block');
+    roomBlocks.forEach(block => {
+        block.classList.add('collapsed');
+    });
 }
 </script>
 @endpush

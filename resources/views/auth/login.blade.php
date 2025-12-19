@@ -226,7 +226,6 @@
 
             <div class="footer-links">
                 <p><a href="{{ route('password.request') }}">Forgot your password?</a></p>
-                <p>Don't have an account? <a href="{{ route('register') }}">Create one</a></p>
             </div>
         </div>
     </div>

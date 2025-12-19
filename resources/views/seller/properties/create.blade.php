@@ -160,9 +160,10 @@
                 id="address" 
                 name="address" 
                 rows="3"
-                placeholder="Enter full property address"
+                placeholder="Start typing your address..."
                 required
                 class="{{ $errors->has('address') ? 'error' : '' }}"
+                autocomplete="address-line1"
             >{{ old('address') }}</textarea>
             @error('address')
                 <div class="error-message">{{ $message }}</div>
@@ -179,6 +180,7 @@
                     placeholder="e.g., SW1A 1AA"
                     value="{{ old('postcode') }}"
                     class="{{ $errors->has('postcode') ? 'error' : '' }}"
+                    autocomplete="postal-code"
                 >
                 @error('postcode')
                     <div class="error-message">{{ $message }}</div>
@@ -364,5 +366,94 @@
         </div>
     </form>
 </div>
+
+@if(config('services.google.maps_api_key'))
+@push('scripts')
+<script src="https://maps.googleapis.com/maps/api/js?key={{ config('services.google.maps_api_key') }}&libraries=places" async defer></script>
+<script>
+function initAddressAutocomplete() {
+    if (typeof google === 'undefined' || typeof google.maps === 'undefined' || typeof google.maps.places === 'undefined') {
+        setTimeout(initAddressAutocomplete, 100);
+        return;
+    }
+
+    const addressInput = document.getElementById('address');
+    const postcodeInput = document.getElementById('postcode');
+
+    if (addressInput) {
+        // For textarea, we need to create a hidden input for autocomplete
+        const autocompleteInput = document.createElement('input');
+        autocompleteInput.type = 'text';
+        autocompleteInput.id = 'address_autocomplete';
+        autocompleteInput.style.position = 'absolute';
+        autocompleteInput.style.left = '-9999px';
+        autocompleteInput.style.opacity = '0';
+        addressInput.parentNode.appendChild(autocompleteInput);
+
+        const addressAutocomplete = new google.maps.places.Autocomplete(autocompleteInput, {
+            types: ['address'],
+            componentRestrictions: { country: 'gb' },
+            fields: ['address_components', 'formatted_address']
+        });
+
+        addressAutocomplete.addListener('place_changed', function() {
+            const place = addressAutocomplete.getPlace();
+            
+            if (!place.address_components) {
+                return;
+            }
+
+            let postcode = '';
+            for (const component of place.address_components) {
+                if (component.types.includes('postal_code')) {
+                    postcode = component.long_name;
+                    break;
+                }
+            }
+
+            if (postcode && postcodeInput) {
+                postcodeInput.value = postcode;
+            }
+
+            addressInput.value = place.formatted_address || autocompleteInput.value;
+        });
+
+        // Sync textarea with autocomplete input
+        autocompleteInput.addEventListener('input', function() {
+            addressInput.value = autocompleteInput.value;
+        });
+    }
+
+    if (postcodeInput) {
+        const postcodeAutocomplete = new google.maps.places.Autocomplete(postcodeInput, {
+            types: ['(regions)'],
+            componentRestrictions: { country: 'gb' }
+        });
+
+        postcodeAutocomplete.addListener('place_changed', function() {
+            const place = postcodeAutocomplete.getPlace();
+            
+            if (!place.address_components) {
+                return;
+            }
+
+            for (const component of place.address_components) {
+                if (component.types.includes('postal_code')) {
+                    postcodeInput.value = component.long_name;
+                    break;
+                }
+            }
+        });
+    }
+}
+
+if (typeof google !== 'undefined' && typeof google.maps !== 'undefined' && typeof google.maps.places !== 'undefined') {
+    initAddressAutocomplete();
+} else {
+    window.addEventListener('load', initAddressAutocomplete);
+}
+</script>
+@endpush
+@endif
 @endsection
 

@@ -6,6 +6,10 @@
     <title>Abodeology | Book Your Valuation</title>
     <meta name="csrf-token" content="{{ csrf_token() }}">
     
+    @if(config('services.google.maps_api_key'))
+    <script src="https://maps.googleapis.com/maps/api/js?key={{ config('services.google.maps_api_key') }}&libraries=places&callback=initAutocomplete" async defer></script>
+    @endif
+    
     <style>
         body {
             background: #f7f7f7;
@@ -278,10 +282,11 @@
             <input type="text" 
                    id="property_address"
                    name="property_address" 
-                   placeholder="Enter full property address" 
+                   placeholder="Start typing your address..." 
                    value="{{ old('property_address') }}"
                    required
-                   class="{{ $errors->has('property_address') ? 'error' : '' }}">
+                   class="{{ $errors->has('property_address') ? 'error' : '' }}"
+                   autocomplete="address-line1">
             @error('property_address')
                 <div class="error-message">{{ $message }}</div>
             @enderror
@@ -293,7 +298,8 @@
                    placeholder="SW1A 1AA" 
                    value="{{ old('postcode') }}"
                    required
-                   class="{{ $errors->has('postcode') ? 'error' : '' }}">
+                   class="{{ $errors->has('postcode') ? 'error' : '' }}"
+                   autocomplete="postal-code">
             @error('postcode')
                 <div class="error-message">{{ $message }}</div>
             @enderror
@@ -347,5 +353,105 @@
             <p>Need help? <a href="mailto:support@abodeology.co.uk">Contact Support</a></p>
         </div>
     </div>
+
+    @if(config('services.google.maps_api_key'))
+    <script>
+        let addressAutocomplete;
+        let postcodeAutocomplete;
+
+        function initAutocomplete() {
+            // Initialize autocomplete for property address
+            addressAutocomplete = new google.maps.places.Autocomplete(
+                document.getElementById('property_address'),
+                {
+                    types: ['address'],
+                    componentRestrictions: { country: 'gb' }, // Restrict to UK addresses
+                    fields: ['address_components', 'formatted_address']
+                }
+            );
+
+            addressAutocomplete.addListener('place_changed', function() {
+                const place = addressAutocomplete.getPlace();
+                
+                if (!place.address_components) {
+                    return;
+                }
+
+                // Extract address components
+                let streetNumber = '';
+                let route = '';
+                let postcode = '';
+                let locality = '';
+                let administrativeArea = '';
+
+                for (const component of place.address_components) {
+                    const componentType = component.types[0];
+
+                    switch (componentType) {
+                        case 'street_number':
+                            streetNumber = component.long_name;
+                            break;
+                        case 'route':
+                            route = component.long_name;
+                            break;
+                        case 'postal_code':
+                            postcode = component.long_name;
+                            break;
+                        case 'postal_town':
+                        case 'locality':
+                            if (!locality) {
+                                locality = component.long_name;
+                            }
+                            break;
+                        case 'administrative_area_level_1':
+                            administrativeArea = component.short_name;
+                            break;
+                    }
+                }
+
+                // Set the full formatted address
+                document.getElementById('property_address').value = place.formatted_address || 
+                    (streetNumber + ' ' + route).trim() || place.formatted_address;
+
+                // Auto-fill postcode if found
+                if (postcode) {
+                    document.getElementById('postcode').value = postcode;
+                }
+            });
+
+            // Initialize autocomplete for postcode (using geocoder for UK postcodes)
+            postcodeAutocomplete = new google.maps.places.Autocomplete(
+                document.getElementById('postcode'),
+                {
+                    types: ['(regions)'],
+                    componentRestrictions: { country: 'gb' }
+                }
+            );
+
+            postcodeAutocomplete.addListener('place_changed', function() {
+                const place = postcodeAutocomplete.getPlace();
+                
+                if (!place.address_components) {
+                    return;
+                }
+
+                // Extract postcode
+                for (const component of place.address_components) {
+                    if (component.types.includes('postal_code')) {
+                        document.getElementById('postcode').value = component.long_name;
+                        break;
+                    }
+                }
+            });
+        }
+
+        // Fallback if Google Maps API fails to load
+        window.addEventListener('load', function() {
+            if (typeof google === 'undefined' || typeof google.maps === 'undefined') {
+                console.warn('Google Maps API failed to load. Address autocomplete will not be available.');
+            }
+        });
+    </script>
+    @endif
 </body>
 </html>
