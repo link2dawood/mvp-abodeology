@@ -185,15 +185,6 @@
         <h1>Book Your Property Valuation</h1>
         <p class="sub">Submit your details below and we'll contact you to arrange a suitable time.</p>
         
-        @auth
-            <div style="background: #E8F4F3; padding: 15px; margin-bottom: 25px; border-radius: 6px;">
-                <p style="margin: 0; font-size: 14px; color: #1E1E1E;">
-                    <strong>Welcome back, {{ auth()->user()->name }}!</strong> Your information will be pre-filled below. 
-                    You can update it if needed.
-                </p>
-            </div>
-        @endauth
-        
         @if ($errors->any())
             <div class="alert-error">
                 <strong>Please fix the following errors:</strong>
@@ -219,12 +210,11 @@
                    id="name"
                    name="name" 
                    placeholder="Enter your full name" 
-                   value="{{ old('name', auth()->user()->name ?? '') }}"
+                   value="{{ old('name', '') }}"
                    required 
                    autofocus
                    class="{{ $errors->has('name') ? 'error' : '' }}"
-                   autocomplete="name"
-                   {{ auth()->check() ? 'readonly' : '' }}>
+                   autocomplete="name">
             @error('name')
                 <div class="error-message">{{ $message }}</div>
             @enderror
@@ -234,11 +224,10 @@
                    id="email"
                    name="email" 
                    placeholder="your@email.com" 
-                   value="{{ old('email', auth()->user()->email ?? '') }}"
+                   value="{{ old('email', '') }}"
                    required
                    class="{{ $errors->has('email') ? 'error' : '' }}"
-                   autocomplete="email"
-                   {{ auth()->check() ? 'readonly' : '' }}>
+                   autocomplete="email">
             @error('email')
                 <div class="error-message">{{ $message }}</div>
             @enderror
@@ -248,7 +237,7 @@
                    id="phone"
                    name="phone" 
                    placeholder="01234 567890" 
-                   value="{{ old('phone', auth()->user()->phone ?? '') }}"
+                   value="{{ old('phone', '') }}"
                    required
                    class="{{ $errors->has('phone') ? 'error' : '' }}"
                    autocomplete="tel">
