@@ -1485,40 +1485,62 @@ class AdminController extends Controller
      */
     public function editHomeCheck($id)
     {
-        $user = auth()->user();
-        
-        if (!in_array($user->role, ['admin', 'agent'])) {
-            return redirect()->route($this->getRoleDashboard($user->role))
-                ->with('error', 'You do not have permission to access this page.');
-        }
-
-        $homecheckReport = \App\Models\HomecheckReport::with([
-            'property.seller',
-            'scheduler',
-            'completer',
-            'homecheckData' => function($query) {
-                $query->orderBy('room_name')->orderBy('created_at');
+        try {
+            $user = auth()->user();
+            
+            if (!in_array($user->role, ['admin', 'agent'])) {
+                return redirect()->route($this->getRoleDashboard($user->role))
+                    ->with('error', 'You do not have permission to access this page.');
             }
-        ])->findOrFail($id);
-        
-        // Don't eager load image_url accessor (it's slow) - use proxy endpoint instead
 
-        $property = $homecheckReport->property;
-        
-        // For agents, verify they have access to this property
-        if ($user->role === 'agent') {
-            $agentPropertyIds = $this->getAgentPropertyIds($user->id);
-            if (!in_array($property->id, $agentPropertyIds)) {
+            $homecheckReport = \App\Models\HomecheckReport::with([
+                'property.seller',
+                'scheduler',
+                'completer',
+                'homecheckData' => function($query) {
+                    $query->orderBy('room_name')->orderBy('created_at');
+                }
+            ])->findOrFail($id);
+
+            $property = $homecheckReport->property;
+            
+            if (!$property) {
                 return redirect()->route('admin.homechecks.index')
-                    ->with('error', 'You do not have permission to edit this HomeCheck.');
+                    ->with('error', 'Property not found for this HomeCheck.');
             }
+            
+            // For agents, verify they have access to this property
+            if ($user->role === 'agent') {
+                $agentPropertyIds = $this->getAgentPropertyIds($user->id);
+                if (!in_array($property->id, $agentPropertyIds)) {
+                    return redirect()->route('admin.homechecks.index')
+                        ->with('error', 'You do not have permission to edit this HomeCheck.');
+                }
+            }
+
+            // Get HomeCheck data grouped by room
+            $homecheckData = $homecheckReport->homecheckData ?? collect();
+            
+            // Filter out any images without IDs or paths
+            $homecheckData = $homecheckData->filter(function($item) {
+                return $item->id && $item->image_path;
+            });
+            
+            $roomsData = $homecheckData->groupBy('room_name');
+
+            return view('admin.homechecks.edit', compact('homecheckReport', 'property', 'roomsData', 'homecheckData'));
+            
+        } catch (\Exception $e) {
+            \Log::error('Error loading HomeCheck edit page: ' . $e->getMessage(), [
+                'homecheck_id' => $id,
+                'trace' => $e->getTraceAsString(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+            
+            return redirect()->route('admin.homechecks.index')
+                ->with('error', 'An error occurred while loading the HomeCheck. Please try again.');
         }
-
-        // Get HomeCheck data grouped by room
-        $homecheckData = $homecheckReport->homecheckData;
-        $roomsData = $homecheckData->groupBy('room_name');
-
-        return view('admin.homechecks.edit', compact('homecheckReport', 'property', 'roomsData', 'homecheckData'));
     }
 
     /**

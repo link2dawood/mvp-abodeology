@@ -504,12 +504,14 @@
         <div class="card" style="padding: 0; background: transparent; border: none; box-shadow: none;">
 
             @foreach($roomsData as $roomName => $roomImages)
+                @if($roomImages && $roomImages->count() > 0)
                 @php
                     $firstImage = $roomImages->first();
-                    $roomId = 'existing_room_' . $firstImage->id;
-                    $moistureReading = $firstImage->moisture_reading ?? null;
+                    $roomId = $firstImage ? 'existing_room_' . $firstImage->id : 'room_' . $loop->index;
+                    $moistureReading = $firstImage ? ($firstImage->moisture_reading ?? null) : null;
                 @endphp
 
+                @if($firstImage)
                 <div class="room-block" data-room-name="{{ $roomName }}" id="existing_room_block_{{ $firstImage->id }}">
                     <div class="room-header" onclick="toggleRoomCollapse('{{ $firstImage->id }}')">
                         <div class="room-header-content">
@@ -549,7 +551,11 @@
                                 @if($image->id)
                                     @php
                                         // Use proxy endpoint - avoids slow image_url accessor (S3 file checks)
-                                        $imageUrl = route('admin.homecheck.image', ['id' => $image->id]);
+                                        try {
+                                            $imageUrl = route('admin.homecheck.image', ['id' => $image->id]);
+                                        } catch (\Exception $e) {
+                                            $imageUrl = url('/admin/homecheck-image/' . $image->id);
+                                        }
                                     @endphp
                                     <div class="existing-image-item" data-image-id="{{ $image->id }}">
                                         <img src="{{ $imageUrl }}" alt="{{ $roomName }} Image" loading="lazy" decoding="async">
@@ -623,6 +629,8 @@
                     </div>
                     </div>
                 </div>
+                @endif
+                @endif
             @endforeach
         </div>
         @endif
