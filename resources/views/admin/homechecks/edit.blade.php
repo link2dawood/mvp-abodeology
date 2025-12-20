@@ -474,6 +474,20 @@
             </div>
         </div>
 
+        <!-- Add New Rooms Section - Moved to Top -->
+        <div class="card" style="margin-bottom: 20px;">
+            <h3 style="margin-bottom: 15px; color: var(--abodeology-teal);">Add New Rooms</h3>
+            <p style="color: #666; margin-bottom: 15px; font-size: 14px;">Click the button below to add a new room to this HomeCheck report.</p>
+            
+            <!-- Rooms Container for New Rooms -->
+            <div id="roomsContainer" style="margin-bottom: 15px;">
+                <!-- Rooms will be added dynamically via JavaScript -->
+            </div>
+            
+            <!-- Add Room Button -->
+            <button type="button" class="add-room-btn" id="addRoomBtn">+ Add New Room</button>
+        </div>
+
         <!-- Existing Rooms (Editable) -->
         @if($roomsData && $roomsData->count() > 0)
         <div style="margin-bottom: 20px;">
@@ -510,12 +524,20 @@
                             <input type="hidden" name="existing_rooms[{{ $firstImage->id }}][id]" value="{{ $firstImage->id }}">
                             <input type="hidden" name="existing_rooms[{{ $firstImage->id }}][delete_room]" id="delete_room_{{ $firstImage->id }}" value="0">
                         </div>
-                        <button type="button" 
-                                class="remove-room-btn" 
-                                onclick="event.stopPropagation(); deleteRoom('{{ $firstImage->id }}', '{{ $roomName }}')"
-                                style="background: #dc3545; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: 600; margin-left: 10px;">
-                            🗑️ Delete Entire Room
-                        </button>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <button type="button" 
+                                    class="update-room-btn" 
+                                    onclick="event.stopPropagation(); updateRoom({{ $firstImage->id }}, 'existing')"
+                                    style="background: #28a745; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                                ✓ Update Room
+                            </button>
+                            <button type="button" 
+                                    class="remove-room-btn" 
+                                    onclick="event.stopPropagation(); deleteRoom('{{ $firstImage->id }}', '{{ $roomName }}')"
+                                    style="background: #dc3545; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                                🗑️ Delete Entire Room
+                            </button>
+                        </div>
                     </div>
 
                     <div class="room-content">
@@ -599,25 +621,6 @@
         </div>
         @endif
 
-        <!-- Add New Rooms Section -->
-        <div style="margin-top: 30px; margin-bottom: 20px;">
-            <h3 style="margin-bottom: 10px; color: var(--abodeology-teal);">Add New Rooms (Optional)</h3>
-            <p style="color: #666; margin-bottom: 15px;">Add additional rooms and images to this HomeCheck report.</p>
-        </div>
-        
-        <div class="card" style="padding: 0; background: transparent; border: none; box-shadow: none;">
-
-            <!-- Rooms Container -->
-            <div id="roomsContainer">
-                <!-- Rooms will be added dynamically via JavaScript -->
-            </div>
-
-            <!-- Room Controls -->
-            <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-                <button type="button" class="add-room-btn" id="addRoomBtn">+ Add New Room</button>
-            </div>
-        </div>
-
         @if($homecheckReport->scheduler)
             <div class="info-box" style="background: #f9f9f9;">
                 <p style="margin: 0; font-size: 13px; color: #666;">
@@ -700,12 +703,19 @@ function addRoomBlock() {
     roomBlock.setAttribute('data-room-id', roomId);
     
     roomBlock.innerHTML = `
-        <div class="room-header">
+        <div class="room-header" style="display: flex; justify-content: space-between; align-items: center;">
             <input type="text" 
                    name="rooms[${roomIndex}][name]" 
                    class="room-name-input" 
                    placeholder="Room Name (e.g., Living Room, Kitchen, Bedroom 1)" 
-                   required>
+                   required
+                   style="flex: 1; margin-right: 10px;">
+            <button type="button" 
+                    class="update-room-btn" 
+                    onclick="updateRoom(${roomIndex}, 'new')"
+                    style="background: #28a745; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                ✓ Update Room
+            </button>
         </div>
         
         <div class="image-type-toggle">
@@ -727,7 +737,7 @@ function addRoomBlock() {
                 📤 Drag & drop images here or click to upload
             </p>
             <p style="margin: 10px 0 0 0; font-size: 13px; color: #999;">
-                Supported formats: JPG, PNG (Max 10MB per image)
+                Supported formats: JPG, PNG (Images will be compressed automatically)
             </p>
         </div>
         
@@ -852,14 +862,7 @@ function processFiles(files, roomId) {
             return;
         }
         
-        if (file.size > 10 * 1024 * 1024) {
-            if (errorDiv) {
-                errorDiv.textContent = 'File size must not exceed 10MB';
-                errorDiv.style.display = 'block';
-            }
-            return;
-        }
-        
+        // No file size restriction - images will be compressed in background
         validFiles.push(file);
     });
     
@@ -944,6 +947,164 @@ function collapseAllRooms() {
     const roomBlocks = document.querySelectorAll('.room-block');
     roomBlocks.forEach(block => {
         block.classList.add('collapsed');
+    });
+}
+
+// Update Individual Room
+function updateRoom(roomId, type) {
+    const homecheckId = {{ $homecheckReport->id }};
+    const formData = new FormData();
+    formData.append('_token', document.querySelector('meta[name="csrf-token"]')?.content || document.querySelector('input[name="_token"]').value);
+    formData.append('_method', 'PUT');
+    
+    let roomData = null;
+    let roomElement = null;
+    
+    if (type === 'existing') {
+        // Existing room
+        roomElement = document.getElementById('existing_room_block_' + roomId);
+        if (!roomElement) {
+            alert('Room element not found');
+            return;
+        }
+        
+        // Get room name
+        const roomNameInput = roomElement.querySelector('input[name*="[name]"]');
+        const roomName = roomNameInput ? roomNameInput.value : '';
+        
+        if (!roomName) {
+            alert('Please enter a room name');
+            return;
+        }
+        
+        // Get moisture reading
+        const moistureInput = roomElement.querySelector('input[name*="[moisture_reading]"]');
+        const moistureReading = moistureInput ? moistureInput.value : '';
+        
+        // Get is_360 flag
+        const is360Input = roomElement.querySelector('input[name*="[is_360]"]');
+        const is360 = is360Input ? is360Input.value : '0';
+        
+        // Get delete images list
+        const deleteImageInputs = roomElement.querySelectorAll('input[name*="[delete_images]"]');
+        const deleteImages = [];
+        deleteImageInputs.forEach(input => {
+            if (input.value) {
+                deleteImages.push(input.value);
+            }
+        });
+        
+        // Get new images
+        const newImagesInput = roomElement.querySelector('input[name*="[new_images]"]');
+        const newImages = newImagesInput ? newImagesInput.files : [];
+        
+        formData.append('existing_rooms[' + roomId + '][id]', roomId);
+        formData.append('existing_rooms[' + roomId + '][name]', roomName);
+        formData.append('existing_rooms[' + roomId + '][moisture_reading]', moistureReading);
+        formData.append('existing_rooms[' + roomId + '][is_360]', is360);
+        formData.append('existing_rooms[' + roomId + '][delete_room]', '0');
+        
+        // Add delete images
+        deleteImages.forEach(imgId => {
+            formData.append('existing_rooms[' + roomId + '][delete_images][]', imgId);
+        });
+        
+        // Add new images
+        for (let i = 0; i < newImages.length; i++) {
+            formData.append('existing_rooms[' + roomId + '][new_images][]', newImages[i]);
+        }
+        
+    } else {
+        // New room
+        roomElement = document.querySelector('[data-room-id="room_' + roomId + '"]');
+        if (!roomElement) {
+            alert('Room element not found');
+            return;
+        }
+        
+        // Get room name
+        const roomNameInput = roomElement.querySelector('input[name*="[name]"]');
+        const roomName = roomNameInput ? roomNameInput.value : '';
+        
+        if (!roomName) {
+            alert('Please enter a room name');
+            return;
+        }
+        
+        // Get moisture reading
+        const moistureInput = roomElement.querySelector('input[name*="[moisture_reading]"]');
+        const moistureReading = moistureInput ? moistureInput.value : '';
+        
+        // Get is_360 flag
+        const is360Input = roomElement.querySelector('input[name*="[is_360]"]');
+        const is360 = is360Input ? is360Input.value : '0';
+        
+        // Get images
+        const imagesInput = roomElement.querySelector('input[name*="[images]"]');
+        const images = imagesInput ? imagesInput.files : [];
+        
+        if (images.length === 0) {
+            alert('Please upload at least one image for this room');
+            return;
+        }
+        
+        formData.append('rooms[' + roomId + '][name]', roomName);
+        formData.append('rooms[' + roomId + '][moisture_reading]', moistureReading);
+        formData.append('rooms[' + roomId + '][is_360]', is360);
+        
+        // Add images
+        for (let i = 0; i < images.length; i++) {
+            formData.append('rooms[' + roomId + '][images][]', images[i]);
+        }
+    }
+    
+    // Show loading state
+    const updateBtn = roomElement.querySelector('.update-room-btn');
+    const originalText = updateBtn.textContent;
+    updateBtn.disabled = true;
+    updateBtn.textContent = 'Updating...';
+    updateBtn.style.opacity = '0.6';
+    
+    // Send AJAX request
+    const updateUrl = '{{ route("admin.homechecks.update-room", $homecheckReport->id) }}';
+    fetch(updateUrl, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Room updated successfully!');
+            
+            // If it's a new room, reload the page to show it as existing
+            if (type === 'new') {
+                window.location.reload();
+            } else {
+                // Clear file inputs for existing rooms
+                const fileInput = roomElement.querySelector('input[type="file"]');
+                if (fileInput) {
+                    fileInput.value = '';
+                }
+                const previewGrid = roomElement.querySelector('.preview-grid[id^="preview_"]');
+                if (previewGrid && previewGrid.id.includes('preview_')) {
+                    previewGrid.innerHTML = '';
+                }
+            }
+        } else {
+            alert('Error: ' + (data.message || 'Failed to update room'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while updating the room. Please try again.');
+    })
+    .finally(() => {
+        updateBtn.disabled = false;
+        updateBtn.textContent = originalText;
+        updateBtn.style.opacity = '1';
     });
 }
 </script>

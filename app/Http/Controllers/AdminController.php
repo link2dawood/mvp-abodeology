@@ -1219,7 +1219,7 @@ class AdminController extends Controller
             'rooms' => ['required', 'array', 'min:1'],
             'rooms.*.name' => ['required', 'string', 'max:255'],
             'rooms.*.images' => ['required', 'array', 'min:1'],
-            'rooms.*.images.*' => ['required', 'image', 'mimes:jpeg,png,jpg'],
+            'rooms.*.images.*' => ['required', 'image', 'mimes:jpeg,png,jpg,webp'],
             'rooms.*.is_360' => ['nullable', 'boolean'], // Flag for 360 images
             'rooms.*.moisture_reading' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'notes' => ['nullable', 'string', 'max:1000'],
@@ -1254,35 +1254,45 @@ class AdminController extends Controller
                 // Determine storage disk (S3 if configured, otherwise public)
                 $disk = $this->getStorageDisk();
                 
-                // Process each image with optimization
-                $imageOptimizer = new \App\Services\ImageOptimizationService();
+                // Process each image - store temporarily and compress in background
                 foreach ($roomData['images'] as $imageIndex => $image) {
-                    // Store image in property-specific folder
-                    $imagePath = $image->store('homechecks/' . $property->id . '/rooms/' . $roomName . '/' . ($is360 ? '360' : 'photos'), $disk);
-                    
-                    // Optimize the image (max width 1920px, quality 85%)
                     try {
-                        $imageOptimizer->optimizeExisting($imagePath, $disk, 1920, 85);
+                        // Store file temporarily in local storage first
+                        $tempPath = 'temp/homechecks/' . $property->id . '/' . uniqid() . '_' . $image->getClientOriginalName();
+                        $tempStorage = Storage::disk('local');
+                        $tempStorage->put($tempPath, file_get_contents($image->getRealPath()));
+                        
+                        // Generate final target path
+                        $imageExtension = $image->getClientOriginalExtension();
+                        $imageFileName = uniqid() . '.' . $imageExtension;
+                        $imagePath = 'homechecks/' . $property->id . '/rooms/' . $roomName . '/' . ($is360 ? '360' : 'photos') . '/' . $imageFileName;
+                        
+                        // Create homecheck data record with target path (will be updated by job)
+                        $homecheckData = \App\Models\HomecheckData::create([
+                            'property_id' => $property->id,
+                            'homecheck_report_id' => $homecheckReport->id,
+                            'room_name' => $roomName,
+                            'image_path' => $imagePath,
+                            'is_360' => $is360,
+                            'moisture_reading' => $moistureReading,
+                            'created_at' => now(),
+                        ]);
+                        
+                        // Dispatch compression job to process in background
+                        \App\Jobs\CompressAndStoreImage::dispatch($tempPath, $imagePath, $disk, $homecheckData->id, 1920, 85);
+                        
+                        \Log::info('Image queued for compression in storeCompleteHomeCheck', [
+                            'homecheck_id' => $homecheckReport->id,
+                            'homecheck_data_id' => $homecheckData->id,
+                            'room_name' => $roomName,
+                        ]);
                     } catch (\Exception $e) {
-                        \Log::warning('Image optimization failed for homecheck image: ' . $e->getMessage());
-                        // Continue even if optimization fails
+                        \Log::error('Error processing image in storeCompleteHomeCheck', [
+                            'homecheck_id' => $homecheckReport->id,
+                            'room_name' => $roomName,
+                            'error' => $e->getMessage(),
+                        ]);
                     }
-                    
-                    // Get image metadata
-                    $imageSize = $image->getSize();
-                    $imageMimeType = $image->getMimeType();
-                    
-                    // Create homecheck data record with moisture reading and metadata
-                    \App\Models\HomecheckData::create([
-                        'property_id' => $property->id,
-                        'homecheck_report_id' => $homecheckReport->id,
-                        'room_name' => $roomName,
-                        'image_path' => $imagePath,
-                        'is_360' => $is360, // Store if it's a 360 image
-                        'moisture_reading' => $moistureReading, // Save moisture reading per room
-                        'created_at' => now(),
-                        // AI analysis can be added later
-                    ]);
                 }
             }
 
@@ -1541,16 +1551,16 @@ class AdminController extends Controller
             'rooms.*.moisture_reading' => 'nullable|numeric|min:0|max:100',
         ]);
 
-        // Validate file uploads separately
+        // Validate file uploads separately (no size restriction - will be compressed in background)
         $fileValidationRules = [];
         if ($request->has('existing_rooms')) {
             foreach ($request->input('existing_rooms', []) as $roomId => $roomData) {
-                $fileValidationRules["existing_rooms.{$roomId}.new_images.*"] = 'nullable|image|mimes:jpeg,jpg,png';
+                $fileValidationRules["existing_rooms.{$roomId}.new_images.*"] = 'nullable|image|mimes:jpeg,jpg,png,webp';
             }
         }
         if ($request->has('rooms')) {
             foreach ($request->input('rooms', []) as $roomIndex => $roomData) {
-                $fileValidationRules["rooms.{$roomIndex}.images.*"] = 'nullable|image|mimes:jpeg,jpg,png';
+                $fileValidationRules["rooms.{$roomIndex}.images.*"] = 'nullable|image|mimes:jpeg,jpg,png,webp';
             }
         }
         
@@ -1573,8 +1583,17 @@ class AdminController extends Controller
             $imageOptimizer = new \App\Services\ImageOptimizationService();
 
             // Process existing rooms
-            if (isset($validated['existing_rooms']) && is_array($validated['existing_rooms'])) {
-                foreach ($validated['existing_rooms'] as $roomId => $roomData) {
+            if ($request->has('existing_rooms') && is_array($request->input('existing_rooms'))) {
+                \Log::info('Processing existing rooms', [
+                    'room_count' => count($request->input('existing_rooms')),
+                    'all_files' => array_keys($request->allFiles()),
+                ]);
+                
+                foreach ($request->input('existing_rooms') as $roomId => $roomData) {
+                    \Log::info('Processing room', [
+                        'room_id' => $roomId,
+                        'has_files' => $request->hasFile("existing_rooms.{$roomId}.new_images"),
+                    ]);
                     // Check if entire room should be deleted
                     if (isset($roomData['delete_room']) && $roomData['delete_room'] == '1') {
                         // Find all images for this room
@@ -1622,6 +1641,7 @@ class AdminController extends Controller
                         $roomName = $newRoomName;
                     } else {
                         // If first image not found, skip this room
+                        \Log::warning('First image not found for room ID: ' . $roomId);
                         continue;
                     }
 
@@ -1662,6 +1682,12 @@ class AdminController extends Controller
                         if (!is_array($newImages)) {
                             $newImages = [$newImages];
                         }
+                        
+                        \Log::info('Processing new images for room', [
+                            'room_id' => $roomId,
+                            'room_name' => $roomName,
+                            'image_count' => count($newImages),
+                        ]);
 
                         foreach ($newImages as $image) {
                             if (!$image || !$image->isValid()) {
@@ -1673,35 +1699,42 @@ class AdminController extends Controller
                             }
                             
                             try {
-                                $imagePath = $image->store('homechecks/' . $property->id . '/rooms/' . $roomName . '/' . ($is360 ? '360' : 'photos'), $disk);
+                                // Store file temporarily in local storage first
+                                $tempPath = 'temp/homechecks/' . $property->id . '/' . uniqid() . '_' . $image->getClientOriginalName();
+                                $tempStorage = Storage::disk('local');
+                                $tempStorage->put($tempPath, file_get_contents($image->getRealPath()));
                                 
-                                // Optimize the image
-                                try {
-                                    $imageOptimizer->optimizeExisting($imagePath, $disk, 1920, 85);
-                                } catch (\Exception $e) {
-                                    \Log::warning('Image optimization failed: ' . $e->getMessage());
-                                }
+                                // Generate final target path
+                                $imageExtension = $image->getClientOriginalExtension();
+                                $imageFileName = uniqid() . '.' . $imageExtension;
+                                $targetPath = 'homechecks/' . $property->id . '/rooms/' . $roomName . '/' . ($is360 ? '360' : 'photos') . '/' . $imageFileName;
                                 
-                                // Create homecheck data record
-                                \App\Models\HomecheckData::create([
+                                // Create homecheck data record with temporary path (will be updated by job)
+                                $homecheckData = \App\Models\HomecheckData::create([
                                     'property_id' => $property->id,
                                     'homecheck_report_id' => $homecheckReport->id,
                                     'room_name' => $roomName,
-                                    'image_path' => $imagePath,
+                                    'image_path' => $targetPath, // Final path, file will be compressed and saved here
                                     'is_360' => $is360,
                                     'moisture_reading' => $moistureReading,
                                 ]);
                                 
-                                \Log::info('New image added to HomeCheck room', [
+                                // Dispatch compression job to process in background
+                                \App\Jobs\CompressAndStoreImage::dispatch($tempPath, $targetPath, $disk, $homecheckData->id, 1920, 85);
+                                
+                                \Log::info('Image queued for compression', [
                                     'homecheck_id' => $homecheckReport->id,
+                                    'homecheck_data_id' => $homecheckData->id,
                                     'room_name' => $roomName,
-                                    'image_path' => $imagePath,
+                                    'temp_path' => $tempPath,
+                                    'target_path' => $targetPath,
                                 ]);
                             } catch (\Exception $e) {
                                 \Log::error('Error uploading image to HomeCheck room', [
                                     'homecheck_id' => $homecheckReport->id,
                                     'room_name' => $roomName,
                                     'error' => $e->getMessage(),
+                                    'trace' => $e->getTraceAsString(),
                                 ]);
                             }
                         }
@@ -1745,17 +1778,18 @@ class AdminController extends Controller
                             }
                             
                             try {
-                                $imagePath = $image->store('homechecks/' . $property->id . '/rooms/' . $roomName . '/' . ($is360 ? '360' : 'photos'), $disk);
+                                // Store file temporarily in local storage first
+                                $tempPath = 'temp/homechecks/' . $property->id . '/' . uniqid() . '_' . $image->getClientOriginalName();
+                                $tempStorage = \Storage::disk('local');
+                                $tempStorage->put($tempPath, file_get_contents($image->getRealPath()));
                                 
-                                // Optimize the image
-                                try {
-                                    $imageOptimizer->optimizeExisting($imagePath, $disk, 1920, 85);
-                                } catch (\Exception $e) {
-                                    \Log::warning('Image optimization failed: ' . $e->getMessage());
-                                }
+                                // Generate final target path
+                                $imageExtension = $image->getClientOriginalExtension();
+                                $imageFileName = uniqid() . '.' . $imageExtension;
+                                $imagePath = 'homechecks/' . $property->id . '/rooms/' . $roomName . '/' . ($is360 ? '360' : 'photos') . '/' . $imageFileName;
                                 
-                                // Create homecheck data record
-                                \App\Models\HomecheckData::create([
+                                // Create homecheck data record with target path (will be updated by job)
+                                $homecheckData = \App\Models\HomecheckData::create([
                                     'property_id' => $property->id,
                                     'homecheck_report_id' => $homecheckReport->id,
                                     'room_name' => $roomName,
@@ -1764,10 +1798,13 @@ class AdminController extends Controller
                                     'moisture_reading' => $moistureReading,
                                 ]);
                                 
-                                \Log::info('New image added to new HomeCheck room', [
+                                // Dispatch compression job to process in background
+                                \App\Jobs\CompressAndStoreImage::dispatch($tempPath, $imagePath, $disk, $homecheckData->id, 1920, 85);
+                                
+                                \Log::info('New image queued for compression in new room', [
                                     'homecheck_id' => $homecheckReport->id,
+                                    'homecheck_data_id' => $homecheckData->id,
                                     'room_name' => $roomName,
-                                    'image_path' => $imagePath,
                                 ]);
                             } catch (\Exception $e) {
                                 \Log::error('Error uploading image to new HomeCheck room', [
@@ -1830,6 +1867,219 @@ class AdminController extends Controller
             return redirect()->route('admin.homechecks.edit', $id)
                 ->with('error', 'An error occurred while updating the HomeCheck: ' . $e->getMessage())
                 ->withInput();
+        }
+    }
+
+    /**
+     * Update a single room in a HomeCheck report.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  int  $id  HomeCheck Report ID
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function updateHomeCheckRoom(Request $request, $id)
+    {
+        $user = auth()->user();
+        
+        if (!in_array($user->role, ['admin', 'agent'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You do not have permission to perform this action.'
+            ], 403);
+        }
+
+        $homecheckReport = \App\Models\HomecheckReport::with(['property'])->findOrFail($id);
+        $property = $homecheckReport->property;
+        
+        if (!$property) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Property not found for this HomeCheck.'
+            ], 404);
+        }
+        
+        // For agents, verify they have access to this property
+        if ($user->role === 'agent') {
+            $agentPropertyIds = $this->getAgentPropertyIds($user->id);
+            if (!in_array($property->id, $agentPropertyIds)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You do not have permission to update this HomeCheck.'
+                ], 403);
+            }
+        }
+
+        try {
+            \DB::beginTransaction();
+
+            $disk = $this->getStorageDisk();
+            $imageOptimizer = new \App\Services\ImageOptimizationService();
+
+            // Process existing rooms
+            if ($request->has('existing_rooms') && is_array($request->input('existing_rooms'))) {
+                foreach ($request->input('existing_rooms') as $roomId => $roomData) {
+                    // Skip if delete_room is set
+                    if (isset($roomData['delete_room']) && $roomData['delete_room'] == '1') {
+                        continue;
+                    }
+
+                    // Update room name if changed
+                    $firstImage = \App\Models\HomecheckData::find($roomId);
+                    if ($firstImage) {
+                        $oldRoomName = $firstImage->room_name;
+                        $newRoomName = isset($roomData['name']) && !empty($roomData['name']) ? $roomData['name'] : $oldRoomName;
+                        
+                        if ($oldRoomName !== $newRoomName) {
+                            \App\Models\HomecheckData::where('homecheck_report_id', $homecheckReport->id)
+                                ->where('room_name', $oldRoomName)
+                                ->update(['room_name' => $newRoomName]);
+                        }
+                        
+                        $roomName = $newRoomName;
+                    } else {
+                        \DB::rollBack();
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Room not found.'
+                        ], 404);
+                    }
+
+                    // Delete specified images
+                    if (isset($roomData['delete_images']) && is_array($roomData['delete_images'])) {
+                        foreach ($roomData['delete_images'] as $imageId) {
+                            if (empty($imageId)) continue;
+                            
+                            $image = \App\Models\HomecheckData::find($imageId);
+                            if ($image && $image->homecheck_report_id == $homecheckReport->id) {
+                                try {
+                                    if ($disk === 's3') {
+                                        \Storage::disk('s3')->delete($image->image_path);
+                                    } else {
+                                        \Storage::disk('public')->delete($image->image_path);
+                                    }
+                                } catch (\Exception $e) {
+                                    \Log::warning('Failed to delete image file: ' . $e->getMessage());
+                                }
+                                
+                                $image->delete();
+                            }
+                        }
+                    }
+
+                    // Add new images
+                    if ($request->hasFile("existing_rooms.{$roomId}.new_images")) {
+                        $is360 = isset($roomData['is_360']) && $roomData['is_360'] == '1';
+                        $moistureReading = isset($roomData['moisture_reading']) && $roomData['moisture_reading'] !== '' 
+                            ? (float) $roomData['moisture_reading'] 
+                            : null;
+
+                        $newImages = $request->file("existing_rooms.{$roomId}.new_images");
+                        
+                        if (!is_array($newImages)) {
+                            $newImages = [$newImages];
+                        }
+
+                        foreach ($newImages as $image) {
+                            if (!$image || !$image->isValid()) continue;
+                            
+                            try {
+                                $tempPath = 'temp/homechecks/' . $property->id . '/' . uniqid() . '_' . $image->getClientOriginalName();
+                                $tempStorage = \Storage::disk('local');
+                                $tempStorage->put($tempPath, file_get_contents($image->getRealPath()));
+                                
+                                $imageExtension = $image->getClientOriginalExtension();
+                                $imageFileName = uniqid() . '.' . $imageExtension;
+                                $targetPath = 'homechecks/' . $property->id . '/rooms/' . $roomName . '/' . ($is360 ? '360' : 'photos') . '/' . $imageFileName;
+                                
+                                $homecheckData = \App\Models\HomecheckData::create([
+                                    'property_id' => $property->id,
+                                    'homecheck_report_id' => $homecheckReport->id,
+                                    'room_name' => $roomName,
+                                    'image_path' => $targetPath,
+                                    'is_360' => $is360,
+                                    'moisture_reading' => $moistureReading,
+                                ]);
+                                
+                                \App\Jobs\CompressAndStoreImage::dispatch($tempPath, $targetPath, $disk, $homecheckData->id, 1920, 85);
+                            } catch (\Exception $e) {
+                                \Log::error('Error uploading image: ' . $e->getMessage());
+                            }
+                        }
+                    }
+
+                    // Update moisture reading for all images in the room if provided
+                    if (isset($roomData['moisture_reading']) && $roomData['moisture_reading'] !== '') {
+                        $moistureReading = (float) $roomData['moisture_reading'];
+                        \App\Models\HomecheckData::where('homecheck_report_id', $homecheckReport->id)
+                            ->where('room_name', $roomName)
+                            ->update(['moisture_reading' => $moistureReading]);
+                    }
+                }
+            }
+
+            // Process new rooms
+            if ($request->has('rooms') && is_array($request->input('rooms'))) {
+                foreach ($request->input('rooms') as $roomIndex => $roomData) {
+                    if (empty($roomData['name'])) continue;
+                    
+                    $roomName = $roomData['name'];
+                    $is360 = isset($roomData['is_360']) && $roomData['is_360'] == '1';
+                    $moistureReading = isset($roomData['moisture_reading']) && $roomData['moisture_reading'] !== '' 
+                        ? (float) $roomData['moisture_reading'] 
+                        : null;
+
+                    if ($request->hasFile("rooms.{$roomIndex}.images")) {
+                        $newImages = $request->file("rooms.{$roomIndex}.images");
+                        
+                        if (!is_array($newImages)) {
+                            $newImages = [$newImages];
+                        }
+
+                        foreach ($newImages as $image) {
+                            if (!$image || !$image->isValid()) continue;
+                            
+                            try {
+                                $tempPath = 'temp/homechecks/' . $property->id . '/' . uniqid() . '_' . $image->getClientOriginalName();
+                                $tempStorage = \Storage::disk('local');
+                                $tempStorage->put($tempPath, file_get_contents($image->getRealPath()));
+                                
+                                $imageExtension = $image->getClientOriginalExtension();
+                                $imageFileName = uniqid() . '.' . $imageExtension;
+                                $targetPath = 'homechecks/' . $property->id . '/rooms/' . $roomName . '/' . ($is360 ? '360' : 'photos') . '/' . $imageFileName;
+                                
+                                $homecheckData = \App\Models\HomecheckData::create([
+                                    'property_id' => $property->id,
+                                    'homecheck_report_id' => $homecheckReport->id,
+                                    'room_name' => $roomName,
+                                    'image_path' => $targetPath,
+                                    'is_360' => $is360,
+                                    'moisture_reading' => $moistureReading,
+                                ]);
+                                
+                                \App\Jobs\CompressAndStoreImage::dispatch($tempPath, $targetPath, $disk, $homecheckData->id, 1920, 85);
+                            } catch (\Exception $e) {
+                                \Log::error('Error uploading image: ' . $e->getMessage());
+                            }
+                        }
+                    }
+                }
+            }
+
+            \DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Room updated successfully!'
+            ]);
+
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            \Log::error('Error updating HomeCheck room: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while updating the room: ' . $e->getMessage()
+            ], 500);
         }
     }
 
@@ -1918,6 +2168,96 @@ class AdminController extends Controller
             return redirect()->route('admin.homechecks.show', $id)
                 ->with('error', 'An error occurred while processing AI analysis: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Get HomeCheck image with proper CORS headers for 360° viewer (Admin/Agent).
+     *
+     * @param  int  $id  HomecheckData ID
+     * @return \Illuminate\Http\Response
+     */
+    public function getHomecheckImage($id)
+    {
+        $user = auth()->user();
+        
+        if (!in_array($user->role, ['admin', 'agent'])) {
+            abort(403, 'Unauthorized access to this image.');
+        }
+        
+        // Get the homecheck data
+        $homecheckData = \App\Models\HomecheckData::with('property')->findOrFail($id);
+        $property = $homecheckData->property;
+        
+        if (!$property) {
+            abort(404, 'Property not found for this image.');
+        }
+        
+        // For agents, verify they have access to this property
+        if ($user->role === 'agent') {
+            $agentPropertyIds = $this->getAgentPropertyIds($user->id);
+            if (!in_array($property->id, $agentPropertyIds)) {
+                abort(403, 'Unauthorized access to this image.');
+            }
+        }
+        
+        // Determine storage disk
+        $s3Configured = !empty(config('filesystems.disks.s3.key')) && 
+                       !empty(config('filesystems.disks.s3.secret')) && 
+                       !empty(config('filesystems.disks.s3.bucket'));
+        
+        $disk = $s3Configured ? 's3' : 'public';
+        $storage = \Illuminate\Support\Facades\Storage::disk($disk);
+        
+        if (!$storage->exists($homecheckData->image_path)) {
+            abort(404, 'Image file not found.');
+        }
+        
+        // Get file content and metadata
+        $file = $storage->get($homecheckData->image_path);
+        $mimeType = $storage->mimeType($homecheckData->image_path);
+        $lastModified = $storage->lastModified($homecheckData->image_path);
+        $fileSize = strlen($file);
+        
+        // Generate ETag based on file path and last modified time
+        $etag = md5($homecheckData->image_path . $lastModified . $fileSize);
+        
+        // Check if client has a cached version (304 Not Modified)
+        $request = request();
+        $ifNoneMatch = $request->header('If-None-Match');
+        $ifModifiedSince = $request->header('If-Modified-Since');
+        
+        if ($ifNoneMatch && $ifNoneMatch === '"' . $etag . '"') {
+            return response('', 304)
+                ->header('ETag', '"' . $etag . '"')
+                ->header('Cache-Control', 'public, max-age=31536000, immutable')
+                ->header('Access-Control-Allow-Origin', '*');
+        }
+        
+        $lastModifiedDate = \Carbon\Carbon::createFromTimestamp($lastModified);
+        if ($ifModifiedSince && $lastModifiedDate->lte(\Carbon\Carbon::parse($ifModifiedSince))) {
+            return response('', 304)
+                ->header('Last-Modified', $lastModifiedDate->toRfc7231String())
+                ->header('ETag', '"' . $etag . '"')
+                ->header('Cache-Control', 'public, max-age=31536000, immutable')
+                ->header('Access-Control-Allow-Origin', '*');
+        }
+        
+        // Cache duration: 1 year for 360° images (immutable), 1 month for regular images
+        $maxAge = $homecheckData->is_360 ? 31536000 : 2592000; // 1 year for 360°, 1 month for regular
+        $cacheControl = $homecheckData->is_360 
+            ? 'public, max-age=31536000, immutable' 
+            : 'public, max-age=2592000';
+        
+        return response($file, 200)
+            ->header('Content-Type', $mimeType)
+            ->header('Content-Length', $fileSize)
+            ->header('ETag', '"' . $etag . '"')
+            ->header('Last-Modified', $lastModifiedDate->toRfc7231String())
+            ->header('Cache-Control', $cacheControl)
+            ->header('Access-Control-Allow-Origin', '*')
+            ->header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+            ->header('Access-Control-Allow-Headers', 'Content-Type')
+            ->header('Expires', now()->addSeconds($maxAge)->toRfc7231String());
     }
 
     /**
@@ -2284,9 +2624,25 @@ class AdminController extends Controller
                 throw new \Exception('RTDF file does not exist at: ' . $fullPath);
             }
             
-            // Return file download
+            // Return file download with caching headers
+            $fileSize = filesize($fullPath);
+            $lastModified = filemtime($fullPath);
+            $etag = md5($rtdfFilePath . $lastModified . $fileSize);
+            
+            // Check if client has a cached version (304 Not Modified)
+            $request = request();
+            $ifNoneMatch = $request->header('If-None-Match');
+            
+            if ($ifNoneMatch && $ifNoneMatch === '"' . $etag . '"') {
+                return response('', 304)
+                    ->header('ETag', '"' . $etag . '"')
+                    ->header('Cache-Control', 'private, max-age=3600'); // 1 hour for dynamically generated files
+            }
+            
             return response()->download($fullPath, 'property_' . $property->id . '.txt', [
                 'Content-Type' => 'text/plain',
+                'ETag' => '"' . $etag . '"',
+                'Cache-Control' => 'private, max-age=3600', // 1 hour cache for dynamically generated files
             ]);
             
         } catch (\Exception $e) {
@@ -2462,15 +2818,43 @@ class AdminController extends Controller
                 abort(404, 'Document not found.');
             }
 
-            // Get file contents
+            // Get file contents and metadata
             $fileContents = \Storage::disk($disk)->get($document->file_path);
             $mimeType = $document->mime_type ?: \Storage::disk($disk)->mimeType($document->file_path) ?: 'application/octet-stream';
+            $lastModified = \Storage::disk($disk)->lastModified($document->file_path);
+            $fileSize = strlen($fileContents);
+            
+            // Generate ETag for caching
+            $etag = md5($document->file_path . $lastModified . $fileSize);
+            
+            // Check if client has a cached version (304 Not Modified)
+            $request = request();
+            $ifNoneMatch = $request->header('If-None-Match');
+            $ifModifiedSince = $request->header('If-Modified-Since');
+            
+            if ($ifNoneMatch && $ifNoneMatch === '"' . $etag . '"') {
+                return response('', 304)
+                    ->header('ETag', '"' . $etag . '"')
+                    ->header('Cache-Control', 'private, max-age=86400'); // 1 day for private documents
+            }
+            
+            $lastModifiedDate = \Carbon\Carbon::createFromTimestamp($lastModified);
+            if ($ifModifiedSince && $lastModifiedDate->lte(\Carbon\Carbon::parse($ifModifiedSince))) {
+                return response('', 304)
+                    ->header('Last-Modified', $lastModifiedDate->toRfc7231String())
+                    ->header('ETag', '"' . $etag . '"')
+                    ->header('Cache-Control', 'private, max-age=86400');
+            }
 
-            // Return file with appropriate headers
+            // Return file with appropriate headers (private cache for sensitive documents)
             return response($fileContents, 200)
                 ->header('Content-Type', $mimeType)
+                ->header('Content-Length', $fileSize)
                 ->header('Content-Disposition', 'inline; filename="' . ($document->file_name ?? 'document') . '"')
-                ->header('Cache-Control', 'private, max-age=3600');
+                ->header('ETag', '"' . $etag . '"')
+                ->header('Last-Modified', $lastModifiedDate->toRfc7231String())
+                ->header('Cache-Control', 'private, max-age=86400') // 1 day cache for private documents
+                ->header('Expires', now()->addDay()->toRfc7231String());
         } catch (\Exception $e) {
             \Log::error('Error serving AML document: ' . $e->getMessage(), [
                 'document_id' => $documentId,

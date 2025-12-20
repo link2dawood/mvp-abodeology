@@ -260,9 +260,10 @@ class User extends Authenticatable implements MustVerifyEmail, JWTSubject
                         // For S3, use temporary signed URL (valid for 1 hour) to avoid permission issues
                         // This works even if bucket is private
                         try {
+                            // Use longer expiration for avatar caching (7 days)
                             $signedUrl = \Storage::disk('s3')->temporaryUrl(
                                 'avatars/' . $this->avatar,
-                                now()->addHour()
+                                now()->addDays(7)
                             );
                             return $signedUrl;
                         } catch (\Exception $e) {

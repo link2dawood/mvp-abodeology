@@ -950,31 +950,60 @@ class SellerController extends Controller
                        !empty(config('filesystems.disks.s3.secret')) && 
                        !empty(config('filesystems.disks.s3.bucket'));
         
-        if ($s3Configured && \Illuminate\Support\Facades\Storage::disk('s3')->exists($homecheckData->image_path)) {
-            // Get file from S3
-            $file = \Illuminate\Support\Facades\Storage::disk('s3')->get($homecheckData->image_path);
-            $mimeType = \Illuminate\Support\Facades\Storage::disk('s3')->mimeType($homecheckData->image_path);
-            
-            return response($file, 200)
-                ->header('Content-Type', $mimeType)
-                ->header('Access-Control-Allow-Origin', '*')
-                ->header('Access-Control-Allow-Methods', 'GET, OPTIONS')
-                ->header('Access-Control-Allow-Headers', 'Content-Type')
-                ->header('Cache-Control', 'public, max-age=3600');
+        // Determine storage disk
+        $disk = $s3Configured ? 's3' : 'public';
+        $storage = \Illuminate\Support\Facades\Storage::disk($disk);
+        
+        if (!$storage->exists($homecheckData->image_path)) {
+            abort(404, 'Image file not found.');
         }
         
-        // Fallback to local storage
-        if (\Illuminate\Support\Facades\Storage::disk('public')->exists($homecheckData->image_path)) {
-            $file = \Illuminate\Support\Facades\Storage::disk('public')->get($homecheckData->image_path);
-            $mimeType = \Illuminate\Support\Facades\Storage::disk('public')->mimeType($homecheckData->image_path);
-            
-            return response($file, 200)
-                ->header('Content-Type', $mimeType)
-                ->header('Access-Control-Allow-Origin', '*')
-                ->header('Access-Control-Allow-Methods', 'GET, OPTIONS')
-                ->header('Access-Control-Allow-Headers', 'Content-Type')
-                ->header('Cache-Control', 'public, max-age=3600');
+        // Get file content and metadata
+        $file = $storage->get($homecheckData->image_path);
+        $mimeType = $storage->mimeType($homecheckData->image_path);
+        $lastModified = $storage->lastModified($homecheckData->image_path);
+        $fileSize = strlen($file);
+        
+        // Generate ETag based on file path and last modified time
+        $etag = md5($homecheckData->image_path . $lastModified . $fileSize);
+        
+        // Check if client has a cached version (304 Not Modified)
+        $request = request();
+        $ifNoneMatch = $request->header('If-None-Match');
+        $ifModifiedSince = $request->header('If-Modified-Since');
+        
+        if ($ifNoneMatch && $ifNoneMatch === '"' . $etag . '"') {
+            return response('', 304)
+                ->header('ETag', '"' . $etag . '"')
+                ->header('Cache-Control', 'public, max-age=31536000, immutable')
+                ->header('Access-Control-Allow-Origin', '*');
         }
+        
+        $lastModifiedDate = \Carbon\Carbon::createFromTimestamp($lastModified);
+        if ($ifModifiedSince && $lastModifiedDate->lte(\Carbon\Carbon::parse($ifModifiedSince))) {
+            return response('', 304)
+                ->header('Last-Modified', $lastModifiedDate->toRfc7231String())
+                ->header('ETag', '"' . $etag . '"')
+                ->header('Cache-Control', 'public, max-age=31536000, immutable')
+                ->header('Access-Control-Allow-Origin', '*');
+        }
+        
+        // Cache duration: 1 year for 360° images (immutable), 1 month for regular images
+        $maxAge = $homecheckData->is_360 ? 31536000 : 2592000; // 1 year for 360°, 1 month for regular
+        $cacheControl = $homecheckData->is_360 
+            ? 'public, max-age=31536000, immutable' 
+            : 'public, max-age=2592000';
+        
+        return response($file, 200)
+            ->header('Content-Type', $mimeType)
+            ->header('Content-Length', $fileSize)
+            ->header('ETag', '"' . $etag . '"')
+            ->header('Last-Modified', $lastModifiedDate->toRfc7231String())
+            ->header('Cache-Control', $cacheControl)
+            ->header('Access-Control-Allow-Origin', '*')
+            ->header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+            ->header('Access-Control-Allow-Headers', 'Content-Type')
+            ->header('Expires', now()->addSeconds($maxAge)->toRfc7231String());
         
         abort(404, 'Image not found.');
     }

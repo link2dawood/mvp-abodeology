@@ -255,6 +255,50 @@
         object-fit: contain;
     }
 
+    /* 360 VIEWER */
+    #pano-viewer {
+        width: 100%;
+        height: 0;
+        position: relative;
+        background: #000;
+        overflow: hidden;
+        transition: height 0.3s ease;
+    }
+
+    #pano-viewer.active {
+        height: 70vh;
+        min-height: 400px;
+    }
+
+    .viewer-controls {
+        display: none;
+        gap: 10px;
+        margin-top: 15px;
+        justify-content: center;
+    }
+
+    .btn-viewer {
+        background: var(--abodeology-teal);
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 14px;
+        transition: background 0.3s ease;
+    }
+
+    .btn-viewer:hover {
+        background: #25A29F;
+    }
+
+    .modal-body-content {
+        padding: 20px;
+        max-height: 400px;
+        overflow-y: auto;
+    }
+
     .close-modal {
         position: absolute;
         top: 15px;
@@ -462,7 +506,7 @@
                 <div class="image-gallery">
                     @foreach($roomImages as $image)
                         @if($image->image_url)
-                            <div class="image-item" onclick="openModal('{{ $image->image_url }}', '{{ $roomName }}')">
+                            <div class="image-item" onclick="openImageModal('{{ $image->image_url }}', '{{ $roomName }}', {{ $image->is_360 ? 'true' : 'false' }}, {{ $image->id }}, '{{ addslashes($image->ai_comments ?? '') }}', '{{ addslashes($image->moisture_reading ?? '') }}', '{{ addslashes($image->ai_rating ?? '') }}')">
                                 <img src="{{ $image->image_url }}" alt="{{ $roomName }} Image" loading="lazy">
                                 @if($image->is_360)
                                     <div class="image-badge">360°</div>
@@ -500,16 +544,32 @@
     @endif
 
     <!-- Image Modal -->
-    <div id="imageModal" class="modal" onclick="closeModal()">
+    <div id="imageModal" class="modal" onclick="if(event.target === this) closeModal()">
         <div class="close-modal" onclick="closeModal()">×</div>
-        <div class="modal-content">
-            <img id="modalImage" class="modal-img" src="" alt="HomeCheck Image">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <img id="modalImage" class="modal-img" src="" alt="HomeCheck Image" style="display: block;">
+            <div id="pano-viewer"></div>
+            <div class="modal-body-content">
+                <h2 id="modalTitle" style="margin: 0 0 15px 0; color: var(--abodeology-teal);"></h2>
+                <div id="modalBody"></div>
+                <div class="viewer-controls" id="viewer-controls" style="display: none;">
+                    <button class="btn-viewer" onclick="toggleViewer()">Toggle 360° Viewer</button>
+                </div>
+            </div>
         </div>
     </div>
 </div>
 
 @push('scripts')
+<!-- Pannellum 360° Viewer -->
+<script src="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.css">
+
 <script>
+    let currentViewer = null;
+    let currentImageUrl = null;
+    let is360Image = false;
+
     function openModal(imageUrl, roomName) {
         const modal = document.getElementById('imageModal');
         const modalImage = document.getElementById('modalImage');
@@ -518,8 +578,150 @@
         modal.classList.add('active');
     }
 
+    function openImageModal(imageUrl, roomName, is360, imageId, aiComments, moistureReading, aiRating) {
+        const modal = document.getElementById('imageModal');
+        const modalImage = document.getElementById('modalImage');
+        const panoViewer = document.getElementById('pano-viewer');
+        const viewerControls = document.getElementById('viewer-controls');
+        const modalBody = document.getElementById('modalBody');
+        const modalTitle = document.getElementById('modalTitle');
+        
+        // For 360 images, use proxy endpoint to avoid CORS issues
+        if (is360 && imageId) {
+            currentImageUrl = "{{ url('/admin/homecheck-image') }}/" + imageId;
+        } else {
+            currentImageUrl = imageUrl;
+        }
+        is360Image = is360;
+        
+        modalTitle.innerText = roomName;
+        
+        // Build modal body content
+        let bodyContent = '';
+        
+        if (moistureReading && moistureReading.trim() !== '') {
+            bodyContent += '<div style="margin-bottom: 15px;"><strong style="color: var(--abodeology-teal);">Moisture Reading:</strong> <span style="color: #333;">' + moistureReading + '%</span></div>';
+        }
+        
+        if (aiRating && aiRating.trim() !== '') {
+            bodyContent += '<div style="margin-bottom: 15px;"><strong style="color: var(--abodeology-teal);">AI Rating:</strong> <span style="color: #333;">' + aiRating + '/10</span></div>';
+        }
+        
+        if (aiComments && aiComments.trim() !== '') {
+            bodyContent += '<div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd;"><h4 style="margin-bottom: 8px; color: var(--abodeology-teal); font-size: 16px;">AI Analysis</h4><p style="line-height: 1.6; color: #333;">' + aiComments.replace(/\n/g, '<br>') + '</p></div>';
+        }
+        
+        if (!bodyContent) {
+            bodyContent = '<p style="color: #666; font-style: italic;">No additional information available for this image.</p>';
+        }
+        
+        modalBody.innerHTML = bodyContent;
+        
+        if (is360) {
+            // Show 360 viewer controls
+            viewerControls.style.display = "flex";
+            modalImage.style.display = "none";
+            panoViewer.classList.add("active");
+            
+            // Initialize or update 360 viewer
+            if (currentViewer) {
+                currentViewer.destroy();
+            }
+            
+            try {
+                currentViewer = pannellum.viewer('pano-viewer', {
+                    "type": "equirectangular",
+                    "panorama": currentImageUrl,
+                    "autoLoad": true,
+                    "autoRotate": 0,
+                    "compass": true,
+                    "showControls": true,
+                    "keyboardZoom": true,
+                    "mouseZoom": true,
+                    "hfov": 100,
+                    "minHfov": 50,
+                    "maxHfov": 120,
+                    "crossOrigin": "anonymous"
+                });
+            } catch (error) {
+                console.error('Error initializing 360 viewer:', error);
+                panoViewer.innerHTML = '<div style="padding: 20px; text-align: center; color: #dc3545;"><p>Unable to load 360° image. This may be due to CORS restrictions.</p><p>Please ensure the S3 bucket has CORS configured to allow requests from this domain.</p></div>';
+            }
+        } else {
+            // Show regular image
+            viewerControls.style.display = "none";
+            panoViewer.classList.remove("active");
+            modalImage.style.display = "block";
+            modalImage.src = imageUrl;
+            
+            // Destroy any existing viewer
+            if (currentViewer) {
+                currentViewer.destroy();
+                currentViewer = null;
+            }
+        }
+        
+        modal.classList.add('active');
+    }
+
+    function toggleViewer() {
+        const modalImage = document.getElementById('modalImage');
+        const panoViewer = document.getElementById('pano-viewer');
+        
+        if (!is360Image) return;
+        
+        if (panoViewer.classList.contains("active")) {
+            // Switch to regular image
+            panoViewer.classList.remove("active");
+            modalImage.style.display = "block";
+            modalImage.src = currentImageUrl;
+            
+            if (currentViewer) {
+                currentViewer.destroy();
+                currentViewer = null;
+            }
+        } else {
+            // Switch to 360 viewer
+            modalImage.style.display = "none";
+            panoViewer.classList.add("active");
+            
+            try {
+                currentViewer = pannellum.viewer('pano-viewer', {
+                    "type": "equirectangular",
+                    "panorama": currentImageUrl,
+                    "autoLoad": true,
+                    "autoRotate": 0,
+                    "compass": true,
+                    "showControls": true,
+                    "keyboardZoom": true,
+                    "mouseZoom": true,
+                    "hfov": 100,
+                    "minHfov": 50,
+                    "maxHfov": 120,
+                    "crossOrigin": "anonymous"
+                });
+            } catch (error) {
+                console.error('Error initializing 360 viewer:', error);
+            }
+        }
+    }
+
     function closeModal() {
-        document.getElementById('imageModal').classList.remove('active');
+        const modal = document.getElementById('imageModal');
+        const panoViewer = document.getElementById('pano-viewer');
+        
+        modal.classList.remove('active');
+        
+        // Destroy viewer on close
+        if (currentViewer) {
+            currentViewer.destroy();
+            currentViewer = null;
+        }
+        
+        // Reset viewer state
+        panoViewer.classList.remove("active");
+        is360Image = false;
+        currentImageUrl = null;
     }
 
     // Close modal on ESC key
