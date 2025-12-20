@@ -572,6 +572,7 @@
                 </div>
                 </div>
             </div>
+            @endif
         @endforeach
     @else
         <div class="card">
