@@ -382,7 +382,7 @@
         <h2>HomeCheck Report Details</h2>
         <div>
             <a href="{{ route('admin.homechecks.index') }}" class="btn btn-secondary">← Back to List</a>
-            @if($homecheckData->count() > 0 && !$homecheckReport->report_path)
+            @if($homecheckData && $homecheckData->count() > 0 && !$homecheckReport->report_path)
                 <form action="{{ route('admin.homechecks.process-ai', $homecheckReport->id) }}" method="POST" style="display: inline-block;" onsubmit="return confirm('This will process all images through AI analysis. This may take a few moments. Continue?');">
                     @csrf
                     <button type="submit" class="btn" style="background: #28a745; color: #fff;">🤖 Process AI Analysis</button>
