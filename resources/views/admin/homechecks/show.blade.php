@@ -480,7 +480,7 @@
     @endif
 
     <!-- Room Data -->
-    @if($roomsData->count() > 0)
+    @if($roomsData && $roomsData->count() > 0)
         <div class="card">
             <div class="room-controls">
                 <h3>Rooms ({{ $roomsData->count() }})</h3>
@@ -541,8 +541,14 @@
                             @php
                                 // Use proxy endpoint - avoids slow image_url accessor (S3 file checks for every image)
                                 // Faster page load and better caching with ETag headers
-                                $thumbnailUrl = route('admin.homecheck.image', ['id' => $image->id]);
-                                $modalUrl = route('admin.homecheck.image', ['id' => $image->id]);
+                                try {
+                                    $thumbnailUrl = route('admin.homecheck.image', ['id' => $image->id]);
+                                    $modalUrl = route('admin.homecheck.image', ['id' => $image->id]);
+                                } catch (\Exception $e) {
+                                    // Fallback if route generation fails
+                                    $thumbnailUrl = url('/admin/homecheck-image/' . $image->id);
+                                    $modalUrl = url('/admin/homecheck-image/' . $image->id);
+                                }
                             @endphp
                             <div class="image-item" onclick="openImageModal('{{ $modalUrl }}', '{{ $roomName }}', {{ $image->is_360 ? 'true' : 'false' }}, {{ $image->id }}, '{{ addslashes($image->ai_comments ?? '') }}', '{{ addslashes($image->moisture_reading ?? '') }}', '{{ addslashes($image->ai_rating ?? '') }}')">
                                 <img src="{{ $thumbnailUrl }}" alt="{{ $roomName }} Image" loading="lazy" decoding="async">
@@ -559,7 +565,7 @@
                                     @if($image->ai_comments)
                                         <div style="margin-top: 8px; padding: 8px; background: #f0f0f0; border-radius: 4px; font-size: 11px; color: #333; text-align: left; max-height: 80px; overflow-y: auto;">
                                             <strong>AI Notes:</strong><br>
-                                            {{ Str::limit($image->ai_comments, 150) }}
+                                            {{ \Illuminate\Support\Str::limit($image->ai_comments ?? '', 150) }}
                                         </div>
                                     @endif
                                     @if($image->created_at)
