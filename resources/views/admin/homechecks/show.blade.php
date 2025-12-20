@@ -505,15 +505,21 @@
 
                 <div class="image-gallery">
                     @foreach($roomImages as $image)
-                        @if($image->image_url)
+                        @if($image->id)
                             @php
                                 // Use proxy endpoint for all images to ensure proper caching headers and CORS support
                                 // This ensures all images benefit from ETag caching and proper cache-control headers
-                                $thumbnailUrl = route('admin.homecheck.image', ['id' => $image->id]);
-                                $modalUrl = route('admin.homecheck.image', ['id' => $image->id]);
+                                try {
+                                    $thumbnailUrl = route('admin.homecheck.image', ['id' => $image->id]);
+                                    $modalUrl = route('admin.homecheck.image', ['id' => $image->id]);
+                                } catch (\Exception $e) {
+                                    // Fallback to direct image URL if route fails
+                                    $thumbnailUrl = $image->image_url ?? '#';
+                                    $modalUrl = $image->image_url ?? '#';
+                                }
                             @endphp
                             <div class="image-item" onclick="openImageModal('{{ $modalUrl }}', '{{ $roomName }}', {{ $image->is_360 ? 'true' : 'false' }}, {{ $image->id }}, '{{ addslashes($image->ai_comments ?? '') }}', '{{ addslashes($image->moisture_reading ?? '') }}', '{{ addslashes($image->ai_rating ?? '') }}')">
-                                <img src="{{ $thumbnailUrl }}" alt="{{ $roomName }} Image" loading="lazy">
+                                <img src="{{ $thumbnailUrl }}" alt="{{ $roomName }} Image" loading="lazy" onerror="this.src='{{ $image->image_url ?? '#' }}';">
                                 @if($image->is_360)
                                     <div class="image-badge">360°</div>
                                 @endif
