@@ -546,18 +546,24 @@
                         <label style="font-weight: 600; margin-bottom: 10px; display: block;">Existing Images (click × to delete)</label>
                         <div class="preview-grid" id="existing_images_{{ $firstImage->id }}">
                             @foreach($roomImages as $image)
-                                <div class="existing-image-item" data-image-id="{{ $image->id }}">
-                                    <img src="{{ $image->image_url }}" alt="{{ $roomName }} Image" loading="lazy">
-                                    <span class="existing-badge">{{ $image->is_360 ? '360°' : 'Photo' }}</span>
-                                    <button type="button" 
-                                            class="delete-existing-image" 
-                                            onclick="deleteExistingImage({{ $image->id }}, '{{ $firstImage->id }}')"
-                                            title="Delete this image">×</button>
-                                    <input type="hidden" 
-                                           name="existing_rooms[{{ $firstImage->id }}][delete_images][]" 
-                                           id="delete_image_{{ $image->id }}" 
-                                           value="">
-                                </div>
+                                @if($image->id)
+                                    @php
+                                        // Use proxy endpoint - avoids slow image_url accessor (S3 file checks)
+                                        $imageUrl = route('admin.homecheck.image', ['id' => $image->id]);
+                                    @endphp
+                                    <div class="existing-image-item" data-image-id="{{ $image->id }}">
+                                        <img src="{{ $imageUrl }}" alt="{{ $roomName }} Image" loading="lazy" decoding="async">
+                                        <span class="existing-badge">{{ $image->is_360 ? '360°' : 'Photo' }}</span>
+                                        <button type="button" 
+                                                class="delete-existing-image" 
+                                                onclick="deleteExistingImage({{ $image->id }}, '{{ $firstImage->id }}')"
+                                                title="Delete this image">×</button>
+                                        <input type="hidden" 
+                                               name="existing_rooms[{{ $firstImage->id }}][delete_images][]" 
+                                               id="delete_image_{{ $image->id }}" 
+                                               value="">
+                                    </div>
+                                @endif
                             @endforeach
                         </div>
                     </div>

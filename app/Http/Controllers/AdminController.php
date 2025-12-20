@@ -1500,6 +1500,8 @@ class AdminController extends Controller
                 $query->orderBy('room_name')->orderBy('created_at');
             }
         ])->findOrFail($id);
+        
+        // Don't eager load image_url accessor (it's slow) - use proxy endpoint instead
 
         $property = $homecheckReport->property;
         
