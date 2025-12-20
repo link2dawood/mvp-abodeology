@@ -233,7 +233,7 @@
         align-items: center;
         justify-content: center;
         z-index: 99999;
-        padding: 30px;
+        padding: 20px;
     }
 
     .modal.active {
@@ -242,17 +242,22 @@
 
     .modal-content {
         background: var(--white);
-        max-width: 90%;
-        max-height: 90vh;
+        width: 95%;
+        max-width: 95%;
+        height: 95vh;
+        max-height: 95vh;
         border-radius: 12px;
         overflow: hidden;
         position: relative;
+        display: flex;
+        flex-direction: column;
     }
 
     .modal-img {
         width: 100%;
-        max-height: 90vh;
+        height: 100%;
         object-fit: contain;
+        flex: 1;
     }
 
     /* 360 VIEWER */
@@ -263,11 +268,12 @@
         background: #000;
         overflow: hidden;
         transition: height 0.3s ease;
+        flex: 1;
     }
 
     #pano-viewer.active {
-        height: 70vh;
-        min-height: 400px;
+        height: 85vh;
+        min-height: 600px;
     }
 
     .viewer-controls {
@@ -295,26 +301,51 @@
 
     .modal-body-content {
         padding: 20px;
-        max-height: 400px;
+        max-height: 200px;
         overflow-y: auto;
+        flex-shrink: 0;
+    }
+
+    .modal-image-container {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        min-height: 0;
+        overflow: hidden;
     }
 
     .close-modal {
         position: absolute;
         top: 15px;
         right: 15px;
-        background: rgba(0,0,0,0.7);
+        background: rgba(0,0,0,0.8);
         color: #fff;
-        width: 40px;
-        height: 40px;
+        width: 45px;
+        height: 45px;
         border-radius: 50%;
         display: flex;
         justify-content: center;
         align-items: center;
         cursor: pointer;
-        font-size: 24px;
+        font-size: 28px;
         font-weight: 700;
-        z-index: 10;
+        z-index: 100;
+        transition: background 0.3s ease, transform 0.2s ease;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+
+    .close-modal:hover {
+        background: rgba(220, 53, 69, 0.9);
+        transform: scale(1.1);
+    }
+
+    .modal-header {
+        position: relative;
+        padding: 15px 20px;
+        border-bottom: 1px solid var(--line-grey);
+        background: var(--white);
+        z-index: 50;
     }
 
     .stats-grid {
@@ -556,11 +587,13 @@
     @endif
 
     <!-- Image Modal -->
-    <div id="imageModal" class="modal" onclick="if(event.target === this) closeModal()">
-        <div class="close-modal" onclick="closeModal()">×</div>
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <img id="modalImage" class="modal-img" src="" alt="HomeCheck Image" style="display: block;">
-            <div id="pano-viewer"></div>
+    <div id="imageModal" class="modal">
+        <div class="modal-content">
+            <div class="close-modal" onclick="closeModal()">×</div>
+            <div class="modal-image-container">
+                <img id="modalImage" class="modal-img" src="" alt="HomeCheck Image" style="display: block;">
+                <div id="pano-viewer"></div>
+            </div>
             <div class="modal-body-content">
                 <h2 id="modalTitle" style="margin: 0 0 15px 0; color: var(--abodeology-teal);"></h2>
                 <div id="modalBody"></div>
