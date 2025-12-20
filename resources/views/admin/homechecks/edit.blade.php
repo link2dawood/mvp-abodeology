@@ -969,7 +969,8 @@ function updateRoom(roomId, type) {
     const homecheckId = {{ $homecheckReport->id }};
     const formData = new FormData();
     formData.append('_token', document.querySelector('meta[name="csrf-token"]')?.content || document.querySelector('input[name="_token"]').value);
-    formData.append('_method', 'PUT');
+    formData.append('room_id', roomId);
+    formData.append('room_type', type);
     
     let roomData = null;
     let roomElement = null;
