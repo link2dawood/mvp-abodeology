@@ -491,6 +491,7 @@
             </div>
         </div>
         @foreach($roomsData as $roomName => $roomImages)
+            @if($roomImages && $roomImages->count() > 0)
             <div class="room-section">
                 <div class="room-header" onclick="toggleRoomCollapse(this)">
                     <div class="room-title">{{ ucfirst($roomName) }}</div>
@@ -500,9 +501,9 @@
                 
                 @php
                     $firstImage = $roomImages->first();
-                    $moistureReading = $firstImage->moisture_reading ?? null;
-                    $aiRating = $firstImage->ai_rating ?? null;
-                    $aiComments = $firstImage->ai_comments ?? null;
+                    $moistureReading = $firstImage ? ($firstImage->moisture_reading ?? null) : null;
+                    $aiRating = $firstImage ? ($firstImage->ai_rating ?? null) : null;
+                    $aiComments = $firstImage ? ($firstImage->ai_comments ?? null) : null;
                 @endphp
 
                 <div class="info-row" style="border: none; padding: 5px 0;">
