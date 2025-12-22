@@ -111,10 +111,11 @@ class CompressAndStoreImage implements ShouldQueue
                     $targetExtension = strtolower(pathinfo($this->targetPath, PATHINFO_EXTENSION));
                     
                     // Convert based on format
+                    // In Intervention Image v3, toJpeg() and toPng() return EncodedImage which can be cast to string
                     if (in_array($targetExtension, ['jpg', 'jpeg'])) {
-                        $optimizedContent = (string) $image->toJpeg($this->quality)->encode();
+                        $optimizedContent = (string) $image->toJpeg($this->quality);
                     } elseif ($targetExtension === 'png') {
-                        $optimizedContent = (string) $image->toPng()->encode();
+                        $optimizedContent = (string) $image->toPng();
                     } else {
                         $optimizedContent = file_get_contents($tempFile);
                     }
