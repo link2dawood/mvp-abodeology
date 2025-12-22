@@ -16,12 +16,12 @@ class CompressAndStoreImage implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    protected $tempFilePath;
-    protected $targetPath;
-    protected $disk;
-    protected $homecheckDataId;
-    protected $maxWidth;
-    protected $quality;
+    public $tempFilePath;
+    public $targetPath;
+    public $disk;
+    public $homecheckDataId;
+    public $maxWidth;
+    public $quality;
 
     /**
      * Create a new job instance.
