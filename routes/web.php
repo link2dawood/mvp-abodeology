@@ -96,6 +96,11 @@ Route::middleware(['auth', 'role.web:admin,agent'])->prefix('admin')->name('admi
     Route::put('/homechecks/{id}', [App\Http\Controllers\AdminController::class, 'updateHomeCheck'])->name('homechecks.update');
     Route::post('/homechecks/{id}/update-room', [App\Http\Controllers\AdminController::class, 'updateHomeCheckRoom'])->name('homechecks.update-room');
     Route::post('/homechecks/{id}/delete-room', [App\Http\Controllers\AdminController::class, 'deleteHomeCheckRoom'])->name('homechecks.delete-room');
+    // Allow GET for process-ai to redirect back with error message if accessed directly
+    Route::get('/homechecks/{id}/process-ai', function($id) {
+        return redirect()->route('admin.homechecks.show', $id)
+            ->with('error', 'Please use the "Process AI Analysis" button to process AI analysis.');
+    });
     Route::post('/homechecks/{id}/process-ai', [App\Http\Controllers\AdminController::class, 'processHomeCheckAI'])->name('homechecks.process-ai');
     Route::get('/homecheck-image/{id}', [App\Http\Controllers\AdminController::class, 'getHomecheckImage'])->name('admin.homecheck.image');
     Route::get('/homecheck-room-images/{roomId}', [App\Http\Controllers\AdminController::class, 'getHomecheckRoomImages'])->name('admin.homecheck.room-images');

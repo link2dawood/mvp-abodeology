@@ -257,6 +257,33 @@
  border-radius: 4px;
  margin-bottom: 20px;
  }
+ /* CHECKBOX STYLING */
+ .checkbox-wrapper {
+ display: flex;
+ align-items: center;
+ gap: 10px;
+ margin-top: 20px;
+ padding: 0;
+ }
+ .checkbox-wrapper input[type="checkbox"] {
+ width: 18px;
+ height: 18px;
+ min-width: 18px;
+ margin: 0;
+ cursor: pointer;
+ accent-color: var(--primary);
+ }
+ .checkbox-wrapper label {
+ margin: 0;
+ font-weight: 500;
+ cursor: pointer;
+ color: var(--text);
+ line-height: 1.5;
+ font-size: 14px;
+ }
+ .checkbox-wrapper label:hover {
+ color: var(--primary-dark);
+ }
 </style>
 @endpush
 
@@ -340,9 +367,9 @@
  <div class="error-message">{{ $message }}</div>
  @enderror
 
- <div style="margin-top:20px;">
+ <div class="checkbox-wrapper">
  <input type="checkbox" id="ai-process" name="process_ai" value="1">
- <label for="ai-process" style="display: inline; margin-left: 8px; font-weight: normal;">Process AI analysis after update</label>
+ <label for="ai-process">Process AI analysis after update</label>
  </div>
  </div>
  <button type="submit" class="button btn-primary">Save HomeCheck</button>
