@@ -1958,7 +1958,154 @@ class AdminController extends Controller
             $disk = $this->getStorageDisk();
             $imageOptimizer = new \App\Services\ImageOptimizationService();
 
-            // Process existing rooms
+            // Handle modal format (room_id, room_type, room_name, images[], etc.)
+            if ($request->has('room_id') && $request->has('room_type')) {
+                $roomId = $request->input('room_id');
+                $roomType = $request->input('room_type');
+                $roomName = $request->input('room_name');
+                
+                if (empty($roomName)) {
+                    \DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Room name is required.'
+                    ], 400);
+                }
+                
+                if ($roomType === 'existing' && $roomId) {
+                    // Update existing room
+                    $firstImage = \App\Models\HomecheckData::find($roomId);
+                    if (!$firstImage || $firstImage->homecheck_report_id != $id) {
+                        \DB::rollBack();
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Room not found.'
+                        ], 404);
+                    }
+                    
+                    $oldRoomName = $firstImage->room_name;
+                    if ($oldRoomName !== $roomName) {
+                        \App\Models\HomecheckData::where('homecheck_report_id', $id)
+                            ->where('room_name', $oldRoomName)
+                            ->update(['room_name' => $roomName]);
+                    }
+                    
+                    // Delete specified images
+                    if ($request->has('delete_images') && is_array($request->input('delete_images'))) {
+                        foreach ($request->input('delete_images') as $imageId) {
+                            if (empty($imageId)) continue;
+                            
+                            $image = \App\Models\HomecheckData::find($imageId);
+                            if ($image && $image->homecheck_report_id == $id) {
+                                try {
+                                    if ($disk === 's3') {
+                                        \Storage::disk('s3')->delete($image->image_path);
+                                    } else {
+                                        \Storage::disk('public')->delete($image->image_path);
+                                    }
+                                } catch (\Exception $e) {
+                                    \Log::warning('Failed to delete image file: ' . $e->getMessage());
+                                }
+                                
+                                $image->delete();
+                            }
+                        }
+                    }
+                    
+                    // Add new images
+                    if ($request->hasFile('images')) {
+                        $images = $request->file('images');
+                        $imagesIs360 = $request->input('images_is_360', []);
+                        
+                        if (!is_array($images)) {
+                            $images = [$images];
+                        }
+                        
+                        foreach ($images as $index => $image) {
+                            if (!$image || !$image->isValid()) continue;
+                            
+                            $is360 = isset($imagesIs360[$index]) && $imagesIs360[$index] == '1';
+                            
+                            try {
+                                $tempPath = 'temp/homechecks/' . $property->id . '/' . uniqid() . '_' . $image->getClientOriginalName();
+                                $tempStorage = \Storage::disk('local');
+                                $tempStorage->put($tempPath, file_get_contents($image->getRealPath()));
+                                
+                                $imageExtension = $image->getClientOriginalExtension();
+                                $imageFileName = uniqid() . '.' . $imageExtension;
+                                $targetPath = 'homechecks/' . $property->id . '/rooms/' . $roomName . '/' . ($is360 ? '360' : 'photos') . '/' . $imageFileName;
+                                
+                                $homecheckData = \App\Models\HomecheckData::create([
+                                    'property_id' => $property->id,
+                                    'homecheck_report_id' => $homecheckReport->id,
+                                    'room_name' => $roomName,
+                                    'image_path' => $targetPath,
+                                    'is_360' => $is360,
+                                    'created_at' => now(),
+                                ]);
+                                
+                                \App\Jobs\CompressAndStoreImage::dispatch($tempPath, $targetPath, $disk, $homecheckData->id, 1920, 85);
+                            } catch (\Exception $e) {
+                                \Log::error('Error uploading image: ' . $e->getMessage());
+                            }
+                        }
+                    }
+                } else if ($roomType === 'new') {
+                    // Create new room
+                    if (!$request->hasFile('images') || count($request->file('images', [])) == 0) {
+                        \DB::rollBack();
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Please upload at least one image for the room.'
+                        ], 400);
+                    }
+                    
+                    $images = $request->file('images');
+                    $imagesIs360 = $request->input('images_is_360', []);
+                    
+                    if (!is_array($images)) {
+                        $images = [$images];
+                    }
+                    
+                    foreach ($images as $index => $image) {
+                        if (!$image || !$image->isValid()) continue;
+                        
+                        $is360 = isset($imagesIs360[$index]) && $imagesIs360[$index] == '1';
+                        
+                        try {
+                            $tempPath = 'temp/homechecks/' . $property->id . '/' . uniqid() . '_' . $image->getClientOriginalName();
+                            $tempStorage = \Storage::disk('local');
+                            $tempStorage->put($tempPath, file_get_contents($image->getRealPath()));
+                            
+                            $imageExtension = $image->getClientOriginalExtension();
+                            $imageFileName = uniqid() . '.' . $imageExtension;
+                            $targetPath = 'homechecks/' . $property->id . '/rooms/' . $roomName . '/' . ($is360 ? '360' : 'photos') . '/' . $imageFileName;
+                            
+                            $homecheckData = \App\Models\HomecheckData::create([
+                                'property_id' => $property->id,
+                                'homecheck_report_id' => $homecheckReport->id,
+                                'room_name' => $roomName,
+                                'image_path' => $targetPath,
+                                'is_360' => $is360,
+                                'created_at' => now(),
+                            ]);
+                            
+                            \App\Jobs\CompressAndStoreImage::dispatch($tempPath, $targetPath, $disk, $homecheckData->id, 1920, 85);
+                        } catch (\Exception $e) {
+                            \Log::error('Error uploading image: ' . $e->getMessage());
+                        }
+                    }
+                }
+                
+                \DB::commit();
+                
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Room updated successfully!'
+                ]);
+            }
+
+            // Process existing rooms (original format)
             if ($request->has('existing_rooms') && is_array($request->input('existing_rooms'))) {
                 foreach ($request->input('existing_rooms') as $roomId => $roomData) {
                     // Skip if delete_room is set
@@ -2243,16 +2390,61 @@ class AdminController extends Controller
             }
         }
         
-        // Determine storage disk
+        // Determine storage disk - check both S3 and public to find where image actually exists
         $s3Configured = !empty(config('filesystems.disks.s3.key')) && 
                        !empty(config('filesystems.disks.s3.secret')) && 
                        !empty(config('filesystems.disks.s3.bucket'));
         
-        $disk = $s3Configured ? 's3' : 'public';
-        $storage = \Illuminate\Support\Facades\Storage::disk($disk);
+        $disk = null;
+        $storage = null;
         
-        if (!$storage->exists($homecheckData->image_path)) {
-            abort(404, 'Image file not found.');
+        // First, try S3 if configured
+        if ($s3Configured) {
+            $s3Storage = \Illuminate\Support\Facades\Storage::disk('s3');
+            if ($s3Storage->exists($homecheckData->image_path)) {
+                $disk = 's3';
+                $storage = $s3Storage;
+            }
+        }
+        
+        // If not found in S3, try public storage
+        if (!$storage) {
+            $publicStorage = \Illuminate\Support\Facades\Storage::disk('public');
+            if ($publicStorage->exists($homecheckData->image_path)) {
+                $disk = 'public';
+                $storage = $publicStorage;
+            }
+        }
+        
+        // If still not found, abort with detailed error
+        if (!$storage || !$storage->exists($homecheckData->image_path)) {
+            $s3Exists = false;
+            $publicExists = false;
+            
+            if ($s3Configured) {
+                try {
+                    $s3Exists = \Storage::disk('s3')->exists($homecheckData->image_path);
+                } catch (\Exception $e) {
+                    \Log::warning('Error checking S3 existence', ['error' => $e->getMessage()]);
+                }
+            }
+            
+            try {
+                $publicExists = \Storage::disk('public')->exists($homecheckData->image_path);
+            } catch (\Exception $e) {
+                \Log::warning('Error checking public existence', ['error' => $e->getMessage()]);
+            }
+            
+            \Log::error('HomeCheck image not found in any storage', [
+                'image_id' => $id,
+                'image_path' => $homecheckData->image_path,
+                's3_configured' => $s3Configured,
+                's3_exists' => $s3Exists,
+                'public_exists' => $publicExists,
+                'property_id' => $property->id ?? null,
+            ]);
+            
+            abort(404, 'Image file not found in storage. Path: ' . $homecheckData->image_path);
         }
         
         // Get file content and metadata
@@ -2301,6 +2493,243 @@ class AdminController extends Controller
             ->header('Access-Control-Allow-Methods', 'GET, OPTIONS')
             ->header('Access-Control-Allow-Headers', 'Content-Type')
             ->header('Expires', now()->addSeconds($maxAge)->toRfc7231String());
+    }
+
+    /**
+     * Get images for a specific room (AJAX).
+     *
+     * @param  int  $roomId  HomecheckData ID (first image of the room)
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getHomecheckRoomImages($roomId)
+    {
+        $user = auth()->user();
+        
+        if (!in_array($user->role, ['admin', 'agent'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized access.'
+            ], 403);
+        }
+        
+        try {
+            $firstImage = \App\Models\HomecheckData::with('property')->findOrFail($roomId);
+            $property = $firstImage->property;
+            
+            if (!$property) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Property not found.'
+                ], 404);
+            }
+            
+            // For agents, verify they have access to this property
+            if ($user->role === 'agent') {
+                $agentPropertyIds = $this->getAgentPropertyIds($user->id);
+                if (!in_array($property->id, $agentPropertyIds)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Unauthorized access.'
+                    ], 403);
+                }
+            }
+            
+            // Get all images for this room
+            $roomImages = \App\Models\HomecheckData::where('homecheck_report_id', $firstImage->homecheck_report_id)
+                ->where('room_name', $firstImage->room_name)
+                ->orderBy('created_at')
+                ->get();
+            
+            $images = [];
+            foreach ($roomImages as $image) {
+                try {
+                    $imageUrl = route('admin.homecheck.image', ['id' => $image->id]);
+                } catch (\Exception $e) {
+                    $imageUrl = url('/admin/homecheck-image/' . $image->id);
+                }
+                
+                $images[] = [
+                    'id' => $image->id,
+                    'url' => $imageUrl,
+                    'is_360' => $image->is_360 ?? false,
+                ];
+            }
+            
+            return response()->json([
+                'success' => true,
+                'images' => $images
+            ]);
+            
+        } catch (\Exception $e) {
+            \Log::error('Error loading room images: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error loading images.'
+            ], 500);
+        }
+    }
+
+    /**
+     * Get AI summary for a specific room (AJAX).
+     *
+     * @param  int  $roomId  HomecheckData ID (first image of the room)
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getHomecheckRoomAI($roomId)
+    {
+        $user = auth()->user();
+        
+        if (!in_array($user->role, ['admin', 'agent'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized access.'
+            ], 403);
+        }
+        
+        try {
+            $firstImage = \App\Models\HomecheckData::with('property')->findOrFail($roomId);
+            $property = $firstImage->property;
+            
+            if (!$property) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Property not found.'
+                ], 404);
+            }
+            
+            // For agents, verify they have access to this property
+            if ($user->role === 'agent') {
+                $agentPropertyIds = $this->getAgentPropertyIds($user->id);
+                if (!in_array($property->id, $agentPropertyIds)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Unauthorized access.'
+                    ], 403);
+                }
+            }
+            
+            return response()->json([
+                'success' => true,
+                'rating' => $firstImage->ai_rating,
+                'comments' => $firstImage->ai_comments,
+            ]);
+            
+        } catch (\Exception $e) {
+            \Log::error('Error loading room AI: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error loading AI summary.'
+            ], 500);
+        }
+    }
+
+    /**
+     * Delete a room from a HomeCheck report.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  int  $id  HomeCheck Report ID
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function deleteHomeCheckRoom(Request $request, $id)
+    {
+        $user = auth()->user();
+        
+        if (!in_array($user->role, ['admin', 'agent'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You do not have permission to perform this action.'
+            ], 403);
+        }
+
+        $homecheckReport = \App\Models\HomecheckReport::with(['property'])->findOrFail($id);
+        $property = $homecheckReport->property;
+        
+        if (!$property) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Property not found for this HomeCheck.'
+            ], 404);
+        }
+        
+        // For agents, verify they have access to this property
+        if ($user->role === 'agent') {
+            $agentPropertyIds = $this->getAgentPropertyIds($user->id);
+            if (!in_array($property->id, $agentPropertyIds)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You do not have permission to delete this room.'
+                ], 403);
+            }
+        }
+
+        $roomId = $request->input('room_id');
+        
+        if (!$roomId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Room ID is required.'
+            ], 400);
+        }
+
+        try {
+            \DB::beginTransaction();
+
+            // Get the first image to find room name
+            $firstImage = \App\Models\HomecheckData::find($roomId);
+            
+            if (!$firstImage || $firstImage->homecheck_report_id != $id) {
+                \DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Room not found or does not belong to this HomeCheck.'
+                ], 404);
+            }
+
+            $roomName = $firstImage->room_name;
+            
+            // Get all images for this room
+            $roomImages = \App\Models\HomecheckData::where('homecheck_report_id', $id)
+                ->where('room_name', $roomName)
+                ->get();
+
+            // Determine storage disk
+            $disk = $this->getStorageDisk();
+            $storage = \Illuminate\Support\Facades\Storage::disk($disk);
+
+            // Delete image files
+            foreach ($roomImages as $image) {
+                if ($image->image_path && $storage->exists($image->image_path)) {
+                    try {
+                        $storage->delete($image->image_path);
+                    } catch (\Exception $e) {
+                        \Log::warning('Error deleting image file: ' . $e->getMessage(), [
+                            'image_path' => $image->image_path
+                        ]);
+                    }
+                }
+            }
+
+            // Delete database records
+            \App\Models\HomecheckData::where('homecheck_report_id', $id)
+                ->where('room_name', $roomName)
+                ->delete();
+
+            \DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Room deleted successfully.'
+            ]);
+
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            \Log::error('Error deleting HomeCheck room: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while deleting the room: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
