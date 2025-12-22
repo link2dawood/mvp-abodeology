@@ -615,12 +615,14 @@ function handleFileUpload(event, is360) {
  files.forEach(file => {
  if (file.type.match('image.*')) {
  const reader = new FileReader();
+ const fileIndex = roomImages.length; // Store index before pushing
  reader.onload = function(e) {
  const imageCard = document.createElement('div');
  imageCard.className = 'image-card';
+ imageCard.setAttribute('data-file-index', fileIndex);
  imageCard.style.backgroundImage = `url('${e.target.result}')`;
  imageCard.innerHTML = `
- <div class="delete-img" onclick="this.parentElement.remove()">×</div>
+ <div class="delete-img" onclick="removePreviewImage(${fileIndex}, this)">×</div>
  <span>${is360 ? '360°' : 'Photo'}</span>
  `;
  imageGrid.appendChild(imageCard);
@@ -634,6 +636,24 @@ function handleFileUpload(event, is360) {
  
  // Clear input
  event.target.value = '';
+}
+
+function removePreviewImage(fileIndex, element) {
+ // Remove from roomImages array
+ if (roomImages[fileIndex]) {
+ roomImages.splice(fileIndex, 1);
+ }
+ // Remove the preview card
+ element.closest('.image-card').remove();
+ // Update indices on remaining cards
+ const remainingCards = document.querySelectorAll('.image-card[data-file-index]');
+ remainingCards.forEach((card, index) => {
+ card.setAttribute('data-file-index', index);
+ const deleteBtn = card.querySelector('.delete-img');
+ if (deleteBtn) {
+ deleteBtn.setAttribute('onclick', `removePreviewImage(${index}, this)`);
+ }
+ });
 }
 
 function deleteImage(imageId, element) {
@@ -690,10 +710,10 @@ document.getElementById('roomForm').addEventListener('submit', function(e) {
  formData.append('room_name', document.getElementById('roomNameInput').value);
  formData.append('is_360', document.getElementById('is360Flag').value);
  
- // Add new images
+ // Add new images - Laravel expects files as array
  roomImages.forEach((item, index) => {
- formData.append(`images[${index}]`, item.file);
- formData.append(`images_is_360[${index}]`, item.is360 ? '1' : '0');
+ formData.append('images[]', item.file);
+ formData.append('images_is_360[]', item.is360 ? '1' : '0');
  });
  
  // Add deleted image IDs

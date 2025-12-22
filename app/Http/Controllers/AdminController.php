@@ -1527,7 +1527,7 @@ class AdminController extends Controller
             });
             
             $roomsData = $homecheckData->groupBy('room_name');
-            
+
             // Ensure roomsData is always a collection
             if (!$roomsData instanceof \Illuminate\Support\Collection) {
                 $roomsData = collect($roomsData);
@@ -2018,8 +2018,8 @@ class AdminController extends Controller
                     }
                     
                     // Add new images
-                    if ($request->hasFile('images')) {
-                        $images = $request->file('images');
+                    $images = $request->file('images');
+                    if ($images) {
                         $imagesIs360 = $request->input('images_is_360', []);
                         
                         if (!is_array($images)) {
@@ -2027,7 +2027,13 @@ class AdminController extends Controller
                         }
                         
                         foreach ($images as $index => $image) {
-                            if (!$image || !$image->isValid()) continue;
+                            if (!$image || !$image->isValid()) {
+                                \Log::warning('Invalid image file in room update', [
+                                    'index' => $index,
+                                    'room_id' => $roomId,
+                                ]);
+                                continue;
+                            }
                             
                             $is360 = isset($imagesIs360[$index]) && $imagesIs360[$index] == '1';
                             
@@ -2049,15 +2055,24 @@ class AdminController extends Controller
                                     'created_at' => now(),
                                 ]);
                                 
+                                \Log::info('Dispatching CompressAndStoreImage job for room update', [
+                                    'homecheck_data_id' => $homecheckData->id,
+                                    'disk' => $disk,
+                                    'target_path' => $targetPath,
+                                ]);
+                                
                                 \App\Jobs\CompressAndStoreImage::dispatch($tempPath, $targetPath, $disk, $homecheckData->id, 1920, 85);
                             } catch (\Exception $e) {
-                                \Log::error('Error uploading image: ' . $e->getMessage());
+                                \Log::error('Error uploading image in room update: ' . $e->getMessage(), [
+                                    'trace' => $e->getTraceAsString(),
+                                ]);
                             }
                         }
                     }
                 } else if ($roomType === 'new') {
                     // Create new room
-                    if (!$request->hasFile('images') || count($request->file('images', [])) == 0) {
+                    $images = $request->file('images');
+                    if (!$images || (is_array($images) && count($images) == 0)) {
                         \DB::rollBack();
                         return response()->json([
                             'success' => false,
@@ -2065,7 +2080,6 @@ class AdminController extends Controller
                         ], 400);
                     }
                     
-                    $images = $request->file('images');
                     $imagesIs360 = $request->input('images_is_360', []);
                     
                     if (!is_array($images)) {
@@ -2073,7 +2087,12 @@ class AdminController extends Controller
                     }
                     
                     foreach ($images as $index => $image) {
-                        if (!$image || !$image->isValid()) continue;
+                        if (!$image || !$image->isValid()) {
+                            \Log::warning('Invalid image file in new room', [
+                                'index' => $index,
+                            ]);
+                            continue;
+                        }
                         
                         $is360 = isset($imagesIs360[$index]) && $imagesIs360[$index] == '1';
                         
@@ -2095,9 +2114,17 @@ class AdminController extends Controller
                                 'created_at' => now(),
                             ]);
                             
+                            \Log::info('Dispatching CompressAndStoreImage job for new room', [
+                                'homecheck_data_id' => $homecheckData->id,
+                                'disk' => $disk,
+                                'target_path' => $targetPath,
+                            ]);
+                            
                             \App\Jobs\CompressAndStoreImage::dispatch($tempPath, $targetPath, $disk, $homecheckData->id, 1920, 85);
                         } catch (\Exception $e) {
-                            \Log::error('Error uploading image: ' . $e->getMessage());
+                            \Log::error('Error uploading image in new room: ' . $e->getMessage(), [
+                                'trace' => $e->getTraceAsString(),
+                            ]);
                         }
                     }
                 }
