@@ -1527,6 +1527,11 @@ class AdminController extends Controller
             });
             
             $roomsData = $homecheckData->groupBy('room_name');
+            
+            // Ensure roomsData is always a collection
+            if (!$roomsData instanceof \Illuminate\Support\Collection) {
+                $roomsData = collect($roomsData);
+            }
 
             return view('admin.homechecks.edit', compact('homecheckReport', 'property', 'roomsData', 'homecheckData'));
             

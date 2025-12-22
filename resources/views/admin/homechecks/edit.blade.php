@@ -266,16 +266,22 @@
 
  <!-- Property Header -->
  <div class="property-header">
- <h2>{{ $property->address }}</h2>
+ <h2>{{ $property->address ?? 'N/A' }}</h2>
  <p>
- @if($property->bedrooms)
- {{ $property->bedrooms }} Bedroom{{ $property->bedrooms > 1 ? 's' : '' }}
- @endif
- @if($property->property_type)
- {{ ucfirst(str_replace('_', ' ', $property->property_type)) }}
- @endif
- @if($property->tenure)
- • {{ ucfirst(str_replace('_', ' ', $property->tenure)) }}
+ @php
+ $propertyDetails = [];
+ if($property->bedrooms) {
+ $propertyDetails[] = $property->bedrooms . ' Bedroom' . ($property->bedrooms > 1 ? 's' : '');
+ }
+ if($property->property_type) {
+ $propertyDetails[] = ucfirst(str_replace('_', ' ', $property->property_type));
+ }
+ if($property->tenure) {
+ $propertyDetails[] = ucfirst(str_replace('_', ' ', $property->tenure));
+ }
+ @endphp
+ @if(!empty($propertyDetails))
+ {{ implode(' • ', $propertyDetails) }}
  @endif
  @if($property->postcode)
  <br><small style="color: #999;">{{ $property->postcode }}</small>
@@ -309,7 +315,7 @@
  <label>Scheduled Date</label>
  <input type="date" 
  name="scheduled_date" 
- value="{{ old('scheduled_date', $homecheckReport->scheduled_date ? $homecheckReport->scheduled_date->format('Y-m-d') : '') }}"
+ value="{{ old('scheduled_date', $homecheckReport->scheduled_date ? (\Carbon\Carbon::parse($homecheckReport->scheduled_date)->format('Y-m-d')) : '') }}"
  min="{{ date('Y-m-d') }}">
  @error('scheduled_date')
  <div class="error-message">{{ $message }}</div>
@@ -375,18 +381,16 @@
  @if($roomsData && $roomsData->count() > 0)
  @php
  $hasAI = false;
- @endphp
- @foreach($roomsData as $roomName => $roomImages)
- @if($roomImages && $roomImages->count() > 0)
- @php
+ foreach($roomsData as $roomName => $roomImages) {
+ if($roomImages && $roomImages->count() > 0) {
  $firstImage = $roomImages->first();
  if($firstImage && ($firstImage->ai_rating || $firstImage->ai_comments)) {
  $hasAI = true;
  break;
  }
+ }
+ }
  @endphp
- @endif
- @endforeach
  @if($hasAI)
  <div style="margin-top: 20px;">
  @foreach($roomsData as $roomName => $roomImages)
