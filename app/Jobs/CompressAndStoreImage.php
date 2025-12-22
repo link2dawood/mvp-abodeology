@@ -93,34 +93,66 @@ class CompressAndStoreImage implements ShouldQueue
             
             // Use Intervention Image to compress
             try {
-                $manager = new \Intervention\Image\ImageManager(new \Intervention\Image\Drivers\Gd\Driver());
-                $image = $manager->read($tempFile);
-                
-                // Get original dimensions
-                $width = $image->width();
-                
-                // Resize if larger than max width (maintain aspect ratio)
-                if ($width > $this->maxWidth) {
-                    $image->scale(width: $this->maxWidth);
-                }
-                
-                // Get file extension to determine format
-                $targetExtension = strtolower(pathinfo($this->targetPath, PATHINFO_EXTENSION));
-                
-                // Convert based on format
-                $optimizedContent = null;
-                if (in_array($targetExtension, ['jpg', 'jpeg'])) {
-                    $optimizedContent = (string) $image->toJpeg($this->quality)->encode();
-                } elseif ($targetExtension === 'png') {
-                    $optimizedContent = (string) $image->toPng()->encode();
+                // Try Intervention Image v3 API first
+                if (class_exists('\Intervention\Image\ImageManager') && class_exists('\Intervention\Image\Drivers\Gd\Driver')) {
+                    // Intervention Image v3
+                    $manager = new \Intervention\Image\ImageManager(new \Intervention\Image\Drivers\Gd\Driver());
+                    $image = $manager->read($tempFile);
+                    
+                    // Get original dimensions
+                    $width = $image->width();
+                    
+                    // Resize if larger than max width (maintain aspect ratio)
+                    if ($width > $this->maxWidth) {
+                        $image->scale(width: $this->maxWidth);
+                    }
+                    
+                    // Get file extension to determine format
+                    $targetExtension = strtolower(pathinfo($this->targetPath, PATHINFO_EXTENSION));
+                    
+                    // Convert based on format
+                    if (in_array($targetExtension, ['jpg', 'jpeg'])) {
+                        $optimizedContent = (string) $image->toJpeg($this->quality)->encode();
+                    } elseif ($targetExtension === 'png') {
+                        $optimizedContent = (string) $image->toPng()->encode();
+                    } else {
+                        $optimizedContent = file_get_contents($tempFile);
+                    }
+                } elseif (class_exists('\Intervention\Image\ImageManagerStatic')) {
+                    // Intervention Image v2 (legacy)
+                    $image = \Intervention\Image\ImageManagerStatic::make($tempFile);
+                    
+                    // Get original dimensions
+                    $width = $image->width();
+                    
+                    // Resize if larger than max width (maintain aspect ratio)
+                    if ($width > $this->maxWidth) {
+                        $image->resize($this->maxWidth, null, function ($constraint) {
+                            $constraint->aspectRatio();
+                            $constraint->upsize();
+                        });
+                    }
+                    
+                    // Get file extension to determine format
+                    $targetExtension = strtolower(pathinfo($this->targetPath, PATHINFO_EXTENSION));
+                    
+                    // Convert based on format
+                    if (in_array($targetExtension, ['jpg', 'jpeg'])) {
+                        $optimizedContent = (string) $image->encode('jpg', $this->quality);
+                    } elseif ($targetExtension === 'png') {
+                        $optimizedContent = (string) $image->encode('png');
+                    } else {
+                        $optimizedContent = file_get_contents($tempFile);
+                    }
                 } else {
-                    // For other formats, just use as is
-                    $optimizedContent = file_get_contents($tempFile);
+                    throw new \Exception('Intervention Image library not found or incompatible version');
                 }
             } catch (\Exception $e) {
                 Log::warning('Intervention Image processing failed, using original file', [
                     'error' => $e->getMessage(),
+                    'error_class' => get_class($e),
                     'temp_file' => $tempFile,
+                    'trace' => $e->getTraceAsString(),
                 ]);
                 // Fallback: use original file if image processing fails
                 $optimizedContent = file_get_contents($tempFile);
