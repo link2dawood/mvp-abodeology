@@ -50,6 +50,7 @@ class CompressAndStoreImage implements ShouldQueue
      */
     public function handle()
     {
+        $tempFile = null;
         try {
             Log::info('Starting image compression job', [
                 'temp_path' => $this->tempFilePath,
@@ -67,46 +68,95 @@ class CompressAndStoreImage implements ShouldQueue
 
             // Read the temporary file
             $imageContent = $storage->get($this->tempFilePath);
-            $tempFile = tempnam(sys_get_temp_dir(), 'img_') . '.' . pathinfo($this->tempFilePath, PATHINFO_EXTENSION);
-            file_put_contents($tempFile, $imageContent);
+            if (empty($imageContent)) {
+                throw new \Exception('Temporary file is empty: ' . $this->tempFilePath);
+            }
+            
+            $extension = strtolower(pathinfo($this->tempFilePath, PATHINFO_EXTENSION));
+            $tempFile = tempnam(sys_get_temp_dir(), 'img_') . '.' . $extension;
+            
+            if (file_put_contents($tempFile, $imageContent) === false) {
+                throw new \Exception('Failed to write temporary file: ' . $tempFile);
+            }
+            
+            if (!file_exists($tempFile) || filesize($tempFile) == 0) {
+                throw new \Exception('Temporary file was not created or is empty: ' . $tempFile);
+            }
 
             // Determine target storage disk
             $targetDisk = Storage::disk($this->disk);
             
-            // Use Intervention Image to compress
-            $manager = new \Intervention\Image\ImageManager(new \Intervention\Image\Drivers\Gd\Driver());
-            $image = $manager->read($tempFile);
-            
-            // Get original dimensions
-            $width = $image->width();
-            
-            // Resize if larger than max width (maintain aspect ratio)
-            if ($width > $this->maxWidth) {
-                $image->scale(width: $this->maxWidth);
+            // Check if GD extension is available
+            if (!extension_loaded('gd')) {
+                throw new \Exception('GD extension is not loaded. Please install php-gd extension.');
             }
             
-            // Get file extension to determine format
-            $extension = strtolower(pathinfo($this->targetPath, PATHINFO_EXTENSION));
-            
-            // Convert based on format
-            $optimizedContent = null;
-            if (in_array($extension, ['jpg', 'jpeg'])) {
-                $optimizedContent = (string) $image->toJpeg($this->quality)->encode();
-            } elseif ($extension === 'png') {
-                $optimizedContent = (string) $image->toPng()->encode();
-            } else {
-                // For other formats, just use as is
+            // Use Intervention Image to compress
+            try {
+                $manager = new \Intervention\Image\ImageManager(new \Intervention\Image\Drivers\Gd\Driver());
+                $image = $manager->read($tempFile);
+                
+                // Get original dimensions
+                $width = $image->width();
+                
+                // Resize if larger than max width (maintain aspect ratio)
+                if ($width > $this->maxWidth) {
+                    $image->scale(width: $this->maxWidth);
+                }
+                
+                // Get file extension to determine format
+                $targetExtension = strtolower(pathinfo($this->targetPath, PATHINFO_EXTENSION));
+                
+                // Convert based on format
+                $optimizedContent = null;
+                if (in_array($targetExtension, ['jpg', 'jpeg'])) {
+                    $optimizedContent = (string) $image->toJpeg($this->quality)->encode();
+                } elseif ($targetExtension === 'png') {
+                    $optimizedContent = (string) $image->toPng()->encode();
+                } else {
+                    // For other formats, just use as is
+                    $optimizedContent = file_get_contents($tempFile);
+                }
+            } catch (\Exception $e) {
+                Log::warning('Intervention Image processing failed, using original file', [
+                    'error' => $e->getMessage(),
+                    'temp_file' => $tempFile,
+                ]);
+                // Fallback: use original file if image processing fails
                 $optimizedContent = file_get_contents($tempFile);
             }
             
+            if (empty($optimizedContent)) {
+                throw new \Exception('Optimized content is empty');
+            }
+            
             // Upload compressed image to target storage
-            $targetDisk->put($this->targetPath, $optimizedContent);
+            $uploaded = $targetDisk->put($this->targetPath, $optimizedContent);
+            
+            if (!$uploaded) {
+                throw new \Exception('Failed to upload image to storage disk: ' . $this->disk);
+            }
+            
+            Log::info('Image uploaded to storage', [
+                'disk' => $this->disk,
+                'path' => $this->targetPath,
+                'size' => strlen($optimizedContent),
+            ]);
             
             // Clean up temporary file
-            @unlink($tempFile);
+            if ($tempFile && file_exists($tempFile)) {
+                @unlink($tempFile);
+            }
             
             // Delete temporary storage file
-            $storage->delete($this->tempFilePath);
+            try {
+                $storage->delete($this->tempFilePath);
+            } catch (\Exception $e) {
+                Log::warning('Failed to delete temporary storage file', [
+                    'path' => $this->tempFilePath,
+                    'error' => $e->getMessage(),
+                ]);
+            }
             
             // Update HomecheckData with the compressed path
             $homecheckData = HomecheckData::find($this->homecheckDataId);
@@ -127,13 +177,20 @@ class CompressAndStoreImage implements ShouldQueue
         } catch (\Exception $e) {
             Log::error('Image compression job failed', [
                 'error' => $e->getMessage(),
+                'error_class' => get_class($e),
                 'trace' => $e->getTraceAsString(),
                 'temp_path' => $this->tempFilePath,
                 'target_path' => $this->targetPath,
+                'disk' => $this->disk ?? 'unknown',
+                'homecheck_data_id' => $this->homecheckDataId ?? 'unknown',
+                'temp_file_exists' => $tempFile ? file_exists($tempFile) : false,
+                'gd_loaded' => extension_loaded('gd'),
             ]);
             
             // Clean up on error
-            @unlink($tempFile ?? null);
+            if ($tempFile && file_exists($tempFile)) {
+                @unlink($tempFile);
+            }
             
             throw $e;
         }
