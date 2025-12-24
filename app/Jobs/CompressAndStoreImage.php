@@ -16,7 +16,6 @@ class CompressAndStoreImage implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public $tempFilePath;
     public $targetPath;
     public $disk;
     public $homecheckDataId;
@@ -26,16 +25,14 @@ class CompressAndStoreImage implements ShouldQueue
     /**
      * Create a new job instance.
      *
-     * @param string $tempFilePath Temporary file path
-     * @param string $targetPath Target path in storage
+     * @param string $targetPath Target path in storage (image should already exist here)
      * @param string $disk Storage disk (s3 or public)
      * @param int $homecheckDataId HomecheckData ID to update
      * @param int $maxWidth Maximum width for compression (default: 1920)
      * @param int $quality JPEG quality 0-100 (default: 85)
      */
-    public function __construct($tempFilePath, $targetPath, $disk, $homecheckDataId, $maxWidth = 1920, $quality = 85)
+    public function __construct($targetPath, $disk, $homecheckDataId, $maxWidth = 1920, $quality = 85)
     {
-        $this->tempFilePath = $tempFilePath;
         $this->targetPath = $targetPath;
         $this->disk = $disk;
         $this->homecheckDataId = $homecheckDataId;
@@ -53,26 +50,26 @@ class CompressAndStoreImage implements ShouldQueue
         $tempFile = null;
         try {
             Log::info('Starting image compression job', [
-                'temp_path' => $this->tempFilePath,
                 'target_path' => $this->targetPath,
                 'disk' => $this->disk,
                 'homecheck_data_id' => $this->homecheckDataId,
             ]);
 
-            // Get the temporary file
-            $storage = Storage::disk('local');
+            // Determine target storage disk
+            $targetDisk = Storage::disk($this->disk);
             
-            if (!$storage->exists($this->tempFilePath)) {
-                throw new \Exception('Temporary file not found: ' . $this->tempFilePath);
+            // Check if the image already exists at target path
+            if (!$targetDisk->exists($this->targetPath)) {
+                throw new \Exception('Image file not found at target path: ' . $this->targetPath);
             }
 
-            // Read the temporary file
-            $imageContent = $storage->get($this->tempFilePath);
+            // Read the existing image from target location
+            $imageContent = $targetDisk->get($this->targetPath);
             if (empty($imageContent)) {
-                throw new \Exception('Temporary file is empty: ' . $this->tempFilePath);
+                throw new \Exception('Image file is empty at: ' . $this->targetPath);
             }
             
-            $extension = strtolower(pathinfo($this->tempFilePath, PATHINFO_EXTENSION));
+            $extension = strtolower(pathinfo($this->targetPath, PATHINFO_EXTENSION));
             $tempFile = tempnam(sys_get_temp_dir(), 'img_') . '.' . $extension;
             
             if (file_put_contents($tempFile, $imageContent) === false) {
@@ -82,9 +79,6 @@ class CompressAndStoreImage implements ShouldQueue
             if (!file_exists($tempFile) || filesize($tempFile) == 0) {
                 throw new \Exception('Temporary file was not created or is empty: ' . $tempFile);
             }
-
-            // Determine target storage disk
-            $targetDisk = Storage::disk($this->disk);
             
             // Check if GD extension is available
             if (!extension_loaded('gd')) {
@@ -163,17 +157,19 @@ class CompressAndStoreImage implements ShouldQueue
                 throw new \Exception('Optimized content is empty');
             }
             
-            // Upload compressed image to target storage
+            // Replace the existing image with compressed version (in-place optimization)
             $uploaded = $targetDisk->put($this->targetPath, $optimizedContent);
             
             if (!$uploaded) {
-                throw new \Exception('Failed to upload image to storage disk: ' . $this->disk);
+                throw new \Exception('Failed to update compressed image in storage disk: ' . $this->disk);
             }
             
-            Log::info('Image uploaded to storage', [
+            Log::info('Image compressed and updated in storage', [
                 'disk' => $this->disk,
                 'path' => $this->targetPath,
-                'size' => strlen($optimizedContent),
+                'original_size' => strlen($imageContent),
+                'compressed_size' => strlen($optimizedContent),
+                'savings' => round((1 - strlen($optimizedContent) / strlen($imageContent)) * 100, 2) . '%',
             ]);
             
             // Clean up temporary file
@@ -181,38 +177,17 @@ class CompressAndStoreImage implements ShouldQueue
                 @unlink($tempFile);
             }
             
-            // Delete temporary storage file
-            try {
-                $storage->delete($this->tempFilePath);
-            } catch (\Exception $e) {
-                Log::warning('Failed to delete temporary storage file', [
-                    'path' => $this->tempFilePath,
-                    'error' => $e->getMessage(),
-                ]);
-            }
-            
-            // Update HomecheckData with the compressed path
-            $homecheckData = HomecheckData::find($this->homecheckDataId);
-            if ($homecheckData) {
-                $homecheckData->update([
-                    'image_path' => $this->targetPath,
-                ]);
-                Log::info('Image compression completed and HomecheckData updated', [
-                    'homecheck_data_id' => $this->homecheckDataId,
-                    'final_path' => $this->targetPath,
-                ]);
-            } else {
-                Log::warning('HomecheckData not found after compression', [
-                    'homecheck_data_id' => $this->homecheckDataId,
-                ]);
-            }
+            // Image path remains the same, no need to update HomecheckData
+            Log::info('Image compression completed successfully', [
+                'homecheck_data_id' => $this->homecheckDataId,
+                'path' => $this->targetPath,
+            ]);
             
         } catch (\Exception $e) {
             Log::error('Image compression job failed', [
                 'error' => $e->getMessage(),
                 'error_class' => get_class($e),
                 'trace' => $e->getTraceAsString(),
-                'temp_path' => $this->tempFilePath,
                 'target_path' => $this->targetPath,
                 'disk' => $this->disk ?? 'unknown',
                 'homecheck_data_id' => $this->homecheckDataId ?? 'unknown',

@@ -1254,20 +1254,19 @@ class AdminController extends Controller
                 // Determine storage disk (S3 if configured, otherwise public)
                 $disk = $this->getStorageDisk();
                 
-                // Process each image - store temporarily and compress in background
+                // Process each image - save immediately to final location, then compress in background
                 foreach ($roomData['images'] as $imageIndex => $image) {
                     try {
-                        // Store file temporarily in local storage first
-                        $tempPath = 'temp/homechecks/' . $property->id . '/' . uniqid() . '_' . $image->getClientOriginalName();
-                        $tempStorage = Storage::disk('local');
-                        $tempStorage->put($tempPath, file_get_contents($image->getRealPath()));
-                        
                         // Generate final target path
                         $imageExtension = $image->getClientOriginalExtension();
                         $imageFileName = uniqid() . '.' . $imageExtension;
                         $imagePath = 'homechecks/' . $property->id . '/rooms/' . $roomName . '/' . ($is360 ? '360' : 'photos') . '/' . $imageFileName;
                         
-                        // Create homecheck data record with target path (will be updated by job)
+                        // Save image immediately to final location (uncompressed) so it's accessible right away
+                        $targetStorage = Storage::disk($disk);
+                        $targetStorage->put($imagePath, file_get_contents($image->getRealPath()));
+                        
+                        // Create homecheck data record with target path
                         $homecheckData = \App\Models\HomecheckData::create([
                             'property_id' => $property->id,
                             'homecheck_report_id' => $homecheckReport->id,
@@ -1278,13 +1277,14 @@ class AdminController extends Controller
                             'created_at' => now(),
                         ]);
                         
-                        // Dispatch compression job to process in background
-                        \App\Jobs\CompressAndStoreImage::dispatch($tempPath, $imagePath, $disk, $homecheckData->id, 1920, 85);
+                        // Process image compression (synchronously if queue is 'sync', otherwise queued)
+                        $this->processImageCompression($imagePath, $disk, $homecheckData->id, 1920, 85);
                         
-                        \Log::info('Image queued for compression in storeCompleteHomeCheck', [
+                        \Log::info('Image saved and queued for compression in storeCompleteHomeCheck', [
                             'homecheck_id' => $homecheckReport->id,
                             'homecheck_data_id' => $homecheckData->id,
                             'room_name' => $roomName,
+                            'image_path' => $imagePath,
                         ]);
                     } catch (\Exception $e) {
                         \Log::error('Error processing image in storeCompleteHomeCheck', [
@@ -1747,34 +1747,32 @@ class AdminController extends Controller
                             }
                             
                             try {
-                                // Store file temporarily in local storage first
-                                $tempPath = 'temp/homechecks/' . $property->id . '/' . uniqid() . '_' . $image->getClientOriginalName();
-                                $tempStorage = Storage::disk('local');
-                                $tempStorage->put($tempPath, file_get_contents($image->getRealPath()));
-                                
                                 // Generate final target path
                                 $imageExtension = $image->getClientOriginalExtension();
                                 $imageFileName = uniqid() . '.' . $imageExtension;
                                 $targetPath = 'homechecks/' . $property->id . '/rooms/' . $roomName . '/' . ($is360 ? '360' : 'photos') . '/' . $imageFileName;
                                 
-                                // Create homecheck data record with temporary path (will be updated by job)
+                                // Save image immediately to final location (uncompressed) so it's accessible right away
+                                $targetStorage = Storage::disk($disk);
+                                $targetStorage->put($targetPath, file_get_contents($image->getRealPath()));
+                                
+                                // Create homecheck data record
                                 $homecheckData = \App\Models\HomecheckData::create([
                                     'property_id' => $property->id,
                                     'homecheck_report_id' => $homecheckReport->id,
                                     'room_name' => $roomName,
-                                    'image_path' => $targetPath, // Final path, file will be compressed and saved here
+                                    'image_path' => $targetPath,
                                     'is_360' => $is360,
                                     'moisture_reading' => $moistureReading,
                                 ]);
                                 
-                                // Dispatch compression job to process in background
-                                \App\Jobs\CompressAndStoreImage::dispatch($tempPath, $targetPath, $disk, $homecheckData->id, 1920, 85);
+                                // Process image compression (synchronously if queue is 'sync', otherwise queued)
+                                $this->processImageCompression($targetPath, $disk, $homecheckData->id, 1920, 85);
                                 
-                                \Log::info('Image queued for compression', [
+                                \Log::info('Image saved and queued for compression', [
                                     'homecheck_id' => $homecheckReport->id,
                                     'homecheck_data_id' => $homecheckData->id,
                                     'room_name' => $roomName,
-                                    'temp_path' => $tempPath,
                                     'target_path' => $targetPath,
                                 ]);
                             } catch (\Exception $e) {
@@ -1826,17 +1824,16 @@ class AdminController extends Controller
                             }
                             
                             try {
-                                // Store file temporarily in local storage first
-                                $tempPath = 'temp/homechecks/' . $property->id . '/' . uniqid() . '_' . $image->getClientOriginalName();
-                                $tempStorage = \Storage::disk('local');
-                                $tempStorage->put($tempPath, file_get_contents($image->getRealPath()));
-                                
                                 // Generate final target path
                                 $imageExtension = $image->getClientOriginalExtension();
                                 $imageFileName = uniqid() . '.' . $imageExtension;
                                 $imagePath = 'homechecks/' . $property->id . '/rooms/' . $roomName . '/' . ($is360 ? '360' : 'photos') . '/' . $imageFileName;
                                 
-                                // Create homecheck data record with target path (will be updated by job)
+                                // Save image immediately to final location (uncompressed) so it's accessible right away
+                                $targetStorage = \Storage::disk($disk);
+                                $targetStorage->put($imagePath, file_get_contents($image->getRealPath()));
+                                
+                                // Create homecheck data record
                                 $homecheckData = \App\Models\HomecheckData::create([
                                     'property_id' => $property->id,
                                     'homecheck_report_id' => $homecheckReport->id,
@@ -1846,13 +1843,14 @@ class AdminController extends Controller
                                     'moisture_reading' => $moistureReading,
                                 ]);
                                 
-                                // Dispatch compression job to process in background
-                                \App\Jobs\CompressAndStoreImage::dispatch($tempPath, $imagePath, $disk, $homecheckData->id, 1920, 85);
+                                // Process image compression (synchronously if queue is 'sync', otherwise queued)
+                                $this->processImageCompression($imagePath, $disk, $homecheckData->id, 1920, 85);
                                 
-                                \Log::info('New image queued for compression in new room', [
+                                \Log::info('Image saved and queued for compression in new room', [
                                     'homecheck_id' => $homecheckReport->id,
                                     'homecheck_data_id' => $homecheckData->id,
                                     'room_name' => $roomName,
+                                    'image_path' => $imagePath,
                                 ]);
                             } catch (\Exception $e) {
                                 \Log::error('Error uploading image to new HomeCheck room', [
@@ -2038,13 +2036,13 @@ class AdminController extends Controller
                             $is360 = isset($imagesIs360[$index]) && $imagesIs360[$index] == '1';
                             
                             try {
-                                $tempPath = 'temp/homechecks/' . $property->id . '/' . uniqid() . '_' . $image->getClientOriginalName();
-                                $tempStorage = \Storage::disk('local');
-                                $tempStorage->put($tempPath, file_get_contents($image->getRealPath()));
-                                
                                 $imageExtension = $image->getClientOriginalExtension();
                                 $imageFileName = uniqid() . '.' . $imageExtension;
                                 $targetPath = 'homechecks/' . $property->id . '/rooms/' . $roomName . '/' . ($is360 ? '360' : 'photos') . '/' . $imageFileName;
+                                
+                                // Save image immediately to final location (uncompressed) so it's accessible right away
+                                $targetStorage = \Storage::disk($disk);
+                                $targetStorage->put($targetPath, file_get_contents($image->getRealPath()));
                                 
                                 $homecheckData = \App\Models\HomecheckData::create([
                                     'property_id' => $property->id,
@@ -2055,13 +2053,14 @@ class AdminController extends Controller
                                     'created_at' => now(),
                                 ]);
                                 
-                                \Log::info('Dispatching CompressAndStoreImage job for room update', [
+                                \Log::info('Image saved and queued for compression in room update', [
                                     'homecheck_data_id' => $homecheckData->id,
                                     'disk' => $disk,
                                     'target_path' => $targetPath,
                                 ]);
                                 
-                                \App\Jobs\CompressAndStoreImage::dispatch($tempPath, $targetPath, $disk, $homecheckData->id, 1920, 85);
+                                // Process image compression (synchronously if queue is 'sync', otherwise queued)
+                                $this->processImageCompression($targetPath, $disk, $homecheckData->id, 1920, 85);
                             } catch (\Exception $e) {
                                 \Log::error('Error uploading image in room update: ' . $e->getMessage(), [
                                     'trace' => $e->getTraceAsString(),
@@ -2097,13 +2096,13 @@ class AdminController extends Controller
                         $is360 = isset($imagesIs360[$index]) && $imagesIs360[$index] == '1';
                         
                         try {
-                            $tempPath = 'temp/homechecks/' . $property->id . '/' . uniqid() . '_' . $image->getClientOriginalName();
-                            $tempStorage = \Storage::disk('local');
-                            $tempStorage->put($tempPath, file_get_contents($image->getRealPath()));
-                            
                             $imageExtension = $image->getClientOriginalExtension();
                             $imageFileName = uniqid() . '.' . $imageExtension;
                             $targetPath = 'homechecks/' . $property->id . '/rooms/' . $roomName . '/' . ($is360 ? '360' : 'photos') . '/' . $imageFileName;
+                            
+                            // Save image immediately to final location (uncompressed) so it's accessible right away
+                            $targetStorage = \Storage::disk($disk);
+                            $targetStorage->put($targetPath, file_get_contents($image->getRealPath()));
                             
                             $homecheckData = \App\Models\HomecheckData::create([
                                 'property_id' => $property->id,
@@ -2114,13 +2113,14 @@ class AdminController extends Controller
                                 'created_at' => now(),
                             ]);
                             
-                            \Log::info('Dispatching CompressAndStoreImage job for new room', [
+                            \Log::info('Image saved and queued for compression in new room', [
                                 'homecheck_data_id' => $homecheckData->id,
                                 'disk' => $disk,
                                 'target_path' => $targetPath,
                             ]);
                             
-                            \App\Jobs\CompressAndStoreImage::dispatch($tempPath, $targetPath, $disk, $homecheckData->id, 1920, 85);
+                                // Process image compression (synchronously if queue is 'sync', otherwise queued)
+                                $this->processImageCompression($targetPath, $disk, $homecheckData->id, 1920, 85);
                         } catch (\Exception $e) {
                             \Log::error('Error uploading image in new room: ' . $e->getMessage(), [
                                 'trace' => $e->getTraceAsString(),
@@ -2205,13 +2205,13 @@ class AdminController extends Controller
                             if (!$image || !$image->isValid()) continue;
                             
                             try {
-                                $tempPath = 'temp/homechecks/' . $property->id . '/' . uniqid() . '_' . $image->getClientOriginalName();
-                                $tempStorage = \Storage::disk('local');
-                                $tempStorage->put($tempPath, file_get_contents($image->getRealPath()));
-                                
                                 $imageExtension = $image->getClientOriginalExtension();
                                 $imageFileName = uniqid() . '.' . $imageExtension;
                                 $targetPath = 'homechecks/' . $property->id . '/rooms/' . $roomName . '/' . ($is360 ? '360' : 'photos') . '/' . $imageFileName;
+                                
+                                // Save image immediately to final location (uncompressed) so it's accessible right away
+                                $targetStorage = \Storage::disk($disk);
+                                $targetStorage->put($targetPath, file_get_contents($image->getRealPath()));
                                 
                                 $homecheckData = \App\Models\HomecheckData::create([
                                     'property_id' => $property->id,
@@ -2222,7 +2222,8 @@ class AdminController extends Controller
                                     'moisture_reading' => $moistureReading,
                                 ]);
                                 
-                                \App\Jobs\CompressAndStoreImage::dispatch($tempPath, $targetPath, $disk, $homecheckData->id, 1920, 85);
+                                // Process image compression (synchronously if queue is 'sync', otherwise queued)
+                                $this->processImageCompression($targetPath, $disk, $homecheckData->id, 1920, 85);
                             } catch (\Exception $e) {
                                 \Log::error('Error uploading image: ' . $e->getMessage());
                             }
@@ -2261,13 +2262,13 @@ class AdminController extends Controller
                             if (!$image || !$image->isValid()) continue;
                             
                             try {
-                                $tempPath = 'temp/homechecks/' . $property->id . '/' . uniqid() . '_' . $image->getClientOriginalName();
-                                $tempStorage = \Storage::disk('local');
-                                $tempStorage->put($tempPath, file_get_contents($image->getRealPath()));
-                                
                                 $imageExtension = $image->getClientOriginalExtension();
                                 $imageFileName = uniqid() . '.' . $imageExtension;
                                 $targetPath = 'homechecks/' . $property->id . '/rooms/' . $roomName . '/' . ($is360 ? '360' : 'photos') . '/' . $imageFileName;
+                                
+                                // Save image immediately to final location (uncompressed) so it's accessible right away
+                                $targetStorage = \Storage::disk($disk);
+                                $targetStorage->put($targetPath, file_get_contents($image->getRealPath()));
                                 
                                 $homecheckData = \App\Models\HomecheckData::create([
                                     'property_id' => $property->id,
@@ -2278,7 +2279,8 @@ class AdminController extends Controller
                                     'moisture_reading' => $moistureReading,
                                 ]);
                                 
-                                \App\Jobs\CompressAndStoreImage::dispatch($tempPath, $targetPath, $disk, $homecheckData->id, 1920, 85);
+                                // Process image compression (synchronously if queue is 'sync', otherwise queued)
+                                $this->processImageCompression($targetPath, $disk, $homecheckData->id, 1920, 85);
                             } catch (\Exception $e) {
                                 \Log::error('Error uploading image: ' . $e->getMessage());
                             }
@@ -3798,5 +3800,50 @@ class AdminController extends Controller
     private function getStorageDisk(): string
     {
         return $this->isS3Configured() ? 's3' : 'public';
+    }
+
+    /**
+     * Dispatch image compression job or process synchronously based on queue connection.
+     * 
+     * If QUEUE_CONNECTION is 'sync', the image will be processed immediately.
+     * Otherwise, it will be queued and requires a queue worker (php artisan queue:work).
+     * 
+     * @param string $imagePath Path to the image in storage
+     * @param string $disk Storage disk (s3 or public)
+     * @param int $homecheckDataId HomecheckData ID
+     * @param int $maxWidth Maximum width for compression
+     * @param int $quality JPEG quality 0-100
+     * @return void
+     */
+    private function processImageCompression($imagePath, $disk, $homecheckDataId, $maxWidth = 1920, $quality = 85): void
+    {
+        // If queue connection is 'sync', process immediately
+        // Otherwise, queue the job (requires php artisan queue:work to be running)
+        if (config('queue.default') === 'sync') {
+            // Process synchronously - image will be compressed immediately
+            try {
+                $job = new \App\Jobs\CompressAndStoreImage($imagePath, $disk, $homecheckDataId, $maxWidth, $quality);
+                $job->handle();
+                \Log::info('Image compressed synchronously', [
+                    'homecheck_data_id' => $homecheckDataId,
+                    'image_path' => $imagePath,
+                ]);
+            } catch (\Exception $e) {
+                \Log::error('Synchronous image compression failed', [
+                    'homecheck_data_id' => $homecheckDataId,
+                    'image_path' => $imagePath,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        } else {
+            // Queue the job for background processing
+            // NOTE: Requires 'php artisan queue:work' to be running to process queued jobs
+            \App\Jobs\CompressAndStoreImage::dispatch($imagePath, $disk, $homecheckDataId, $maxWidth, $quality);
+            \Log::info('Image compression queued', [
+                'homecheck_data_id' => $homecheckDataId,
+                'image_path' => $imagePath,
+                'queue_connection' => config('queue.default'),
+            ]);
+        }
     }
 }
