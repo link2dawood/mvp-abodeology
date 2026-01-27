@@ -6,10 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Constants\EmailActions;
 use App\Models\EmailTemplate;
 use App\Models\EmailTemplateAssignment;
-use App\Models\EmailWidget;
 use App\Services\EmailTemplateService;
 use App\Services\EmailVariableResolver;
-use App\Services\SettingsService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -26,37 +24,7 @@ class EmailTemplateController extends Controller
             ->orderByDesc('created_at')
             ->paginate(20);
 
-        $widgetsCount = EmailWidget::count();
-        $activeWidgetsCount = EmailWidget::where('is_active', true)->count();
-
-        // Check for multiple active templates per action
-        $activeTemplatesByAction = EmailTemplate::query()
-            ->where('is_active', true)
-            ->selectRaw('action, COUNT(*) as count')
-            ->groupBy('action')
-            ->having('count', '>', 1)
-            ->pluck('count', 'action')
-            ->toArray();
-
-        // Get which template is currently being used for each action
-        $templateService = app(EmailTemplateService::class);
-        $activeActions = array_keys($activeTemplatesByAction);
-        $currentlyUsedTemplates = [];
-        
-        foreach ($activeActions as $action) {
-            $usedTemplate = $templateService->getTemplateForAction($action);
-            if ($usedTemplate) {
-                $currentlyUsedTemplates[$action] = $usedTemplate->id;
-            }
-        }
-
-        return view('admin.email-templates.index', compact(
-            'templates', 
-            'widgetsCount', 
-            'activeWidgetsCount',
-            'activeTemplatesByAction',
-            'currentlyUsedTemplates'
-        ));
+        return view('admin.email-templates.index', compact('templates'));
     }
 
     /**
@@ -65,16 +33,8 @@ class EmailTemplateController extends Controller
     public function create(): View
     {
         $actions = $this->getEmailActions();
-        $widgets = EmailWidget::query()
-            ->active()
-            ->ordered()
-            ->get()
-            ->groupBy('category');
-        
-        $settingsService = app(SettingsService::class);
-        $logoUrl = $settingsService->getLogoUrl();
 
-        return view('admin.email-templates.create', compact('actions', 'widgets', 'logoUrl'));
+        return view('admin.email-templates.create', compact('actions'));
     }
 
     /**
@@ -119,16 +79,8 @@ class EmailTemplateController extends Controller
         $template = EmailTemplate::findOrFail($id);
 
         $actions = $this->getEmailActions();
-        $widgets = EmailWidget::query()
-            ->active()
-            ->ordered()
-            ->get()
-            ->groupBy('category');
-        
-        $settingsService = app(SettingsService::class);
-        $logoUrl = $settingsService->getLogoUrl();
 
-        return view('admin.email-templates.edit', compact('template', 'actions', 'widgets', 'logoUrl'));
+        return view('admin.email-templates.edit', compact('template', 'actions'));
     }
 
     /**
@@ -233,64 +185,6 @@ class EmailTemplateController extends Controller
         return response()->json([
             'action' => $action,
             'variables' => $variables,
-        ]);
-    }
-
-    /**
-     * Display a listing of all email widgets.
-     */
-    public function widgets(): View
-    {
-        $widgets = EmailWidget::query()
-            ->orderBy('category')
-            ->orderBy('sort_order')
-            ->orderBy('name')
-            ->get()
-            ->groupBy('category');
-
-        return view('admin.email-templates.widgets', compact('widgets'));
-    }
-
-    /**
-     * Get active template for a specific action (AJAX endpoint).
-     */
-    public function getByAction(Request $request)
-    {
-        $action = $request->query('action');
-        
-        if (!$action) {
-            return response()->json(['error' => 'Action parameter is required'], 400);
-        }
-
-        $templateService = app(EmailTemplateService::class);
-        $template = $templateService->getTemplateForAction($action);
-
-        if (!$template) {
-            return response()->json(['template' => null, 'message' => 'No active template found for this action']);
-        }
-
-        // Get all widgets to help identify which widgets are used in the template
-        $allWidgets = EmailWidget::active()->ordered()->get();
-        
-        $settingsService = app(SettingsService::class);
-        $logoUrl = $settingsService->getLogoUrl();
-        
-        return response()->json([
-            'template' => [
-                'id' => $template->id,
-                'name' => $template->name,
-                'subject' => $template->subject,
-                'body' => $template->body,
-            ],
-            'widgets' => $allWidgets->map(function($widget) {
-                return [
-                    'id' => $widget->id,
-                    'key' => $widget->key,
-                    'name' => $widget->name,
-                    'html' => $widget->html,
-                ];
-            }),
-            'logoUrl' => $logoUrl,
         ]);
     }
 
