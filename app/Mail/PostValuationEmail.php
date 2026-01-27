@@ -2,8 +2,10 @@
 
 namespace App\Mail;
 
+use App\Constants\EmailActions;
 use App\Models\User;
 use App\Models\Property;
+use App\Services\EmailTemplateService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
@@ -31,8 +33,24 @@ class PostValuationEmail extends Mailable
      */
     public function envelope(): Envelope
     {
+        $defaultSubject = 'Post-Valuation Follow-Up - ' . $this->property->address;
+
+        /** @var EmailTemplateService $templateService */
+        $templateService = app(EmailTemplateService::class);
+
+        $data = [
+            'seller' => $this->seller,
+            'property' => $this->property,
+        ];
+
+        $template = $templateService->getTemplateForAction(EmailActions::POST_VALUATION, $data);
+
+        $subject = $template && $template->subject
+            ? $templateService->renderSubject($template, $data)
+            : $defaultSubject;
+
         return new Envelope(
-            subject: 'Post-Valuation Follow-Up - ' . $this->property->address,
+            subject: $subject,
         );
     }
 
@@ -41,13 +59,26 @@ class PostValuationEmail extends Mailable
      */
     public function content(): Content
     {
+        /** @var EmailTemplateService $templateService */
+        $templateService = app(EmailTemplateService::class);
+
+        $data = [
+            'seller' => $this->seller,
+            'property' => $this->property,
+            'instructUrl' => route('seller.instruct', $this->property->id),
+        ];
+
+        $template = $templateService->getTemplateForAction(EmailActions::POST_VALUATION, $data);
+
+        if ($template && $template->template_type === 'override') {
+            return new Content(
+                htmlString: $templateService->renderTemplate($template, $data),
+            );
+        }
+
         return new Content(
             view: 'emails.post-valuation',
-            with: [
-                'seller' => $this->seller,
-                'property' => $this->property,
-                'instructUrl' => route('seller.instruct', $this->property->id),
-            ],
+            with: $data,
         );
     }
 
