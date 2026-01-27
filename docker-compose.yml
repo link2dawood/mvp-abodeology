@@ -10,7 +10,7 @@ services:
     volumes:
       - ./:/var/www/html
     ports:
-      - "8000:8000"
+      - "8005:8005"
     depends_on:
       db:
         condition: service_healthy
@@ -34,7 +34,7 @@ services:
       php artisan config:clear &&
       php artisan cache:clear &&
       php artisan migrate --force &&
-      php artisan serve --host=0.0.0.0 --port=8000
+      php artisan serve --host=0.0.0.0 --port=8005
       "
 
   db:
