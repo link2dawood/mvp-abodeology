@@ -574,49 +574,12 @@
             });
 
             // Remove ", UK" in real-time as user types or when autocomplete suggestions appear
-            addressInput.addEventListener('focus', function() {
-                setupPacObserver();
-                setTimeout(cleanAutocompleteDropdown, 100);
-            });
-            
-            // Real-time removal as user types
-            addressInput.addEventListener('input', function() {
-                setTimeout(cleanAutocompleteDropdown, 50);
-                let value = this.value;
-                const originalValue = value;
-                // Remove UK from anywhere in the string (not just end)
-                value = value.replace(/,\s*UK\s*/gi, ', ').replace(/,\s*United Kingdom\s*/gi, ', ').trim();
-                // Clean up any double commas or trailing commas
-                value = value.replace(/,\s*,/g, ',').replace(/,\s*$/g, '').trim();
-                if (value !== originalValue) {
-                    const cursorPos = this.selectionStart;
-                    this.value = value;
-                    // Try to maintain cursor position
-                    const newCursorPos = Math.max(0, cursorPos - (originalValue.length - value.length));
-                    this.setSelectionRange(newCursorPos, newCursorPos);
-                }
-            });
-            
-            // Also remove ", UK" on blur
-            addressInput.addEventListener('blur', function() {
-                let value = this.value.trim();
-                value = value.replace(/,\s*UK\s*$/i, '').replace(/,\s*United Kingdom\s*$/i, '').trim();
-                if (value !== this.value) {
-                    this.value = value;
-                }
-                // Clean up observer
-                setTimeout(function() {
-                    if (pacObserver) {
-                        pacObserver.disconnect();
-                        pacObserver = null;
-                    }
-                }, 500);
-            });
-            
-            // Continuous cleanup of dropdown while visible
             let dropdownCleanupInterval = null;
             
             addressInput.addEventListener('focus', function() {
+                setupPacObserver();
+                setTimeout(cleanAutocompleteDropdown, 100);
+                
                 // Start continuous cleanup when input is focused
                 if (!dropdownCleanupInterval) {
                     dropdownCleanupInterval = setInterval(function() {
@@ -666,14 +629,47 @@
                 }
             });
             
-            // Clean up interval when input loses focus
+            // Real-time removal as user types
+            addressInput.addEventListener('input', function() {
+                setTimeout(cleanAutocompleteDropdown, 50);
+                let value = this.value;
+                const originalValue = value;
+                // Remove UK from anywhere in the string (not just end)
+                value = value.replace(/,\s*UK\s*/gi, ', ').replace(/,\s*United Kingdom\s*/gi, ', ').trim();
+                // Clean up any double commas or trailing commas
+                value = value.replace(/,\s*,/g, ',').replace(/,\s*$/g, '').trim();
+                if (value !== originalValue) {
+                    const cursorPos = this.selectionStart;
+                    this.value = value;
+                    // Try to maintain cursor position
+                    const newCursorPos = Math.max(0, cursorPos - (originalValue.length - value.length));
+                    this.setSelectionRange(newCursorPos, newCursorPos);
+                }
+            });
+            
+            // Also remove ", UK" on blur and clean up intervals/observers
             addressInput.addEventListener('blur', function() {
+                let value = this.value.trim();
+                value = value.replace(/,\s*UK\s*$/i, '').replace(/,\s*United Kingdom\s*$/i, '').trim();
+                if (value !== this.value) {
+                    this.value = value;
+                }
+                
+                // Clean up interval
                 setTimeout(function() {
                     if (dropdownCleanupInterval) {
                         clearInterval(dropdownCleanupInterval);
                         dropdownCleanupInterval = null;
                     }
                 }, 300);
+                
+                // Clean up observer
+                setTimeout(function() {
+                    if (pacObserver) {
+                        pacObserver.disconnect();
+                        pacObserver = null;
+                    }
+                }, 500);
             });
 
             // Initialize autocomplete for vendor address (if different from property)
@@ -777,16 +773,90 @@
                     });
                 }
 
+                // Continuous cleanup of vendor address dropdown while visible
+                let vendorDropdownCleanupInterval = null;
+                
                 vendorAddressInput.addEventListener('focus', function() {
                     setupVendorPacObserver();
                     setTimeout(cleanVendorAutocompleteDropdown, 100);
+                    
+                    // Start continuous cleanup when input is focused
+                    if (!vendorDropdownCleanupInterval) {
+                        vendorDropdownCleanupInterval = setInterval(function() {
+                            const pacContainer = document.querySelector('.pac-container');
+                            if (pacContainer && pacContainer.style.display !== 'none') {
+                                const pacItems = pacContainer.querySelectorAll('.pac-item');
+                                pacItems.forEach(function(item) {
+                                    const allText = item.textContent || item.innerText || '';
+                                    if (allText.includes('UK') || allText.includes('United Kingdom')) {
+                                        const walker = document.createTreeWalker(
+                                            item,
+                                            NodeFilter.SHOW_TEXT,
+                                            null,
+                                            false
+                                        );
+                                        
+                                        let node;
+                                        while (node = walker.nextNode()) {
+                                            if (node.textContent) {
+                                                const cleaned = node.textContent.replace(/,\s*UK\s*/gi, ', ').replace(/,\s*United Kingdom\s*/gi, ', ').trim();
+                                                if (cleaned !== node.textContent) {
+                                                    node.textContent = cleaned;
+                                                }
+                                            }
+                                        }
+                                        
+                                        const querySpan = item.querySelector('.pac-item-query');
+                                        const matchedSpan = item.querySelector('.pac-matched');
+                                        if (querySpan) {
+                                            let queryText = querySpan.textContent || '';
+                                            queryText = queryText.replace(/,\s*UK\s*/gi, ', ').replace(/,\s*United Kingdom\s*/gi, ', ').trim();
+                                            querySpan.textContent = queryText;
+                                        }
+                                        if (matchedSpan) {
+                                            let matchedText = matchedSpan.textContent || '';
+                                            matchedText = matchedText.replace(/,\s*UK\s*/gi, ', ').replace(/,\s*United Kingdom\s*/gi, ', ').trim();
+                                            matchedSpan.textContent = matchedText;
+                                        }
+                                    }
+                                });
+                            }
+                        }, 100);
+                    }
                 });
 
                 vendorAddressInput.addEventListener('input', function() {
                     setTimeout(cleanVendorAutocompleteDropdown, 50);
+                    let value = this.value;
+                    const originalValue = value;
+                    // Remove UK from anywhere in the string
+                    value = value.replace(/,\s*UK\s*/gi, ', ').replace(/,\s*United Kingdom\s*/gi, ', ').trim();
+                    // Clean up any double commas or trailing commas
+                    value = value.replace(/,\s*,/g, ',').replace(/,\s*$/g, '').trim();
+                    if (value !== originalValue) {
+                        const cursorPos = this.selectionStart;
+                        this.value = value;
+                        const newCursorPos = Math.max(0, cursorPos - (originalValue.length - value.length));
+                        this.setSelectionRange(newCursorPos, newCursorPos);
+                    }
                 });
                 
                 vendorAddressInput.addEventListener('blur', function() {
+                    let value = this.value.trim();
+                    value = value.replace(/,\s*UK\s*$/i, '').replace(/,\s*United Kingdom\s*$/i, '').trim();
+                    if (value !== this.value) {
+                        this.value = value;
+                    }
+                    
+                    // Clean up interval
+                    setTimeout(function() {
+                        if (vendorDropdownCleanupInterval) {
+                            clearInterval(vendorDropdownCleanupInterval);
+                            vendorDropdownCleanupInterval = null;
+                        }
+                    }, 300);
+                    
+                    // Clean up observer
                     setTimeout(function() {
                         if (vendorPacObserver) {
                             vendorPacObserver.disconnect();
@@ -854,89 +924,6 @@
                     formattedAddress = formattedAddress.replace(/,\s*UK\s*$/i, '').replace(/,\s*United Kingdom\s*$/i, '').trim();
                     
                     vendorAddressInput.value = formattedAddress;
-                });
-
-                // Remove ", UK" in real-time for vendor address
-                // Real-time removal as user types
-                vendorAddressInput.addEventListener('input', function() {
-                    let value = this.value;
-                    const originalValue = value;
-                    // Remove UK from anywhere in the string
-                    value = value.replace(/,\s*UK\s*/gi, ', ').replace(/,\s*United Kingdom\s*/gi, ', ').trim();
-                    // Clean up any double commas or trailing commas
-                    value = value.replace(/,\s*,/g, ',').replace(/,\s*$/g, '').trim();
-                    if (value !== originalValue) {
-                        const cursorPos = this.selectionStart;
-                        this.value = value;
-                        const newCursorPos = Math.max(0, cursorPos - (originalValue.length - value.length));
-                        this.setSelectionRange(newCursorPos, newCursorPos);
-                    }
-                });
-                
-                // Also remove ", UK" on blur
-                vendorAddressInput.addEventListener('blur', function() {
-                    let value = this.value.trim();
-                    value = value.replace(/,\s*UK\s*$/i, '').replace(/,\s*United Kingdom\s*$/i, '').trim();
-                    if (value !== this.value) {
-                        this.value = value;
-                    }
-                });
-                
-                // Continuous cleanup of vendor address dropdown while visible
-                let vendorDropdownCleanupInterval = null;
-                
-                vendorAddressInput.addEventListener('focus', function() {
-                    if (!vendorDropdownCleanupInterval) {
-                        vendorDropdownCleanupInterval = setInterval(function() {
-                            const pacContainer = document.querySelector('.pac-container');
-                            if (pacContainer && pacContainer.style.display !== 'none') {
-                                const pacItems = pacContainer.querySelectorAll('.pac-item');
-                                pacItems.forEach(function(item) {
-                                    const allText = item.textContent || item.innerText || '';
-                                    if (allText.includes('UK') || allText.includes('United Kingdom')) {
-                                        const walker = document.createTreeWalker(
-                                            item,
-                                            NodeFilter.SHOW_TEXT,
-                                            null,
-                                            false
-                                        );
-                                        
-                                        let node;
-                                        while (node = walker.nextNode()) {
-                                            if (node.textContent) {
-                                                const cleaned = node.textContent.replace(/,\s*UK\s*/gi, ', ').replace(/,\s*United Kingdom\s*/gi, ', ').trim();
-                                                if (cleaned !== node.textContent) {
-                                                    node.textContent = cleaned;
-                                                }
-                                            }
-                                        }
-                                        
-                                        const querySpan = item.querySelector('.pac-item-query');
-                                        const matchedSpan = item.querySelector('.pac-matched');
-                                        if (querySpan) {
-                                            let queryText = querySpan.textContent || '';
-                                            queryText = queryText.replace(/,\s*UK\s*/gi, ', ').replace(/,\s*United Kingdom\s*/gi, ', ').trim();
-                                            querySpan.textContent = queryText;
-                                        }
-                                        if (matchedSpan) {
-                                            let matchedText = matchedSpan.textContent || '';
-                                            matchedText = matchedText.replace(/,\s*UK\s*/gi, ', ').replace(/,\s*United Kingdom\s*/gi, ', ').trim();
-                                            matchedSpan.textContent = matchedText;
-                                        }
-                                    }
-                                });
-                            }
-                        }, 100);
-                    }
-                });
-                
-                vendorAddressInput.addEventListener('blur', function() {
-                    setTimeout(function() {
-                        if (vendorDropdownCleanupInterval) {
-                            clearInterval(vendorDropdownCleanupInterval);
-                            vendorDropdownCleanupInterval = null;
-                        }
-                    }, 300);
                 });
             }
 
