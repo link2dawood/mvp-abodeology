@@ -264,6 +264,9 @@
             <a href="{{ route('admin.properties.index') }}">Properties</a>
             <a href="{{ route('admin.homechecks.index') }}">HomeChecks</a>
             <a href="{{ route('admin.aml-checks.index') }}">AML Checks</a>
+            @if(auth()->user()->role === 'admin')
+                <a href="{{ route('admin.email-templates.index') }}">Email Templates</a>
+            @endif
             <a href="{{ route('profile.show') }}">Profile</a>
             <a href="{{ route('admin.notifications') }}">Notifications</a>
             @if(auth()->user()->role === 'admin')

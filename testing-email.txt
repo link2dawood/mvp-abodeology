@@ -1,0 +1,160 @@
+Goal
+Create a full testing plan for the new Email Templates Management System, focusing on root-cause behaviour (not hacks/patches) across database, admin UI, template resolution, and email sending.
+1. Database & Model Layer
+Migrations
+Verify: php artisan migrate runs cleanly in your environment.
+Check schema (via DB client / php artisan tinker):
+email_templates has: name, action, subject, body, template_type, is_active, variables (JSON), created_by, timestamps.
+email_template_assignments has: action, template_id, is_active, timestamps.
+Models
+From tinker, assert:
+EmailTemplate::first()->creator returns a User.
+EmailTemplate::first()->assignments returns a collection.
+EmailTemplateAssignment::first()->template returns an EmailTemplate.
+Root-cause check: structure correctly supports multiple templates + assignments per action without needing code workarounds.
+2. Admin UI & Permissions
+Access control
+Login as admin:
+See “Email Templates” in admin nav.
+Routes under admin/email-templates/* all load without 403.
+Login as agent:
+Confirm “Email Templates” link is NOT visible.
+Directly hitting admin/email-templates returns 403 (or redirect) – only admins allowed.
+Basic CRUD
+Create a template:
+Fill name, action (e.g. new_offer), subject, body.
+Ensure validation errors show correctly when fields missing.
+Edit template:
+Save changes, confirm they reflect in DB.
+Delete template:
+Ensure it’s removed and assignments referencing it are handled cleanly (no crashes, no orphan logic errors).
+Pagination & list
+With several templates created, confirm:
+Index page lists them.
+Pagination links work.
+Root-cause check: UI respects roles and persists data correctly; no hidden reliance on hard-coded templates.
+3. Template Builder & Variables
+Summernote editor
+Confirm editor loads, toolbar works (bold, links, images, tables, code view).
+Copy/paste HTML and verify it persists correctly.
+Variable insertion
+Use the Variables helper:
+Type property.address → Click Insert → check editor contains {{property.address}}.
+Manually insert nested variables like {{offer.offer_amount}} and {{buyer.name}}.
+Variable resolution
+In DB (or via UI), set template:
+Subject: New Offer - {{property.address}}
+Body: Buyer: {{buyer.name}}, Amount: {{offer.offer_amount}}
+Trigger a real New Offer flow in the app (using existing flow):
+Confirm email content replaces these correctly (no raw {{...}} appearing).
+Root-cause check: variable handling comes from shared service (renderStringWithData) – not duplicated logic per mail class.
+4. Template Resolution Logic
+For each major action, verify override vs fallback behavior:
+General pattern per action (example: NEW_OFFER)
+No template present:
+Delete/disable templates for new_offer.
+Trigger new offer email.
+Confirm:
+Subject is the original hard-coded one.
+Body uses original Blade view.
+Template present, template_type = override:
+Create active template for action = new_offer with clear unique text.
+Optionally create an assignment record.
+Trigger email:
+Body uses HTML from template, not Blade.
+Subject:
+If template.subject set → uses rendered template subject.
+If template.subject empty → falls back to original subject.
+Multiple templates & assignments:
+More than one email_templates row for new_offer.
+Multiple email_template_assignments for that action.
+Ensure:
+Only latest active assignment determines which template is used.
+If all assignments inactive, falls back to latest active template for that action.
+Repeat this pattern for key actions:
+INSTRUCTION_REQUEST
+WELCOME_PACK
+POST_VALUATION
+VALUATION_REQUEST
+VALUATION_LOGIN_CREDENTIALS
+VIEWING_REQUEST, VIEWING_CONFIRMED, VIEWING_ASSIGNED
+NEW_OFFER, OFFER_DECISION, OFFER_AMOUNT_RELEASED, OFFER_DISCUSSION_REQUEST
+MEMORANDUM_OF_SALE, MEMORANDUM_PENDING_INFO
+PROPERTY_STATUS_CHANGED
+PVA_CREATED
+Root-cause check: all mail classes use a single central rule (EmailTemplateService::getTemplateForAction) so future changes to selection logic only happen in one place.
+5. Subject Line Management
+For a few representative mailers:
+NewOfferNotification
+Case 1: No template:
+Seller not yet released: ensure original seller subject (no amount) still correct.
+Buyer/released: ensure original subject with amount.
+Case 2: Template with subject:
+Set subject: Offer on {{property.address}} - £{{offer.offer_amount}}.
+Ensure:
+Subject matches rendered template subject.
+Seller conditions (released or not) don’t break – they’re only the fallback.
+PropertyStatusChangedNotification
+Template subject: {{status | upper}} - {{property.address}} (test variations).
+Verify at least one template per type uses subject variables (property, buyer, status, etc.).
+Root-cause check: envelope() fallback is always original subject; template subject is optional enhancement, not a risky patch.
+6. Preview & Sample Data
+On EmailTemplateController@show:
+Use preview JSON:
+Valid JSON: confirm preview renders variables correctly.
+Invalid JSON: confirm graceful failure (no fatal error, ideally shows empty or previous body).
+Device toggle
+Switch Desktop/Mobile in preview and confirm layout width changes only the container styling, not content logic.
+Root-cause check: preview uses the same service (EmailTemplateService + EmailVariableResolver) as real emails, so you’re not testing a separate “preview-only” path.
+7. Error Handling & Edge Cases
+Inactive templates
+Set template is_active = false:
+Confirm system falls back to:
+Another active template if available, else
+Original Blade + hard-coded subject.
+Assignments deactivation
+Deactivate all assignments for a given action:
+Confirm fallback to latest active template for that action only.
+Missing variables in body
+Use a variable in the template body that won’t exist in $data:
+Confirm it becomes empty string, no exception.
+Missing variables in subject
+Same test for subject: ensure no runtime error; just blanks.
+Root-cause check: variable resolution is resilient; we avoid future “random email crash” due to template changes.
+8. Security & Access
+Admin-only access
+Hit all email-template routes as:
+Guest → redirected to login.
+Logged-in non-admin (buyer/seller/pva) → 403 or redirect.
+XSS safety (at least manual check)
+In body, insert <script>alert('xss')</script> and send to your own test mailbox:
+Check how it renders in email clients.
+(Later you can add a purifier library, but this is a separate project decision.)
+Root-cause check: only trusted admins can inject HTML; no silent public content entry here.
+9. Integration with Real Flows
+Run through real, end-to-end flows in staging:
+Valuation booking → check valuation-related mails.
+Seller onboarding + instruction → instruction, welcome pack, post-valuation emails.
+Buyer viewing → viewing request / confirmed / assigned emails.
+Offers → new offer, decision, amount released, discussion request.
+Sales progression → memorandum emails & property-status-changed.
+For each, test:
+With no template (pure legacy).
+With one active override template.
+With assigned template.
+Log for each email sent:
+Which template was selected (or fallback).
+Final subject and a quick glance at body.
+10. Regression & Maintenance
+Automated tests (when you’re ready):
+Write PHPUnit tests around:
+EmailTemplateService::getTemplateForAction()
+renderTemplate() and renderSubject()
+A couple of mailers (e.g. NewOfferNotification, InstructionRequestNotification) to verify:
+Subject fallback vs template override.
+Content fallback vs override.
+Future-proofing
+Any time you add a new Mail class:
+Add an EmailActions::CONSTANT.
+Add a corresponding template/action in UI.
+Ensure mailable uses EmailTemplateService in both envelope() and content().

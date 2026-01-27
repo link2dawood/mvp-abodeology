@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\Admin\EmailTemplateController;
 
 Route::get('/', function () {
     // If user is authenticated, redirect to their dashboard
@@ -132,6 +133,20 @@ Route::middleware(['auth', 'role.web:admin,agent'])->prefix('admin')->name('admi
     
     // Offer Management Routes
     Route::post('/offers/{id}/release', [App\Http\Controllers\AdminController::class, 'releaseOfferToSeller'])->name('offers.release');
+
+    // Email Template Management Routes (Admin only)
+    Route::middleware(['role.web:admin'])->prefix('email-templates')->name('email-templates.')->group(function () {
+        Route::get('/', [EmailTemplateController::class, 'index'])->name('index');
+        Route::get('/create', [EmailTemplateController::class, 'create'])->name('create');
+        Route::post('/', [EmailTemplateController::class, 'store'])->name('store');
+        Route::get('/{id}', [EmailTemplateController::class, 'show'])->name('show');
+        Route::get('/{id}/edit', [EmailTemplateController::class, 'edit'])->name('edit');
+        Route::put('/{id}', [EmailTemplateController::class, 'update'])->name('update');
+        Route::delete('/{id}', [EmailTemplateController::class, 'destroy'])->name('destroy');
+        Route::post('/{id}/preview', [EmailTemplateController::class, 'preview'])->name('preview');
+        Route::post('/{id}/assign', [EmailTemplateController::class, 'assign'])->name('assign');
+        Route::get('/actions/{action}/variables', [EmailTemplateController::class, 'getVariables'])->name('variables');
+    });
 });
 
 // Allow sellers to view their own live listings (must be before buyer routes to take precedence)

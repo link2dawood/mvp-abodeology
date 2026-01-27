@@ -2,8 +2,10 @@
 
 namespace App\Mail;
 
+use App\Constants\EmailActions;
 use App\Models\Offer;
 use App\Models\Property;
+use App\Services\EmailTemplateService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
@@ -37,8 +39,26 @@ class MemorandumOfSale extends Mailable
      */
     public function envelope(): Envelope
     {
+        $defaultSubject = 'Memorandum of Sale - ' . $this->property->address;
+
+        /** @var EmailTemplateService $templateService */
+        $templateService = app(EmailTemplateService::class);
+
+        $data = [
+            'offer' => $this->offer,
+            'property' => $this->property,
+            'memorandumPath' => $this->memorandumPath,
+            'recipientType' => $this->recipientType,
+        ];
+
+        $template = $templateService->getTemplateForAction(EmailActions::MEMORANDUM_OF_SALE, $data);
+
+        $subject = $template && $template->subject
+            ? $templateService->renderSubject($template, $data)
+            : $defaultSubject;
+
         return new Envelope(
-            subject: 'Memorandum of Sale - ' . $this->property->address,
+            subject: $subject,
         );
     }
 
@@ -47,8 +67,27 @@ class MemorandumOfSale extends Mailable
      */
     public function content(): Content
     {
+        /** @var EmailTemplateService $templateService */
+        $templateService = app(EmailTemplateService::class);
+
+        $data = [
+            'offer' => $this->offer,
+            'property' => $this->property,
+            'memorandumPath' => $this->memorandumPath,
+            'recipientType' => $this->recipientType,
+        ];
+
+        $template = $templateService->getTemplateForAction(EmailActions::MEMORANDUM_OF_SALE, $data);
+
+        if ($template && $template->template_type === 'override') {
+            return new Content(
+                htmlString: $templateService->renderTemplate($template, $data),
+            );
+        }
+
         return new Content(
             view: 'emails.memorandum-of-sale',
+            with: $data,
         );
     }
 
