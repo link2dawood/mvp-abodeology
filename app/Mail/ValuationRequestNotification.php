@@ -2,7 +2,9 @@
 
 namespace App\Mail;
 
+use App\Constants\EmailActions;
 use App\Models\Valuation;
+use App\Services\EmailTemplateService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -29,8 +31,24 @@ class ValuationRequestNotification extends Mailable
      */
     public function envelope(): Envelope
     {
+        $defaultSubject = 'New Valuation Appointment Request - ' . $this->valuation->property_address;
+
+        /** @var EmailTemplateService $templateService */
+        $templateService = app(EmailTemplateService::class);
+
+        $data = [
+            'valuation' => $this->valuation,
+            'seller' => $this->valuation->seller,
+        ];
+
+        $template = $templateService->getTemplateForAction(EmailActions::VALUATION_REQUEST, $data);
+
+        $subject = $template && $template->subject
+            ? $templateService->renderSubject($template, $data)
+            : $defaultSubject;
+
         return new Envelope(
-            subject: 'New Valuation Appointment Request - ' . $this->valuation->property_address,
+            subject: $subject,
         );
     }
 
@@ -39,13 +57,26 @@ class ValuationRequestNotification extends Mailable
      */
     public function content(): Content
     {
+        /** @var EmailTemplateService $templateService */
+        $templateService = app(EmailTemplateService::class);
+
+        $data = [
+            'valuation' => $this->valuation,
+            'seller' => $this->valuation->seller,
+            'dashboardUrl' => route('admin.dashboard'),
+        ];
+
+        $template = $templateService->getTemplateForAction(EmailActions::VALUATION_REQUEST, $data);
+
+        if ($template && $template->template_type === 'override') {
+            return new Content(
+                htmlString: $templateService->renderTemplate($template, $data),
+            );
+        }
+
         return new Content(
             view: 'emails.valuation-request-notification',
-            with: [
-                'valuation' => $this->valuation,
-                'seller' => $this->valuation->seller,
-                'dashboardUrl' => route('admin.dashboard'),
-            ],
+            with: $data,
         );
     }
 

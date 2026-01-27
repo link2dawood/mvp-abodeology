@@ -2,9 +2,11 @@
 
 namespace App\Mail;
 
+use App\Constants\EmailActions;
 use App\Models\Viewing;
 use App\Models\Property;
 use App\Models\User;
+use App\Services\EmailTemplateService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
@@ -36,10 +38,26 @@ class ViewingConfirmed extends Mailable
      */
     public function envelope(): Envelope
     {
-        $subject = $this->recipientRole === 'buyer'
+        $defaultSubject = $this->recipientRole === 'buyer'
             ? 'Viewing Confirmed - ' . $this->property->address
             : 'Viewing Confirmed for Your Property - ' . $this->property->address;
-        
+
+        /** @var EmailTemplateService $templateService */
+        $templateService = app(EmailTemplateService::class);
+
+        $data = [
+            'viewing' => $this->viewing,
+            'property' => $this->property,
+            'recipient' => $this->recipient,
+            'recipientRole' => $this->recipientRole,
+        ];
+
+        $template = $templateService->getTemplateForAction(EmailActions::VIEWING_CONFIRMED, $data);
+
+        $subject = $template && $template->subject
+            ? $templateService->renderSubject($template, $data)
+            : $defaultSubject;
+
         return new Envelope(
             subject: $subject,
         );
@@ -50,8 +68,27 @@ class ViewingConfirmed extends Mailable
      */
     public function content(): Content
     {
+        /** @var EmailTemplateService $templateService */
+        $templateService = app(EmailTemplateService::class);
+
+        $data = [
+            'viewing' => $this->viewing,
+            'property' => $this->property,
+            'recipient' => $this->recipient,
+            'recipientRole' => $this->recipientRole,
+        ];
+
+        $template = $templateService->getTemplateForAction(EmailActions::VIEWING_CONFIRMED, $data);
+
+        if ($template && $template->template_type === 'override') {
+            return new Content(
+                htmlString: $templateService->renderTemplate($template, $data),
+            );
+        }
+
         return new Content(
             view: 'emails.viewing-confirmed',
+            with: $data,
         );
     }
 
