@@ -1,0 +1,9 @@
+repos:
+  - repo: local
+    hooks:
+      - id: php-tests
+        name: Run Laravel test suite (composer test)
+        entry: composer test
+        language: system
+        pass_filenames: false
+
