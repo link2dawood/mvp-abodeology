@@ -2,9 +2,11 @@
 
 namespace App\Mail;
 
+use App\Constants\EmailActions;
 use App\Models\Offer;
 use App\Models\Property;
 use App\Models\User;
+use App\Services\EmailTemplateService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
@@ -43,8 +45,26 @@ class OfferDiscussionRequest extends Mailable
             'asap' => 'ASAP - Immediate'
         ][$urgency] ?? 'Normal Priority';
 
+        $defaultSubject = '[' . $urgencyText . '] Seller Discussion Request - Offer on ' . $this->property->address;
+
+        /** @var EmailTemplateService $templateService */
+        $templateService = app(EmailTemplateService::class);
+
+        $data = [
+            'offer' => $this->offer,
+            'property' => $this->property,
+            'seller' => $this->seller,
+            'requestData' => $this->requestData,
+        ];
+
+        $template = $templateService->getTemplateForAction(EmailActions::OFFER_DISCUSSION_REQUEST, $data);
+
+        $subject = $template && $template->subject
+            ? $templateService->renderSubject($template, $data)
+            : $defaultSubject;
+
         return new Envelope(
-            subject: '[' . $urgencyText . '] Seller Discussion Request - Offer on ' . $this->property->address,
+            subject: $subject,
         );
     }
 
@@ -53,8 +73,27 @@ class OfferDiscussionRequest extends Mailable
      */
     public function content(): Content
     {
+        /** @var EmailTemplateService $templateService */
+        $templateService = app(EmailTemplateService::class);
+
+        $data = [
+            'offer' => $this->offer,
+            'property' => $this->property,
+            'seller' => $this->seller,
+            'requestData' => $this->requestData,
+        ];
+
+        $template = $templateService->getTemplateForAction(EmailActions::OFFER_DISCUSSION_REQUEST, $data);
+
+        if ($template && $template->template_type === 'override') {
+            return new Content(
+                htmlString: $templateService->renderTemplate($template, $data),
+            );
+        }
+
         return new Content(
             view: 'emails.offer-discussion-request',
+            with: $data,
         );
     }
 

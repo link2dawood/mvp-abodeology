@@ -2,8 +2,10 @@
 
 namespace App\Mail;
 
+use App\Constants\EmailActions;
 use App\Models\User;
 use App\Models\Property;
+use App\Services\EmailTemplateService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -36,12 +38,28 @@ class PropertyStatusChangedNotification extends Mailable
      */
     public function envelope(): Envelope
     {
-        $subject = match($this->status) {
+        $defaultSubject = match($this->status) {
             'sold' => 'Property Has Been Sold',
             'withdrawn' => 'Property Has Been Withdrawn',
             'sstc' => 'Property Status Updated - Sold Subject to Contract',
             default => 'Property Status Changed',
         };
+
+        /** @var EmailTemplateService $templateService */
+        $templateService = app(EmailTemplateService::class);
+
+        $data = [
+            'user' => $this->user,
+            'property' => $this->property,
+            'status' => $this->status,
+            'message' => $this->message,
+        ];
+
+        $template = $templateService->getTemplateForAction(EmailActions::PROPERTY_STATUS_CHANGED, $data);
+
+        $subject = $template && $template->subject
+            ? $templateService->renderSubject($template, $data)
+            : $defaultSubject;
 
         return new Envelope(
             subject: $subject . ' - ' . $this->property->address,
@@ -53,8 +71,27 @@ class PropertyStatusChangedNotification extends Mailable
      */
     public function content(): Content
     {
+        /** @var EmailTemplateService $templateService */
+        $templateService = app(EmailTemplateService::class);
+
+        $data = [
+            'user' => $this->user,
+            'property' => $this->property,
+            'status' => $this->status,
+            'message' => $this->message,
+        ];
+
+        $template = $templateService->getTemplateForAction(EmailActions::PROPERTY_STATUS_CHANGED, $data);
+
+        if ($template && $template->template_type === 'override') {
+            return new Content(
+                htmlString: $templateService->renderTemplate($template, $data),
+            );
+        }
+
         return new Content(
             view: 'emails.property-status-changed',
+            with: $data,
         );
     }
 
