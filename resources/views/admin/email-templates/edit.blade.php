@@ -2,7 +2,198 @@
 
 @section('title', 'Edit Email Template')
 
+@push('styles')
+<style>
+    .container {
+        max-width: 1400px;
+        margin: 35px auto;
+        padding: 0 22px;
+    }
+
+    /* PAGE HEADER */
+    .page-header {
+        margin-bottom: 30px;
+    }
+
+    h2 {
+        font-size: 28px;
+        margin-bottom: 8px;
+        color: var(--dark-text);
+    }
+
+    .page-subtitle {
+        color: #666;
+        margin-bottom: 25px;
+        font-size: 14px;
+    }
+
+    /* CARD */
+    .card {
+        background: var(--white);
+        padding: 25px;
+        border-radius: 12px;
+        border: 1px solid var(--line-grey);
+        box-shadow: 0px 3px 12px rgba(0,0,0,0.05);
+        margin-bottom: 30px;
+    }
+
+    .card-body {
+        padding: 0;
+    }
+
+    /* FORM STYLING */
+    .mb-3 {
+        margin-bottom: 20px;
+    }
+
+    .form-label {
+        display: block;
+        font-size: 14px;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 8px;
+    }
+
+    .form-control,
+    .form-select {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid var(--line-grey);
+        border-radius: 6px;
+        font-size: 14px;
+        font-family: 'Helvetica Neue', Arial, sans-serif;
+        transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        background: var(--white);
+    }
+
+    .form-control:focus,
+    .form-select:focus {
+        outline: none;
+        border-color: var(--abodeology-teal);
+        box-shadow: 0 0 0 3px rgba(44, 184, 180, 0.1);
+    }
+
+    .form-control.is-invalid,
+    .form-select.is-invalid {
+        border-color: var(--danger);
+    }
+
+    .invalid-feedback {
+        display: block;
+        color: var(--danger);
+        font-size: 13px;
+        margin-top: 5px;
+    }
+
+    /* FORM CHECK SWITCH */
+    .form-check {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .form-check-input {
+        width: 48px;
+        height: 24px;
+        cursor: pointer;
+        appearance: none;
+        background-color: #ccc;
+        border-radius: 24px;
+        position: relative;
+        transition: background-color 0.3s ease;
+        flex-shrink: 0;
+    }
+
+    .form-check-input:checked {
+        background-color: var(--abodeology-teal);
+    }
+
+    .form-check-input::before {
+        content: '';
+        position: absolute;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: var(--white);
+        top: 2px;
+        left: 2px;
+        transition: transform 0.3s ease;
+    }
+
+    .form-check-input:checked::before {
+        transform: translateX(24px);
+    }
+
+    .form-check-label {
+        font-size: 14px;
+        color: #333;
+        cursor: pointer;
+        margin: 0;
+    }
+
+    /* BUTTONS */
+    .btn {
+        padding: 12px 24px;
+        border-radius: 6px;
+        display: inline-block;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 14px;
+        transition: all 0.3s ease;
+        border: none;
+        cursor: pointer;
+        font-family: 'Helvetica Neue', Arial, sans-serif;
+    }
+
+    .btn-primary {
+        background: var(--abodeology-teal);
+        color: var(--white);
+    }
+
+    .btn-primary:hover {
+        background: #25A29F;
+        transform: translateY(-1px);
+        box-shadow: 0px 4px 12px rgba(44, 184, 180, 0.3);
+    }
+
+    .btn-outline-secondary {
+        background: transparent;
+        color: #6c757d;
+        border: 1px solid #6c757d;
+    }
+
+    .btn-outline-secondary:hover {
+        background: #6c757d;
+        color: var(--white);
+    }
+
+    .btn-outline-danger {
+        background: transparent;
+        color: var(--danger);
+        border: 1px solid var(--danger);
+    }
+
+    .btn-outline-danger:hover {
+        background: var(--danger);
+        color: var(--white);
+    }
+
+    .mt-4 {
+        margin-top: 25px;
+    }
+
+    .d-flex {
+        display: flex;
+    }
+
+    .justify-content-between {
+        justify-content: space-between;
+    }
+</style>
+@endpush
+
 @section('content')
+<div class="container">
     <div class="page-header">
         <h2>Edit Email Template</h2>
         <p class="page-subtitle">Update the content and settings for this email template.</p>
@@ -47,6 +238,22 @@
                     @error('action')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
+                </div>
+
+                <div class="mb-3">
+                    <label for="key" class="form-label">Template Key</label>
+                    <input
+                        type="text"
+                        id="key"
+                        name="key"
+                        class="form-control @error('key') is-invalid @enderror"
+                        value="{{ old('key', $template->key) }}"
+                        placeholder="e.g., seller-new-offer"
+                    >
+                    @error('key')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                    <small class="text-muted" style="display: block; margin-top: 6px;">Unique identifier for this template.</small>
                 </div>
 
                 <div class="mb-3">
@@ -108,6 +315,7 @@
             </form>
         </div>
     </div>
+</div>
 @endsection
 
 

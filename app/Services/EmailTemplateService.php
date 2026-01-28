@@ -39,10 +39,12 @@ class EmailTemplateService
      * Render template body with variables.
      *
      * This uses a simple {{variable}} / {{object.property}} replacement strategy.
+     * Prefers html_content (from GrapesJS) over body (legacy).
      */
     public function renderTemplate(EmailTemplate $template, array $data): string
     {
-        $body = $template->body ?? '';
+        // Prefer html_content from GrapesJS builder, fallback to body for legacy templates
+        $body = $template->html_content ?? $template->body ?? '';
 
         return $this->renderStringWithData($body, $data);
     }

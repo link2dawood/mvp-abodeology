@@ -12,10 +12,13 @@ class EmailTemplate extends Model
     use HasFactory;
 
     protected $fillable = [
+        'key',
         'name',
         'action',
         'subject',
         'body',
+        'html_content',
+        'json_content',
         'template_type',
         'is_active',
         'variables',
@@ -43,5 +46,6 @@ class EmailTemplate extends Model
         return $this->hasMany(EmailTemplateAssignment::class, 'template_id');
     }
 }
+
 
 

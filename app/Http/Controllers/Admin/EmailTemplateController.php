@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Constants\EmailActions;
 use App\Models\EmailTemplate;
 use App\Models\EmailTemplateAssignment;
+use App\Models\EmailWidget;
 use App\Services\EmailTemplateService;
 use App\Services\EmailVariableResolver;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -45,14 +47,27 @@ class EmailTemplateController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'action' => ['required', 'string', 'max:255'],
+            'key' => ['nullable', 'string', 'max:255', 'unique:email_templates,key'],
             'subject' => ['required', 'string', 'max:255'],
             'body' => ['required', 'string'],
+            'html_content' => ['nullable', 'string'],
+            'json_content' => ['nullable', 'string'],
             'template_type' => ['required', 'in:override,default'],
             'is_active' => ['sometimes', 'boolean'],
         ]);
 
+        // Generate key from action if not provided
+        if (empty($data['key'])) {
+            $data['key'] = str_replace('_', '-', $data['action']);
+        }
+
         $data['created_by'] = $request->user()->id;
         $data['is_active'] = $request->boolean('is_active', true);
+
+        // Use html_content if available, otherwise fallback to body
+        if (empty($data['html_content']) && !empty($data['body'])) {
+            $data['html_content'] = $data['body'];
+        }
 
         EmailTemplate::create($data);
 
@@ -93,13 +108,21 @@ class EmailTemplateController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'action' => ['required', 'string', 'max:255'],
+            'key' => ['nullable', 'string', 'max:255', 'unique:email_templates,key,' . $id],
             'subject' => ['required', 'string', 'max:255'],
             'body' => ['required', 'string'],
+            'html_content' => ['nullable', 'string'],
+            'json_content' => ['nullable', 'string'],
             'template_type' => ['required', 'in:override,default'],
             'is_active' => ['sometimes', 'boolean'],
         ]);
 
         $data['is_active'] = $request->boolean('is_active', true);
+
+        // Use html_content if available, otherwise fallback to body
+        if (empty($data['html_content']) && !empty($data['body'])) {
+            $data['html_content'] = $data['body'];
+        }
 
         $template->update($data);
 
@@ -186,6 +209,28 @@ class EmailTemplateController extends Controller
             'action' => $action,
             'variables' => $variables,
         ]);
+    }
+
+    /**
+     * Get all email widgets (AJAX).
+     */
+    public function getWidgets(): JsonResponse
+    {
+        $widgets = EmailWidget::orderBy('category')
+            ->orderBy('name')
+            ->get()
+            ->map(function ($widget) {
+                return [
+                    'key' => $widget->key,
+                    'name' => $widget->name,
+                    'category' => $widget->category,
+                    'html' => $widget->html,
+                    'locked' => $widget->locked,
+                    'description' => $widget->description,
+                ];
+            });
+
+        return response()->json($widgets);
     }
 
     /**

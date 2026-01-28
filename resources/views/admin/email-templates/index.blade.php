@@ -2,10 +2,195 @@
 
 @section('title', 'Email Templates')
 
+@push('styles')
+<style>
+    .container {
+        max-width: 1400px;
+        margin: 35px auto;
+        padding: 0 22px;
+    }
+
+    /* PAGE HEADER */
+    .page-header {
+        margin-bottom: 30px;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+
+    h2 {
+        font-size: 28px;
+        margin-bottom: 8px;
+        color: var(--dark-text);
+    }
+
+    .page-subtitle {
+        color: #666;
+        margin-bottom: 0;
+        font-size: 14px;
+    }
+
+    /* CARD */
+    .card {
+        background: var(--white);
+        padding: 25px;
+        border-radius: 12px;
+        border: 1px solid var(--line-grey);
+        box-shadow: 0px 3px 12px rgba(0,0,0,0.05);
+        margin-bottom: 30px;
+    }
+
+    .card-body {
+        padding: 0;
+    }
+
+    /* ALERT */
+    .alert {
+        padding: 15px 20px;
+        border-radius: 6px;
+        margin-bottom: 20px;
+        border: 1px solid transparent;
+    }
+
+    .alert-success {
+        background: #d4edda;
+        color: #155724;
+        border-color: #c3e6cb;
+    }
+
+    /* TABLE */
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 0;
+    }
+
+    .table thead {
+        background: var(--abodeology-teal);
+        color: var(--white);
+    }
+
+    .table th {
+        padding: 12px 15px;
+        text-align: left;
+        font-weight: 600;
+        font-size: 14px;
+        border: none;
+    }
+
+    .table td {
+        padding: 12px 15px;
+        border-bottom: 1px solid var(--line-grey);
+        font-size: 14px;
+        vertical-align: middle;
+    }
+
+    .table tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    .table tbody tr:hover {
+        background: #f9f9f9;
+    }
+
+    .text-end {
+        text-align: right;
+    }
+
+    .text-center {
+        text-align: center;
+    }
+
+    .text-muted {
+        color: #666;
+    }
+
+    /* BADGE */
+    .badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .bg-success {
+        background: #28a745;
+        color: var(--white);
+    }
+
+    .bg-secondary {
+        background: #6c757d;
+        color: var(--white);
+    }
+
+    /* BUTTONS */
+    .btn {
+        padding: 12px 24px;
+        border-radius: 6px;
+        display: inline-block;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 14px;
+        transition: all 0.3s ease;
+        border: none;
+        cursor: pointer;
+        font-family: 'Helvetica Neue', Arial, sans-serif;
+    }
+
+    .btn-primary {
+        background: var(--abodeology-teal);
+        color: var(--white);
+    }
+
+    .btn-primary:hover {
+        background: #25A29F;
+        transform: translateY(-1px);
+        box-shadow: 0px 4px 12px rgba(44, 184, 180, 0.3);
+    }
+
+    .btn-sm {
+        padding: 6px 12px;
+        font-size: 13px;
+    }
+
+    .btn-outline-secondary {
+        background: transparent;
+        color: #6c757d;
+        border: 1px solid #6c757d;
+    }
+
+    .btn-outline-secondary:hover {
+        background: #6c757d;
+        color: var(--white);
+    }
+
+    .btn-outline-primary {
+        background: transparent;
+        color: var(--abodeology-teal);
+        border: 1px solid var(--abodeology-teal);
+    }
+
+    .btn-outline-primary:hover {
+        background: var(--abodeology-teal);
+        color: var(--white);
+    }
+
+    .mt-3 {
+        margin-top: 15px;
+    }
+</style>
+@endpush
+
 @section('content')
+<div class="container">
     <div class="page-header">
-        <h2>Email Templates</h2>
-        <p class="page-subtitle">Manage reusable email templates for system notifications.</p>
+        <div>
+            <h2>Email Templates</h2>
+            <p class="page-subtitle">Manage reusable email templates for system notifications.</p>
+        </div>
         <a href="{{ route('admin.email-templates.create') }}" class="btn btn-primary">Create Template</a>
     </div>
 
@@ -64,6 +249,7 @@
             </div>
         </div>
     </div>
+</div>
 @endsection
 
 

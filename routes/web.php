@@ -133,6 +133,7 @@ Route::middleware(['auth', 'role.web:admin,agent'])->prefix('admin')->name('admi
         Route::get('/', [EmailTemplateController::class, 'index'])->name('index');
         Route::get('/create', [EmailTemplateController::class, 'create'])->name('create');
         Route::post('/', [EmailTemplateController::class, 'store'])->name('store');
+        Route::get('/widgets', [EmailTemplateController::class, 'getWidgets'])->name('widgets');
         Route::get('/{id}', [EmailTemplateController::class, 'show'])->name('show');
         Route::get('/{id}/edit', [EmailTemplateController::class, 'edit'])->name('edit');
         Route::put('/{id}', [EmailTemplateController::class, 'update'])->name('update');
