@@ -30,3 +30,4 @@ class EmailTemplateAssignment extends Model
 }
 
 
+
