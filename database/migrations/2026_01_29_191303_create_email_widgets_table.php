@@ -13,6 +13,15 @@ return new class extends Migration
     {
         Schema::create('email_widgets', function (Blueprint $table) {
             $table->id();
+            $table->string('name');
+            $table->string('key')->unique();
+            $table->string('category')->index();
+            $table->text('description')->nullable();
+            $table->text('html');
+            $table->text('preview')->nullable();
+            $table->boolean('is_active')->default(true);
+            $table->integer('sort_order')->default(0);
+            $table->json('config')->nullable();
             $table->timestamps();
         });
     }
