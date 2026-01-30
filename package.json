@@ -11,6 +11,7 @@
         "production": "mix --production"
     },
     "devDependencies": {
+        "@types/node": "^25.1.0",
         "axios": "^1.11.0",
         "bootstrap": "^5.2.3",
         "jquery": "^3.6.0",
@@ -18,7 +19,8 @@
         "popper.js": "^1.16.1",
         "resolve-url-loader": "^5.0.0",
         "sass": "^1.56.1",
-        "sass-loader": "^13.0.0"
+        "sass-loader": "^13.0.0",
+        "typescript": "^5.9.3"
     },
     "dependencies": {
         "lodash": "^4.17.21"
