@@ -137,6 +137,7 @@ Route::middleware(['auth', 'role.web:admin,agent'])->prefix('admin')->name('admi
     // Email Template Management Routes (Admin only)
     Route::middleware(['role.web:admin'])->prefix('email-templates')->name('email-templates.')->group(function () {
         Route::get('/', [EmailTemplateController::class, 'index'])->name('index');
+        Route::get('/widgets', [EmailTemplateController::class, 'widgets'])->name('widgets');
         Route::get('/create', [EmailTemplateController::class, 'create'])->name('create');
         Route::post('/', [EmailTemplateController::class, 'store'])->name('store');
         Route::get('/{id}', [EmailTemplateController::class, 'show'])->name('show');

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Constants\EmailActions;
 use App\Models\EmailTemplate;
 use App\Models\EmailTemplateAssignment;
+use App\Models\EmailWidget;
 use App\Services\EmailTemplateService;
 use App\Services\EmailVariableResolver;
 use Illuminate\Http\RedirectResponse;
@@ -24,7 +25,37 @@ class EmailTemplateController extends Controller
             ->orderByDesc('created_at')
             ->paginate(20);
 
-        return view('admin.email-templates.index', compact('templates'));
+        $widgetsCount = EmailWidget::count();
+        $activeWidgetsCount = EmailWidget::where('is_active', true)->count();
+
+        // Check for multiple active templates per action
+        $activeTemplatesByAction = EmailTemplate::query()
+            ->where('is_active', true)
+            ->selectRaw('action, COUNT(*) as count')
+            ->groupBy('action')
+            ->having('count', '>', 1)
+            ->pluck('count', 'action')
+            ->toArray();
+
+        // Get which template is currently being used for each action
+        $templateService = app(EmailTemplateService::class);
+        $activeActions = array_keys($activeTemplatesByAction);
+        $currentlyUsedTemplates = [];
+        
+        foreach ($activeActions as $action) {
+            $usedTemplate = $templateService->getTemplateForAction($action);
+            if ($usedTemplate) {
+                $currentlyUsedTemplates[$action] = $usedTemplate->id;
+            }
+        }
+
+        return view('admin.email-templates.index', compact(
+            'templates', 
+            'widgetsCount', 
+            'activeWidgetsCount',
+            'activeTemplatesByAction',
+            'currentlyUsedTemplates'
+        ));
     }
 
     /**
@@ -33,8 +64,13 @@ class EmailTemplateController extends Controller
     public function create(): View
     {
         $actions = $this->getEmailActions();
+        $widgets = EmailWidget::query()
+            ->active()
+            ->ordered()
+            ->get()
+            ->groupBy('category');
 
-        return view('admin.email-templates.create', compact('actions'));
+        return view('admin.email-templates.create', compact('actions', 'widgets'));
     }
 
     /**
@@ -79,8 +115,13 @@ class EmailTemplateController extends Controller
         $template = EmailTemplate::findOrFail($id);
 
         $actions = $this->getEmailActions();
+        $widgets = EmailWidget::query()
+            ->active()
+            ->ordered()
+            ->get()
+            ->groupBy('category');
 
-        return view('admin.email-templates.edit', compact('template', 'actions'));
+        return view('admin.email-templates.edit', compact('template', 'actions', 'widgets'));
     }
 
     /**
@@ -186,6 +227,21 @@ class EmailTemplateController extends Controller
             'action' => $action,
             'variables' => $variables,
         ]);
+    }
+
+    /**
+     * Display a listing of all email widgets.
+     */
+    public function widgets(): View
+    {
+        $widgets = EmailWidget::query()
+            ->orderBy('category')
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get()
+            ->groupBy('category');
+
+        return view('admin.email-templates.widgets', compact('widgets'));
     }
 
     /**
