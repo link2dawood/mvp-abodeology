@@ -9,6 +9,7 @@ use App\Models\EmailTemplateAssignment;
 use App\Models\EmailWidget;
 use App\Services\EmailTemplateService;
 use App\Services\EmailVariableResolver;
+use App\Services\SettingsService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -69,8 +70,11 @@ class EmailTemplateController extends Controller
             ->ordered()
             ->get()
             ->groupBy('category');
+        
+        $settingsService = app(SettingsService::class);
+        $logoUrl = $settingsService->getLogoUrl();
 
-        return view('admin.email-templates.create', compact('actions', 'widgets'));
+        return view('admin.email-templates.create', compact('actions', 'widgets', 'logoUrl'));
     }
 
     /**
@@ -120,8 +124,11 @@ class EmailTemplateController extends Controller
             ->ordered()
             ->get()
             ->groupBy('category');
+        
+        $settingsService = app(SettingsService::class);
+        $logoUrl = $settingsService->getLogoUrl();
 
-        return view('admin.email-templates.edit', compact('template', 'actions', 'widgets'));
+        return view('admin.email-templates.edit', compact('template', 'actions', 'widgets', 'logoUrl'));
     }
 
     /**
@@ -242,6 +249,49 @@ class EmailTemplateController extends Controller
             ->groupBy('category');
 
         return view('admin.email-templates.widgets', compact('widgets'));
+    }
+
+    /**
+     * Get active template for a specific action (AJAX endpoint).
+     */
+    public function getByAction(Request $request)
+    {
+        $action = $request->query('action');
+        
+        if (!$action) {
+            return response()->json(['error' => 'Action parameter is required'], 400);
+        }
+
+        $templateService = app(EmailTemplateService::class);
+        $template = $templateService->getTemplateForAction($action);
+
+        if (!$template) {
+            return response()->json(['template' => null, 'message' => 'No active template found for this action']);
+        }
+
+        // Get all widgets to help identify which widgets are used in the template
+        $allWidgets = EmailWidget::active()->ordered()->get();
+        
+        $settingsService = app(SettingsService::class);
+        $logoUrl = $settingsService->getLogoUrl();
+        
+        return response()->json([
+            'template' => [
+                'id' => $template->id,
+                'name' => $template->name,
+                'subject' => $template->subject,
+                'body' => $template->body,
+            ],
+            'widgets' => $allWidgets->map(function($widget) {
+                return [
+                    'id' => $widget->id,
+                    'key' => $widget->key,
+                    'name' => $widget->name,
+                    'html' => $widget->html,
+                ];
+            }),
+            'logoUrl' => $logoUrl,
+        ]);
     }
 
     /**
