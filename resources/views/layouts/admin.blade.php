@@ -217,7 +217,7 @@
             <a href="{{ route('profile.show') }}">Profile</a>
             <a href="{{ route('admin.notifications') }}">Notifications</a>
             @if(auth()->user()->role === 'admin')
-                <a href="#">Settings</a>
+                <a href="{{ route('admin.settings.index') }}">Settings</a>
             @endif
             <form action="{{ route('logout') }}" method="POST" style="display: inline; margin-left: 28px;">
                 @csrf
