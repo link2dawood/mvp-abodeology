@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Admin\EmailTemplateController;
+use App\Http\Controllers\Admin\SettingsController;
 
 Route::get('/', function () {
     // If user is authenticated, redirect to their dashboard
@@ -139,14 +140,23 @@ Route::middleware(['auth', 'role.web:admin,agent'])->prefix('admin')->name('admi
         Route::get('/', [EmailTemplateController::class, 'index'])->name('index');
         Route::get('/widgets', [EmailTemplateController::class, 'widgets'])->name('widgets');
         Route::get('/create', [EmailTemplateController::class, 'create'])->name('create');
+        Route::get('/get-by-action', [EmailTemplateController::class, 'getByAction'])->name('get-by-action');
         Route::post('/', [EmailTemplateController::class, 'store'])->name('store');
-        Route::get('/{id}', [EmailTemplateController::class, 'show'])->name('show');
         Route::get('/{id}/edit', [EmailTemplateController::class, 'edit'])->name('edit');
+        Route::get('/{id}', [EmailTemplateController::class, 'show'])->name('show');
         Route::put('/{id}', [EmailTemplateController::class, 'update'])->name('update');
         Route::delete('/{id}', [EmailTemplateController::class, 'destroy'])->name('destroy');
         Route::post('/{id}/preview', [EmailTemplateController::class, 'preview'])->name('preview');
         Route::post('/{id}/assign', [EmailTemplateController::class, 'assign'])->name('assign');
         Route::get('/actions/{action}/variables', [EmailTemplateController::class, 'getVariables'])->name('variables');
+    });
+
+    // Settings Management Routes (Admin only)
+    Route::middleware(['role.web:admin'])->prefix('settings')->name('settings.')->group(function () {
+        Route::get('/', [SettingsController::class, 'index'])->name('index');
+        Route::get('/{group}/edit', [SettingsController::class, 'edit'])->name('edit');
+        Route::put('/{group}', [SettingsController::class, 'update'])->name('update');
+        Route::post('/update-single/{key}', [SettingsController::class, 'updateSingle'])->name('update-single');
     });
 });
 

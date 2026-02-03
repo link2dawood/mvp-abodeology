@@ -39,6 +39,8 @@
         top: 70px;
         left: 0;
         right: 0;
+        left: 0;
+        right: 0;
         background: #ffffff;
         padding: 15px 20px;
         border-bottom: 1px solid #e0e0e0;
@@ -283,7 +285,7 @@
             </div>
         </div>
 
-        <form method="POST" action="{{ route('admin.email-templates.store') }}" style="padding-top: 0; padding-bottom: 70px;">
+        <form method="POST" action="{{ route('admin.email-templates.store') }}" style="padding: 0; margin: 0; margin-top: 80px; display: flex; flex-direction: column; height: calc(100vh - 70px);">
             @csrf
             <input type="hidden" name="name" id="name-hidden" value="{{ old('name') }}">
             <input type="hidden" name="action" id="action-hidden" value="{{ old('action') }}">
@@ -291,14 +293,112 @@
             <input type="hidden" name="template_type" value="{{ old('template_type', 'override') }}">
             <input type="hidden" name="is_active" value="{{ old('is_active', true) ? '1' : '0' }}">
 
-                @include('admin.email-templates.partials.template-builder')
-
             @include('admin.email-templates.partials.template-builder')
+
+            @push('scripts')
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    const actionSelect = document.getElementById('action');
+                    const nameInput = document.getElementById('name');
+                    const subjectInput = document.getElementById('subject');
+                    const nameHidden = document.getElementById('name-hidden');
+                    const actionHidden = document.getElementById('action-hidden');
+                    const subjectHidden = document.getElementById('subject-hidden');
+                    let loadedTemplate = null;
+                    let availableWidgets = [];
+
+                    // Sync visible inputs with hidden inputs
+                    function syncInputs() {
+                        if (nameInput) nameHidden.value = nameInput.value;
+                        if (actionSelect) actionHidden.value = actionSelect.value;
+                        if (subjectInput) subjectHidden.value = subjectInput.value;
+                    }
+
+                    if (nameInput) {
+                        nameInput.addEventListener('input', syncInputs);
+                    }
+                    if (subjectInput) {
+                        subjectInput.addEventListener('input', syncInputs);
+                    }
+
+                    // Load template when action is selected
+                    if (actionSelect) {
+                        actionSelect.addEventListener('change', function() {
+                            syncInputs();
+                            const selectedAction = this.value;
+                            
+                            if (!selectedAction) {
+                                return;
+                            }
+
+                            // Show loading indicator
+                            const editor = $('#template-body-editor');
+                            if (editor.length) {
+                                editor.summernote('code', '<p>Loading template...</p>');
+                            }
+
+                            // Fetch template for this action
+                            fetch('{{ route("admin.email-templates.get-by-action") }}?action=' + encodeURIComponent(selectedAction), {
+                                method: 'GET',
+                                headers: {
+                                    'X-Requested-With': 'XMLHttpRequest',
+                                    'Accept': 'application/json',
+                                },
+                                credentials: 'same-origin'
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.template) {
+                                    loadedTemplate = data.template;
+                                    availableWidgets = data.widgets || [];
+                                    
+                                    // Update logo URL if provided
+                                    if (data.logoUrl && window.updateLogoUrl) {
+                                        window.updateLogoUrl(data.logoUrl);
+                                    }
+                                    
+                                    // Populate form fields
+                                    if (nameInput && !nameInput.value) {
+                                        nameInput.value = data.template.name;
+                                        nameHidden.value = data.template.name;
+                                    }
+                                    if (subjectInput && !subjectInput.value) {
+                                        subjectInput.value = data.template.subject;
+                                        subjectHidden.value = data.template.subject;
+                                    }
+
+                                    // Load template body into editor
+                                    if (editor.length && window.parseTemplateToWidgets) {
+                                        window.parseTemplateToWidgets(data.template.body, availableWidgets);
+                                    } else if (editor.length) {
+                                        editor.summernote('code', data.template.body);
+                                    }
+                                } else {
+                                    // No template found, clear editor
+                                    if (editor.length) {
+                                        editor.summernote('code', '');
+                                    }
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error loading template:', error);
+                                if (editor.length) {
+                                    editor.summernote('code', '');
+                                }
+                            });
+                        });
+                    }
+                });
+            </script>
+            @endpush
 
             <div style="position: fixed; bottom: 0; left: 0; right: 0; background: #ffffff; padding: 15px 20px; border-top: 1px solid #e0e0e0; z-index: 1000; box-shadow: 0 -2px 10px rgba(0,0,0,0.1);">
                 <div style="max-width: 100%; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; padding: 0 20px;">
                     <a href="{{ route('admin.email-templates.index') }}" class="btn btn-outline-secondary">Cancel</a>
-                    <button type="submit" class="btn btn-primary">Save Template</button>
+                    <div style="display: flex; gap: 10px;">
+                        <button type="button" class="btn btn-outline-primary" onclick="previewTemplate()">👁️ Test Preview</button>
+                        <button type="submit" class="btn btn-primary">💾 Save Template</button>
+                    </div>
                 </div>
             </div>
         </form>
