@@ -418,7 +418,7 @@ class SellerController extends Controller
             'drainage' => ['nullable', 'string', 'in:mains,septic-tank,private'],
             'boiler_age' => ['nullable', 'integer', 'min:0'],
             'last_boiler_service' => ['nullable', 'date'],
-            'epc_rating' => ['nullable', 'string', 'in:A,B,C,D,E,F,G'],
+            'epc_rating' => ['nullable', 'string', 'in:A,B,C,D,E,F,G,awaiting'],
             'known_issues' => ['nullable', 'string', 'max:2000'],
             'alterations' => ['nullable', 'string', 'max:2000'],
             'certificates' => ['nullable', 'array'],

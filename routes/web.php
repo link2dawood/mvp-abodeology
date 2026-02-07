@@ -82,6 +82,7 @@ Route::middleware(['auth', 'role.web:admin,agent'])->prefix('admin')->name('admi
     Route::get('/valuations/{id}/onboarding', [App\Http\Controllers\AdminController::class, 'showValuationForm'])->name('valuations.onboarding');
     Route::post('/valuations/{id}/valuation-form', [App\Http\Controllers\AdminController::class, 'storeValuationForm'])->name('valuations.valuation-form.store');
     Route::post('/valuations/{id}/onboarding', [App\Http\Controllers\AdminController::class, 'storeValuationForm'])->name('valuations.onboarding.store');
+    Route::post('/valuations/{id}/resend-login-credentials', [App\Http\Controllers\AdminController::class, 'resendValuationLoginCredentials'])->name('valuations.resend-login-credentials');
     
     // Property Management Routes
     Route::get('/properties', [App\Http\Controllers\AdminController::class, 'properties'])->name('properties.index');

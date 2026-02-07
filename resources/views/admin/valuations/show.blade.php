@@ -37,8 +37,23 @@
 
     .info-label {
         font-weight: 600;
-        min-width: 200px;
+        min-width: 140px;
         color: #666;
+    }
+
+    .top-cards {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        margin-bottom: 20px;
+    }
+    @media (max-width: 900px) {
+        .top-cards {
+            grid-template-columns: 1fr;
+        }
+    }
+    .top-cards .card {
+        margin-bottom: 0;
     }
 
     .info-value {
@@ -112,6 +127,10 @@
             @if($valuation->status !== 'completed')
                 <a href="{{ route('admin.valuations.onboarding', $valuation->id) }}" class="btn btn-main">Complete Onboarding</a>
             @endif
+            <form action="{{ route('admin.valuations.resend-login-credentials', $valuation->id) }}" method="POST" style="display: inline-block; margin-left: 0;">
+                @csrf
+                <button type="submit" class="btn" style="background: #6c757d; color: #fff;">Resend login credentials</button>
+            </form>
         </div>
     </div>
 
@@ -121,71 +140,95 @@
         </div>
     @endif
 
-    <div class="card">
-        <h3>Valuation Information</h3>
-        <div class="info-row">
-            <div class="info-label">Status:</div>
-            <div class="info-value">
-                <span class="status status-{{ $valuation->status }}">
-                    {{ ucfirst($valuation->status) }}
-                </span>
+    {{-- Client details and Valuation information at top, side by side --}}
+    <div class="top-cards">
+        <div class="card">
+            <h3>Client Information</h3>
+            <div class="info-row">
+                <div class="info-label">Name:</div>
+                <div class="info-value">{{ $valuation->seller->name ?? 'N/A' }}</div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">Email:</div>
+                <div class="info-value">{{ $valuation->seller->email ?? 'N/A' }}</div>
+            </div>
+            @if($valuation->seller->phone)
+            <div class="info-row">
+                <div class="info-label">Phone:</div>
+                <div class="info-value">{{ $valuation->seller->phone }}</div>
+            </div>
+            @endif
+            <div class="info-row">
+                <div class="info-label">Role:</div>
+                <div class="info-value">{{ ucfirst($valuation->seller->role ?? 'N/A') }}</div>
             </div>
         </div>
-        <div class="info-row">
-            <div class="info-label">Property Address:</div>
-            <div class="info-value">{{ $valuation->property_address }}</div>
+        <div class="card">
+            <h3>Valuation Information</h3>
+            <div class="info-row">
+                <div class="info-label">Status:</div>
+                <div class="info-value">
+                    <span class="status status-{{ $valuation->status }}">
+                        {{ ucfirst($valuation->status) }}
+                    </span>
+                </div>
+            </div>
+            <div class="info-row">
+                <div class="info-label">Property Address:</div>
+                <div class="info-value">{{ $valuation->property_address }}</div>
+            </div>
+            @if($valuation->postcode)
+            <div class="info-row">
+                <div class="info-label">Postcode:</div>
+                <div class="info-value">{{ $valuation->postcode }}</div>
+            </div>
+            @endif
+            @if($valuation->property_type)
+            <div class="info-row">
+                <div class="info-label">Property Type:</div>
+                <div class="info-value">{{ ucfirst(str_replace('_', ' ', $valuation->property_type)) }}</div>
+            </div>
+            @endif
+            @if($valuation->bedrooms)
+            <div class="info-row">
+                <div class="info-label">Bedrooms:</div>
+                <div class="info-value">{{ $valuation->bedrooms }}</div>
+            </div>
+            @endif
+            @if($valuation->valuation_date)
+            <div class="info-row">
+                <div class="info-label">Preferred Date:</div>
+                <div class="info-value">{{ \Carbon\Carbon::parse($valuation->valuation_date)->format('l, F j, Y') }}</div>
+            </div>
+            @endif
+            @if($valuation->valuation_time)
+            <div class="info-row">
+                <div class="info-label">Preferred Time:</div>
+                <div class="info-value">{{ \Carbon\Carbon::parse($valuation->valuation_time)->format('g:i A') }}</div>
+            </div>
+            @endif
+            @if($valuation->estimated_value)
+            <div class="info-row">
+                <div class="info-label">Estimated Value:</div>
+                <div class="info-value">£{{ number_format($valuation->estimated_value, 2) }}</div>
+            </div>
+            @endif
+            <div class="info-row">
+                <div class="info-label">Request Date:</div>
+                <div class="info-value">{{ $valuation->created_at->format('l, F j, Y g:i A') }}</div>
+            </div>
+            @if($valuation->agent)
+            <div class="info-row">
+                <div class="info-label">Assigned Agent/Valuer:</div>
+                <div class="info-value">{{ $valuation->agent->name }} ({{ $valuation->agent->email }})</div>
+            </div>
+            @else
+            <div class="info-row">
+                <div class="info-label">Assigned Agent/Valuer:</div>
+                <div class="info-value" style="color: #999; font-style: italic;">Not assigned</div>
+            </div>
+            @endif
         </div>
-        @if($valuation->postcode)
-        <div class="info-row">
-            <div class="info-label">Postcode:</div>
-            <div class="info-value">{{ $valuation->postcode }}</div>
-        </div>
-        @endif
-        @if($valuation->property_type)
-        <div class="info-row">
-            <div class="info-label">Property Type:</div>
-            <div class="info-value">{{ ucfirst(str_replace('_', ' ', $valuation->property_type)) }}</div>
-        </div>
-        @endif
-        @if($valuation->bedrooms)
-        <div class="info-row">
-            <div class="info-label">Bedrooms:</div>
-            <div class="info-value">{{ $valuation->bedrooms }}</div>
-        </div>
-        @endif
-        @if($valuation->valuation_date)
-        <div class="info-row">
-            <div class="info-label">Preferred Valuation Date:</div>
-            <div class="info-value">{{ \Carbon\Carbon::parse($valuation->valuation_date)->format('l, F j, Y') }}</div>
-        </div>
-        @endif
-        @if($valuation->valuation_time)
-        <div class="info-row">
-            <div class="info-label">Preferred Valuation Time:</div>
-            <div class="info-value">{{ \Carbon\Carbon::parse($valuation->valuation_time)->format('g:i A') }}</div>
-        </div>
-        @endif
-        @if($valuation->estimated_value)
-        <div class="info-row">
-            <div class="info-label">Estimated Value:</div>
-            <div class="info-value">£{{ number_format($valuation->estimated_value, 2) }}</div>
-        </div>
-        @endif
-        <div class="info-row">
-            <div class="info-label">Request Date:</div>
-            <div class="info-value">{{ $valuation->created_at->format('l, F j, Y g:i A') }}</div>
-        </div>
-        @if($valuation->agent)
-        <div class="info-row">
-            <div class="info-label">Assigned PVA:</div>
-            <div class="info-value">{{ $valuation->agent->name }} ({{ $valuation->agent->email }})</div>
-        </div>
-        @else
-        <div class="info-row">
-            <div class="info-label">Assigned PVA:</div>
-            <div class="info-value" style="color: #999; font-style: italic;">Not assigned</div>
-        </div>
-        @endif
     </div>
 
     @if(in_array(auth()->user()->role, ['admin', 'agent']))
@@ -203,7 +246,6 @@
                         id="valuation_date"
                         name="valuation_date"
                         value="{{ old('valuation_date', $valuation->valuation_date ? \Carbon\Carbon::parse($valuation->valuation_date)->format('Y-m-d') : '') }}"
-                        required
                         style="padding: 8px 10px; border-radius: 4px; border: 1px solid #D9D9D9; max-width: 220px;"
                     >
                 </div>
@@ -222,26 +264,11 @@
                     >
                 </div>
             </div>
-            <div class="info-row">
-                <div class="info-label">
-                    <label for="status">Status</label>
-                </div>
-                <div class="info-value">
-                    <select
-                        id="status"
-                        name="status"
-                        style="padding: 8px 10px; border-radius: 4px; border: 1px solid #D9D9D9; max-width: 200px;"
-                    >
-                        <option value="pending" {{ $valuation->status === 'pending' ? 'selected' : '' }}>Pending</option>
-                        <option value="scheduled" {{ $valuation->status === 'scheduled' ? 'selected' : '' }}>Scheduled</option>
-                        <option value="completed" {{ $valuation->status === 'completed' ? 'selected' : '' }}>Completed</option>
-                    </select>
-                </div>
-            </div>
+            <p style="font-size: 13px; color: #666; margin: 0 0 15px 0;">Status updates automatically: <strong>Scheduled</strong> when a date is set, <strong>Pending</strong> when the date is cleared. <strong>Completed</strong> is set when the valuation form is submitted.</p>
             @if($agents)
             <div class="info-row">
                 <div class="info-label">
-                    <label for="agent_id">Assign PVA</label>
+                    <label for="agent_id">Assign Agent/Valuer</label>
                 </div>
                 <div class="info-value">
                     <select
@@ -249,7 +276,7 @@
                         name="agent_id"
                         style="padding: 8px 10px; border-radius: 4px; border: 1px solid #D9D9D9; max-width: 300px;"
                     >
-                        <option value="">-- No PVA Assigned --</option>
+                        <option value="">-- No Agent/Valuer Assigned --</option>
                         @foreach($agents as $agent)
                             <option value="{{ $agent->id }}" {{ $valuation->agent_id == $agent->id ? 'selected' : '' }}>
                                 {{ $agent->name }} ({{ $agent->email }})
@@ -265,28 +292,6 @@
         </form>
     </div>
     @endif
-
-    <div class="card">
-        <h3>Client Information</h3>
-        <div class="info-row">
-            <div class="info-label">Name:</div>
-            <div class="info-value">{{ $valuation->seller->name ?? 'N/A' }}</div>
-        </div>
-        <div class="info-row">
-            <div class="info-label">Email:</div>
-            <div class="info-value">{{ $valuation->seller->email ?? 'N/A' }}</div>
-        </div>
-        @if($valuation->seller->phone)
-        <div class="info-row">
-            <div class="info-label">Phone:</div>
-            <div class="info-value">{{ $valuation->seller->phone }}</div>
-        </div>
-        @endif
-        <div class="info-row">
-            <div class="info-label">Role:</div>
-            <div class="info-value">{{ ucfirst($valuation->seller->role ?? 'N/A') }}</div>
-        </div>
-    </div>
 
     @if($valuation->seller_notes)
     <div class="card">

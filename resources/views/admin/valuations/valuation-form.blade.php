@@ -7,7 +7,7 @@
     .container {
         max-width: 1180px;
         margin: 35px auto;
-        padding: 0 22px;
+        padding: 0 24px 40px;
     }
 
     h2 {
@@ -22,9 +22,9 @@
 
     .valuation-info {
         background: #E8F4F3;
-        padding: 15px 20px;
-        margin-bottom: 25px;
-        border-radius: 4px;
+        padding: 18px 24px;
+        margin-bottom: 24px;
+        border-radius: 8px;
     }
 
     .valuation-info strong {
@@ -33,23 +33,41 @@
 
     .card {
         background: var(--white);
-        padding: 25px;
+        padding: 24px 28px;
         border-radius: 12px;
         border: 1px solid var(--line-grey);
-        margin-bottom: 30px;
+        margin-bottom: 24px;
         box-shadow: 0px 3px 12px rgba(0,0,0,0.06);
+    }
+
+    .card:last-of-type {
+        margin-bottom: 0;
     }
 
     .card h3 {
         margin-top: 0;
-        margin-bottom: 15px;
+        margin-bottom: 18px;
+        padding-bottom: 12px;
         font-size: 20px;
         font-weight: 600;
         color: var(--abodeology-teal);
+        border-bottom: 1px solid var(--line-grey);
     }
 
     .form-group {
-        margin-bottom: 20px;
+        margin-bottom: 18px;
+    }
+
+    .form-group:last-child {
+        margin-bottom: 0;
+    }
+
+    .form-row .form-group {
+        margin-bottom: 18px;
+    }
+
+    .form-row .form-group:last-child {
+        margin-bottom: 18px;
     }
 
     .form-group label {
@@ -128,9 +146,9 @@
 
     .pre-filled-note {
         background: #d4edda;
-        padding: 10px 15px;
-        margin-bottom: 15px;
-        border-radius: 4px;
+        padding: 12px 16px;
+        margin-bottom: 18px;
+        border-radius: 6px;
         font-size: 13px;
         color: #155724;
     }
@@ -346,6 +364,7 @@
                     <label>EPC Rating</label>
                     <select name="epc_rating">
                         <option value="">Select...</option>
+                        <option value="awaiting" {{ old('epc_rating', $onboarding->epc_rating ?? '') === 'awaiting' ? 'selected' : '' }}>Awaiting</option>
                         <option value="A" {{ old('epc_rating', $onboarding->epc_rating ?? '') === 'A' ? 'selected' : '' }}>A</option>
                         <option value="B" {{ old('epc_rating', $onboarding->epc_rating ?? '') === 'B' ? 'selected' : '' }}>B</option>
                         <option value="C" {{ old('epc_rating', $onboarding->epc_rating ?? '') === 'C' ? 'selected' : '' }}>C</option>

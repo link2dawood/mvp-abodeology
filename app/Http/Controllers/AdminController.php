@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Models\AmlCheck;
 use App\Models\Viewing;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
 class AdminController extends Controller
@@ -571,9 +572,8 @@ class AdminController extends Controller
         $valuation = Valuation::with('seller')->findOrFail($id);
 
         $validated = $request->validate([
-            'valuation_date' => ['required', 'date'],
+            'valuation_date' => ['nullable', 'date'],
             'valuation_time' => ['nullable', 'date_format:H:i'],
-            'status' => ['required', 'in:pending,scheduled,completed'],
             'agent_id' => ['nullable', 'exists:users,id'],
         ]);
 
@@ -587,15 +587,63 @@ class AdminController extends Controller
             }
         }
 
-        $valuation->valuation_date = $validated['valuation_date'];
+        $valuation->valuation_date = $validated['valuation_date'] ?? null;
         $valuation->valuation_time = $validated['valuation_time'] ?? null;
-        $valuation->status = $validated['status'];
         $valuation->agent_id = $validated['agent_id'] ?? null;
+
+        // Update status automatically: scheduled when a date is set, pending when not. 'completed' is set when the valuation form is submitted.
+        if ($valuation->status === 'completed') {
+            // Never overwrite completed
+        } elseif (!empty($valuation->valuation_date)) {
+            $valuation->status = 'scheduled';
+        } else {
+            $valuation->status = 'pending';
+        }
+
         $valuation->save();
 
         return redirect()
             ->route('admin.valuations.show', $valuation->id)
             ->with('success', 'Valuation schedule updated successfully.');
+    }
+
+    /**
+     * Resend login credentials email to the seller for a valuation.
+     * Generates a new temporary password and emails it so the seller can log in (e.g. if original email was not received).
+     *
+     * @param  int  $id  Valuation ID
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function resendValuationLoginCredentials($id)
+    {
+        $user = auth()->user();
+        if (!in_array($user->role, ['admin', 'agent'])) {
+            return redirect()->route($this->getRoleDashboard($user->role))
+                ->with('error', 'You do not have permission to perform this action.');
+        }
+
+        $valuation = Valuation::with('seller')->findOrFail($id);
+        $seller = $valuation->seller;
+        if (!$seller || !$seller->email) {
+            return redirect()->route('admin.valuations.show', $valuation->id)
+                ->with('error', 'No seller or email found for this valuation.');
+        }
+
+        $password = Str::random(12);
+        $seller->update(['password' => Hash::make($password)]);
+
+        try {
+            Mail::to($seller->email)->send(
+                new \App\Mail\ValuationLoginCredentials($seller, $password, $valuation)
+            );
+        } catch (\Exception $e) {
+            \Log::error('Failed to resend valuation login credentials: ' . $e->getMessage());
+            return redirect()->route('admin.valuations.show', $valuation->id)
+                ->with('error', 'Login credentials could not be sent. Please check mail configuration or try again later.');
+        }
+
+        return redirect()->route('admin.valuations.show', $valuation->id)
+            ->with('success', 'Login credentials have been sent to ' . $seller->email . '. The seller can now log in with the new password from that email.');
     }
 
     /**
@@ -715,7 +763,7 @@ class AdminController extends Controller
             'heating_type' => ['nullable', 'string', 'in:gas,electric,oil,underfloor,other'],
             'boiler_age_years' => ['nullable', 'integer', 'min:0'],
             'boiler_last_serviced' => ['nullable', 'date'],
-            'epc_rating' => ['nullable', 'string', 'in:A,B,C,D,E,F,G'],
+            'epc_rating' => ['nullable', 'string', 'in:A,B,C,D,E,F,G,awaiting'],
             'gas_supply' => ['nullable'],
             'electricity_supply' => ['nullable'],
             'mains_water' => ['nullable'],

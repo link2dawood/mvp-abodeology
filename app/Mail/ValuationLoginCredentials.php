@@ -11,7 +11,7 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class ValuationLoginCredentials extends Mailable
+class ValuationLoginCredentials extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 

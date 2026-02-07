@@ -452,6 +452,7 @@
                         class="{{ $errors->has('epc_rating') ? 'error' : '' }}"
                     >
                         <option value="">EPC Rating</option>
+                        <option value="awaiting" {{ old('epc_rating', $onboarding->epc_rating ?? '') == 'awaiting' ? 'selected' : '' }}>Awaiting</option>
                         <option value="A" {{ old('epc_rating', $onboarding->epc_rating ?? '') == 'A' ? 'selected' : '' }}>A</option>
                         <option value="B" {{ old('epc_rating', $onboarding->epc_rating ?? '') == 'B' ? 'selected' : '' }}>B</option>
                         <option value="C" {{ old('epc_rating', $onboarding->epc_rating ?? '') == 'C' ? 'selected' : '' }}>C</option>
