@@ -12,29 +12,29 @@
 
     .page-subtitle {
         color: #666;
-        margin-bottom: 30px;
+        margin-bottom: 18px;
     }
 
     /* GRID LAYOUT */
     .grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
-        gap: 25px;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 18px;
     }
 
     /* CARD */
     .card {
         background: var(--white);
-        padding: 25px;
-        border-radius: 12px;
+        padding: 18px 20px;
+        border-radius: 10px;
         border: 1px solid var(--line-grey);
-        box-shadow: 0px 3px 12px rgba(0,0,0,0.05);
+        box-shadow: 0px 2px 8px rgba(0,0,0,0.05);
     }
 
     .card h3 {
         margin-top: 0;
-        margin-bottom: 15px;
-        font-size: 20px;
+        margin-bottom: 12px;
+        font-size: 18px;
     }
 
     /* COLLAPSIBLE CARD */
@@ -138,7 +138,63 @@
         opacity: 1;
     }
 
-    /* KPI BOXES */
+    /* TOP ROW: Compact Key Metrics + Reminders */
+    .dashboard-top-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        margin-bottom: 28px;
+    }
+    @media (max-width: 900px) {
+        .dashboard-top-row {
+            grid-template-columns: 1fr;
+        }
+    }
+    .metrics-strip,
+    .reminders-strip {
+        background: #0d7377;
+        color: #fff;
+        border-radius: 10px;
+        padding: 14px 18px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .metrics-strip h3,
+    .reminders-strip h3 {
+        margin: 0 0 12px 0;
+        font-size: 16px;
+        font-weight: 700;
+        color: #fff;
+        padding-bottom: 8px;
+        border-bottom: 1px solid rgba(255,255,255,0.25);
+    }
+    .metric-row,
+    .reminder-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 6px 0;
+        font-size: 13px;
+        border-bottom: 1px solid rgba(255,255,255,0.12);
+    }
+    .metric-row:last-child,
+    .reminder-row:last-child {
+        border-bottom: none;
+    }
+    .reminder-row a {
+        color: #fff;
+        text-decoration: none;
+        font-weight: 600;
+    }
+    .reminder-row a:hover {
+        text-decoration: underline;
+    }
+    .metric-row .value,
+    .reminder-row .value {
+        font-weight: 700;
+        margin-left: 10px;
+    }
+
+    /* KPI BOXES (legacy, kept for any other use) */
     .kpi-box {
         background: var(--white);
         padding: 25px;
@@ -347,45 +403,40 @@
     <h2>Admin Dashboard</h2>
     <p class="page-subtitle">Complete visibility and control across the entire Abodeology platform.</p>
 
-    <!-- KPIs -->
-    <div class="card collapsible-section">
-        <div class="section-header" onclick="toggleSection(this)">
-            <h2 style="margin: 0;">Key Metrics</h2>
-            <span class="section-toggle-icon">▼</span>
+    <!-- TOP ROW: Key Metrics + Reminders (compact) -->
+    <div class="dashboard-top-row">
+        <div class="metrics-strip">
+            <h3>Key Metrics</h3>
+            <div class="metric-row"><span>Total Valuations</span><span class="value">{{ $stats['total_valuations'] ?? 0 }}</span></div>
+            <div class="metric-row"><span>Pending Requests</span><span class="value">{{ $stats['pending_valuations'] ?? 0 }}</span></div>
+            <div class="metric-row"><span>Live Listings</span><span class="value">{{ $stats['active_listings'] ?? 0 }}</span></div>
+            <div class="metric-row"><span>Offers Pending</span><span class="value">{{ $stats['offers_received'] ?? 0 }}</span></div>
+            <div class="metric-row"><span>Sales Progressing</span><span class="value">{{ $stats['sales_in_progress'] ?? 0 }}</span></div>
+            <div class="metric-row"><span>Active PVAs</span><span class="value">{{ $stats['pvas_active'] ?? 0 }}</span></div>
         </div>
-        <div class="section-content">
-            <div class="grid">
-                <div class="kpi-box" style="background: linear-gradient(135deg, #E8F4F3 0%, #F4F4F4 100%);">
-                    <div class="kpi-number">{{ $stats['total_valuations'] ?? 0 }}</div>
-                    <div class="kpi-label">Total Valuations</div>
-                </div>
-                <div class="kpi-box" style="background: linear-gradient(135deg, #fff3cd 0%, #F4F4F4 100%);">
-                    <div class="kpi-number">{{ $stats['pending_valuations'] ?? 0 }}</div>
-                    <div class="kpi-label">Pending Requests</div>
-                </div>
-                <div class="kpi-box" style="background: linear-gradient(135deg, #E8F4F3 0%, #F4F4F4 100%);">
-                    <div class="kpi-number">{{ $stats['active_listings'] ?? 0 }}</div>
-                    <div class="kpi-label">Live Listings</div>
-                </div>
-                <div class="kpi-box" style="background: linear-gradient(135deg, #fff3cd 0%, #F4F4F4 100%);">
-                    <div class="kpi-number">{{ $stats['offers_received'] ?? 0 }}</div>
-                    <div class="kpi-label">Offers Pending</div>
-                </div>
-                <div class="kpi-box" style="background: linear-gradient(135deg, #E8F4F3 0%, #F4F4F4 100%);">
-                    <div class="kpi-number">{{ $stats['sales_in_progress'] ?? 0 }}</div>
-                    <div class="kpi-label">Sales Progressing</div>
-                </div>
-                <div class="kpi-box" style="background: linear-gradient(135deg, #E8F4F3 0%, #F4F4F4 100%);">
-                    <div class="kpi-number">{{ $stats['pvas_active'] ?? 0 }}</div>
-                    <div class="kpi-label">Active PVAs</div>
-                </div>
+        <div class="reminders-strip">
+            <h3>Reminders</h3>
+            @php
+                $amlCount = isset($amlPending) ? $amlPending->count() : 0;
+                $offersCount = isset($offersPendingResponse) ? $offersPendingResponse->count() : 0;
+                $homecheckCount = isset($homecheckPending) ? $homecheckPending->count() : 0;
+            @endphp
+            <div class="reminder-row">
+                <a href="{{ route('admin.aml-checks.index') }}">AML Pending Verification</a>
+                <span class="value">{{ $amlCount }}</span>
+            </div>
+            <div class="reminder-row">
+                <a href="{{ route('admin.properties.index') }}">Offers Pending Response</a>
+                <span class="value">{{ $offersCount }}</span>
+            </div>
+            <div class="reminder-row">
+                <a href="{{ route('admin.homechecks.index') }}">HomeCheck Pending</a>
+                <span class="value">{{ $homecheckCount }}</span>
             </div>
         </div>
     </div>
 
-    <br><br>
-
-    <!-- CRITICAL ACTIONS SECTION -->
+    <!-- CRITICAL ACTIONS DETAIL (compact cards when there are items) -->
     @php
         $hasCriticalActions = (isset($amlPending) && $amlPending->count() > 0) || 
                              (isset($offersPendingResponse) && $offersPendingResponse->count() > 0) || 
@@ -393,17 +444,8 @@
     @endphp
     
     @if($hasCriticalActions)
-    <div class="card collapsible-section">
-        <div class="section-header" onclick="toggleSection(this)">
-            <h2 style="margin: 0;">Critical Actions Requiring Attention</h2>
-            <span class="section-toggle-icon">▼</span>
-        </div>
-        <div class="section-content">
-            <div style="margin-bottom: 15px;">
-                <button type="button" onclick="expandAllCards()" class="btn btn-main" style="margin-right: 10px;">Expand All Cards</button>
-                <button type="button" onclick="collapseAllCards()" class="btn btn-secondary" style="background: #6c757d; color: white;">Collapse All Cards</button>
-            </div>
-            <div class="grid">
+    <h2 style="margin-top: 0; margin-bottom: 14px; font-size: 20px;">Critical Actions</h2>
+    <div class="grid">
         <!-- AML PENDING -->
         @if(isset($amlPending) && $amlPending->count() > 0)
             <div class="card">
@@ -538,12 +580,10 @@
             </div>
         @endif
             </div>
-        </div>
-    </div>
     @endif
 
     <!-- MAIN DATA GRID -->
-    <h2 style="margin-top: 40px;">Overview</h2>
+    <h2 style="margin-top: 28px; margin-bottom: 18px;">Overview</h2>
     <div class="grid">
         <!-- TODAY'S APPOINTMENTS -->
         @if(isset($todaysAppointments) && $todaysAppointments->count() > 0)
