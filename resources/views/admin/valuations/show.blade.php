@@ -28,17 +28,24 @@
         border-bottom: 1px solid var(--line-grey);
     }
 
-    .schedule-form .info-row {
-        align-items: center;
+    .schedule-form .form-group {
+        margin-bottom: 18px;
     }
 
-    .schedule-form .info-label label {
+    .schedule-form .form-group:last-of-type {
+        margin-bottom: 14px;
+    }
+
+    .schedule-form label {
+        display: block;
         font-weight: 600;
-        color: #666;
-        margin: 0;
+        font-size: 14px;
+        color: #333;
+        margin-bottom: 6px;
     }
 
     .schedule-form .form-control {
+        display: block;
         padding: 10px 12px;
         border-radius: 6px;
         border: 1px solid var(--line-grey);
@@ -55,18 +62,22 @@
     }
 
     .schedule-form .form-note {
-        font-size: 13px;
-        color: #666;
-        margin: 16px 0 20px 0;
-        padding: 12px 16px;
-        background: #f8f9fa;
-        border-radius: 6px;
-        border-left: 3px solid var(--abodeology-teal);
+        font-size: 12px;
+        color: #888;
+        margin: 12px 0 18px 0;
+        line-height: 1.5;
+        padding: 0;
+        background: transparent;
+        border: none;
+    }
+
+    .schedule-form .form-note strong {
+        color: #555;
     }
 
     .schedule-form .form-actions {
-        margin-top: 20px;
-        padding-top: 20px;
+        margin-top: 4px;
+        padding-top: 18px;
         border-top: 1px solid var(--line-grey);
     }
 
@@ -281,52 +292,40 @@
         <h3>Schedule Valuation (Admin/Agent)</h3>
         <form class="schedule-form" action="{{ route('admin.valuations.schedule', $valuation->id) }}" method="POST">
             @csrf
-            <div class="info-row">
-                <div class="info-label">
-                    <label for="valuation_date">Valuation Date</label>
-                </div>
-                <div class="info-value">
-                    <input
-                        type="date"
-                        id="valuation_date"
-                        name="valuation_date"
-                        class="form-control"
-                        value="{{ old('valuation_date', $valuation->valuation_date ? \Carbon\Carbon::parse($valuation->valuation_date)->format('Y-m-d') : '') }}"
-                    >
-                </div>
+            <div class="form-group">
+                <label for="valuation_date">Valuation Date</label>
+                <input
+                    type="date"
+                    id="valuation_date"
+                    name="valuation_date"
+                    class="form-control"
+                    value="{{ old('valuation_date', $valuation->valuation_date ? \Carbon\Carbon::parse($valuation->valuation_date)->format('Y-m-d') : '') }}"
+                >
             </div>
-            <div class="info-row">
-                <div class="info-label">
-                    <label for="valuation_time">Valuation Time (optional)</label>
-                </div>
-                <div class="info-value">
-                    <input
-                        type="time"
-                        id="valuation_time"
-                        name="valuation_time"
-                        class="form-control"
-                        value="{{ old('valuation_time', $valuation->valuation_time ? \Carbon\Carbon::parse($valuation->valuation_time)->format('H:i') : '') }}"
-                    >
-                </div>
+            <div class="form-group">
+                <label for="valuation_time">Valuation Time (optional)</label>
+                <input
+                    type="time"
+                    id="valuation_time"
+                    name="valuation_time"
+                    class="form-control"
+                    value="{{ old('valuation_time', $valuation->valuation_time ? \Carbon\Carbon::parse($valuation->valuation_time)->format('H:i') : '') }}"
+                >
             </div>
             @if($agents)
-            <div class="info-row">
-                <div class="info-label">
-                    <label for="agent_id">Assign Agent/Valuer</label>
-                </div>
-                <div class="info-value">
-                    <select id="agent_id" name="agent_id" class="form-control">
-                        <option value="">-- No Agent/Valuer Assigned --</option>
-                        @foreach($agents as $agent)
-                            <option value="{{ $agent->id }}" {{ $valuation->agent_id == $agent->id ? 'selected' : '' }}>
-                                {{ $agent->name }} ({{ $agent->email }})
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
+            <div class="form-group">
+                <label for="agent_id">Assign Agent/Valuer</label>
+                <select id="agent_id" name="agent_id" class="form-control">
+                    <option value="">-- No Agent/Valuer Assigned --</option>
+                    @foreach($agents as $agent)
+                        <option value="{{ $agent->id }}" {{ $valuation->agent_id == $agent->id ? 'selected' : '' }}>
+                            {{ $agent->name }} ({{ $agent->email }})
+                        </option>
+                    @endforeach
+                </select>
             </div>
             @endif
-            <p class="form-note">Status updates automatically: <strong>Scheduled</strong> when a date is set, <strong>Pending</strong> when the date is cleared. <strong>Completed</strong> is set when the valuation form is submitted.</p>
+            <p class="form-note">Status updates automatically: <strong>Scheduled</strong> when a date is set, <strong>Pending</strong> when the date is cleared. <strong>Completed</strong> when the valuation form is submitted.</p>
             <div class="form-actions">
                 <button type="submit" class="btn btn-main">Save Schedule</button>
             </div>
