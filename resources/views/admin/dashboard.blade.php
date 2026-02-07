@@ -152,7 +152,7 @@
     }
     .metrics-strip,
     .reminders-strip {
-        background: #0d7377;
+        background: #2db8b4;
         color: #fff;
         border-radius: 10px;
         padding: 14px 18px;
