@@ -20,9 +20,54 @@
 
     .card h3 {
         margin-top: 0;
-        margin-bottom: 15px;
+        margin-bottom: 18px;
+        padding-bottom: 12px;
         font-size: 20px;
+        font-weight: 600;
         color: var(--abodeology-teal);
+        border-bottom: 1px solid var(--line-grey);
+    }
+
+    .schedule-form .info-row {
+        align-items: center;
+    }
+
+    .schedule-form .info-label label {
+        font-weight: 600;
+        color: #666;
+        margin: 0;
+    }
+
+    .schedule-form .form-control {
+        padding: 10px 12px;
+        border-radius: 6px;
+        border: 1px solid var(--line-grey);
+        font-size: 14px;
+        width: 100%;
+        max-width: 280px;
+        box-sizing: border-box;
+    }
+
+    .schedule-form .form-control:focus {
+        outline: none;
+        border-color: var(--abodeology-teal);
+        box-shadow: 0 0 0 2px rgba(44, 184, 180, 0.15);
+    }
+
+    .schedule-form .form-note {
+        font-size: 13px;
+        color: #666;
+        margin: 16px 0 20px 0;
+        padding: 12px 16px;
+        background: #f8f9fa;
+        border-radius: 6px;
+        border-left: 3px solid var(--abodeology-teal);
+    }
+
+    .schedule-form .form-actions {
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 1px solid var(--line-grey);
     }
 
     .info-row {
@@ -234,7 +279,7 @@
     @if(in_array(auth()->user()->role, ['admin', 'agent']))
     <div class="card">
         <h3>Schedule Valuation (Admin/Agent)</h3>
-        <form action="{{ route('admin.valuations.schedule', $valuation->id) }}" method="POST">
+        <form class="schedule-form" action="{{ route('admin.valuations.schedule', $valuation->id) }}" method="POST">
             @csrf
             <div class="info-row">
                 <div class="info-label">
@@ -245,8 +290,8 @@
                         type="date"
                         id="valuation_date"
                         name="valuation_date"
+                        class="form-control"
                         value="{{ old('valuation_date', $valuation->valuation_date ? \Carbon\Carbon::parse($valuation->valuation_date)->format('Y-m-d') : '') }}"
-                        style="padding: 8px 10px; border-radius: 4px; border: 1px solid #D9D9D9; max-width: 220px;"
                     >
                 </div>
             </div>
@@ -259,23 +304,18 @@
                         type="time"
                         id="valuation_time"
                         name="valuation_time"
+                        class="form-control"
                         value="{{ old('valuation_time', $valuation->valuation_time ? \Carbon\Carbon::parse($valuation->valuation_time)->format('H:i') : '') }}"
-                        style="padding: 8px 10px; border-radius: 4px; border: 1px solid #D9D9D9; max-width: 180px;"
                     >
                 </div>
             </div>
-            <p style="font-size: 13px; color: #666; margin: 0 0 15px 0;">Status updates automatically: <strong>Scheduled</strong> when a date is set, <strong>Pending</strong> when the date is cleared. <strong>Completed</strong> is set when the valuation form is submitted.</p>
             @if($agents)
             <div class="info-row">
                 <div class="info-label">
                     <label for="agent_id">Assign Agent/Valuer</label>
                 </div>
                 <div class="info-value">
-                    <select
-                        id="agent_id"
-                        name="agent_id"
-                        style="padding: 8px 10px; border-radius: 4px; border: 1px solid #D9D9D9; max-width: 300px;"
-                    >
+                    <select id="agent_id" name="agent_id" class="form-control">
                         <option value="">-- No Agent/Valuer Assigned --</option>
                         @foreach($agents as $agent)
                             <option value="{{ $agent->id }}" {{ $valuation->agent_id == $agent->id ? 'selected' : '' }}>
@@ -286,7 +326,8 @@
                 </div>
             </div>
             @endif
-            <div style="margin-top: 10px;">
+            <p class="form-note">Status updates automatically: <strong>Scheduled</strong> when a date is set, <strong>Pending</strong> when the date is cleared. <strong>Completed</strong> is set when the valuation form is submitted.</p>
+            <div class="form-actions">
                 <button type="submit" class="btn btn-main">Save Schedule</button>
             </div>
         </form>
