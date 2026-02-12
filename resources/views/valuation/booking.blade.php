@@ -379,23 +379,23 @@
 
     @if(config('services.google.maps_api_key'))
     <script>
-        let addressAutocomplete;
-        let postcodeAutocomplete;
+        // Make initAutocomplete globally accessible
+        window.initAutocomplete = function() {
+            let addressAutocomplete;
+            let postcodeAutocomplete;
 
-        function initAutocomplete() {
             // Initialize autocomplete for property address
+            const addressInput = document.getElementById('property_address');
+            if (!addressInput) return;
+            
             addressAutocomplete = new google.maps.places.Autocomplete(
-                document.getElementById('property_address'),
+                addressInput,
                 {
                     types: ['address'],
                     componentRestrictions: { country: 'gb' }, // Restrict to UK addresses
                     fields: ['address_components', 'formatted_address']
                 }
             );
-
-            // Intercept and modify autocomplete dropdown to remove UK
-            const addressInput = document.getElementById('property_address');
-            let observer = null;
             
             // Function to clean UK from dropdown suggestions
             function cleanAutocompleteDropdown() {
@@ -492,27 +492,6 @@
                 });
             }
 
-            addressInput.addEventListener('focus', function() {
-                setupPacObserver();
-                // Also check immediately
-                setTimeout(cleanAutocompleteDropdown, 100);
-            });
-
-            // Also clean when input changes (user typing)
-            addressInput.addEventListener('input', function() {
-                setTimeout(cleanAutocompleteDropdown, 50);
-            });
-            
-            // Clean up observer when input loses focus
-            addressInput.addEventListener('blur', function() {
-                setTimeout(function() {
-                    if (pacObserver) {
-                        pacObserver.disconnect();
-                        pacObserver = null;
-                    }
-                }, 500);
-            });
-
             addressAutocomplete.addListener('place_changed', function() {
                 const place = addressAutocomplete.getPlace();
                 
@@ -584,10 +563,14 @@
             });
 
             // Remove ", UK" in real-time as user types or when autocomplete suggestions appear
-            const addressInput = document.getElementById('property_address');
+            addressInput.addEventListener('focus', function() {
+                setupPacObserver();
+                setTimeout(cleanAutocompleteDropdown, 100);
+            });
             
             // Real-time removal as user types
             addressInput.addEventListener('input', function() {
+                setTimeout(cleanAutocompleteDropdown, 50);
                 let value = this.value;
                 const originalValue = value;
                 // Remove UK from anywhere in the string (not just end)
@@ -610,6 +593,13 @@
                 if (value !== this.value) {
                     this.value = value;
                 }
+                // Clean up observer
+                setTimeout(function() {
+                    if (pacObserver) {
+                        pacObserver.disconnect();
+                        pacObserver = null;
+                    }
+                }, 500);
             });
             
             // Continuous cleanup of dropdown while visible
@@ -976,12 +966,15 @@
                     }
                 }
             });
-        }
+        }; // End of window.initAutocomplete function
 
         // Fallback if Google Maps API fails to load
         window.addEventListener('load', function() {
             if (typeof google === 'undefined' || typeof google.maps === 'undefined') {
                 console.warn('Google Maps API failed to load. Address autocomplete will not be available.');
+            } else if (typeof google.maps.places !== 'undefined' && typeof window.initAutocomplete === 'function') {
+                // If API loads after page load, initialize manually
+                window.initAutocomplete();
             }
         });
     </script>
