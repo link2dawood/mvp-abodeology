@@ -644,9 +644,16 @@
         @endif
 
         <!-- HOMECHECK REPORT - ONLINE VIEW ONLY -->
-        @if($primaryProperty && $primaryProperty->homecheckReports && $primaryProperty->homecheckReports->where('status', 'completed')->count() > 0)
         @php
-            $completedHomecheck = $primaryProperty->homecheckReports->where('status', 'completed')->first();
+            $instruction = $primaryProperty ? $primaryProperty->instruction : null;
+            $hasSignedInstruction = $instruction && $instruction->status === 'signed';
+            $activeHomecheck = $primaryProperty ? $primaryProperty->homecheckReports->whereIn('status', ['pending', 'scheduled', 'in_progress'])->first() : null;
+            $completedHomecheck = $primaryProperty ? $primaryProperty->homecheckReports->where('status', 'completed')->first() : null;
+            $homecheckReport = $completedHomecheck ?? $activeHomecheck;
+        @endphp
+        @if($primaryProperty && $hasSignedInstruction && $homecheckReport)
+        @php
+            $displayHomecheck = $completedHomecheck ?? $activeHomecheck;
         @endphp
         <div class="section" data-section="homecheck">
             <div class="drag-handle">⣿⣿</div>
@@ -670,7 +677,7 @@
 </div>
 
 <!-- HOMECHECK REPORT MODAL (Online View Only) -->
-@if($primaryProperty && $completedHomecheck)
+@if($primaryProperty && $hasSignedInstruction && $displayHomecheck)
 <div id="homecheckModal" class="modal">
     <div class="modal-content protected-content">
         <div class="modal-header">
@@ -683,7 +690,7 @@
                 @if($primaryProperty->postcode)
                     <strong>Postcode:</strong> {{ $primaryProperty->postcode }}<br>
                 @endif
-                <strong>Report Date:</strong> {{ $completedHomecheck->completed_at ? \Carbon\Carbon::parse($completedHomecheck->completed_at)->format('d F Y') : 'N/A' }}<br>
+                <strong>Report Date:</strong> {{ $displayHomecheck->completed_at ? \Carbon\Carbon::parse($displayHomecheck->completed_at)->format('d F Y') : ($displayHomecheck->scheduled_date ? \Carbon\Carbon::parse($displayHomecheck->scheduled_date)->format('d F Y') : 'In Progress') }}<br>
                 <strong>Prepared by:</strong> Abodeology Property Consultants
             </div>
             

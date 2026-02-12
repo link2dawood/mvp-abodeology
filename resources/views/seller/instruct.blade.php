@@ -188,8 +188,42 @@
                 <strong>Property:</strong> {{ $instruction->property_address ?? '123 Main Street, London, SW1A 1AA' }}<br>
                 <strong>Sellers:</strong> {{ $instruction->seller_names ?? auth()->user()->name }}<br>
                 <strong>Agency Type:</strong> Sole Agency<br>
-                <strong>Commission Fee:</strong> {{ $instruction->fee_percentage ?? '1.5' }}% + VAT
+                <strong id="fee-display">Commission Fee:</strong> <span id="fee-percentage">{{ $instruction->fee_percentage ?? '1.5' }}</span>% + VAT
+                <span id="fee-reduction-note" style="display: {{ ($instruction->self_host_viewings ?? false) ? 'inline' : 'none' }}; color: #28a745; font-weight: 600; margin-left: 10px;">(Reduced fee for self-hosted viewings)</span>
             </div>
+        </div>
+
+        <!-- VIEWING HOSTING OPTION -->
+        <div class="card" style="background: #F8F9FA;">
+            <h3 style="margin-top: 0;">Viewing Arrangements</h3>
+            <div class="text-block">
+                <p style="margin-bottom: 15px;">
+                    <strong>How would you like viewings to be conducted?</strong>
+                </p>
+                <div class="checkbox-block" style="margin-bottom: 15px;">
+                    <input type="radio" name="self_host_viewings" id="viewing_abodeology" value="0" 
+                           {{ old('self_host_viewings', $instruction->self_host_viewings ?? false) ? '' : 'checked' }}
+                           class="{{ $errors->has('self_host_viewings') ? 'error' : '' }}"
+                           onchange="updateFeeDisplay()">
+                    <label for="viewing_abodeology">
+                        <strong>Abodeology-hosted viewings</strong> (Standard fee)<br>
+                        <span style="font-size: 13px; color: #666;">Our team or Property Viewing Assistants (PVAs) will conduct all viewings on your behalf.</span>
+                    </label>
+                </div>
+                <div class="checkbox-block">
+                    <input type="radio" name="self_host_viewings" id="viewing_self_host" value="1"
+                           {{ old('self_host_viewings', $instruction->self_host_viewings ?? false) ? 'checked' : '' }}
+                           class="{{ $errors->has('self_host_viewings') ? 'error' : '' }}"
+                           onchange="updateFeeDisplay()">
+                    <label for="viewing_self_host">
+                        <strong>Self-hosted viewings</strong> (Reduced fee)<br>
+                        <span style="font-size: 13px; color: #666;">You will conduct viewings yourself. This reflects your contribution to the process and results in a reduced commission fee.</span>
+                    </label>
+                </div>
+            </div>
+            @error('self_host_viewings')
+                <div class="error-message">{{ $message }}</div>
+            @enderror
         </div>
 
         <!-- TERMS & CONDITIONS PDF -->
@@ -381,6 +415,41 @@
 
 @push('scripts')
 <script>
+    // Fee calculation: Standard 1.5%, Reduced 1.25% (0.25% reduction for self-hosted)
+    const STANDARD_FEE = 1.5;
+    const REDUCED_FEE = 1.25;
+    const FEE_REDUCTION = 0.25;
+
+    function updateFeeDisplay() {
+        const selfHost = document.getElementById('viewing_self_host').checked;
+        const feeDisplay = document.getElementById('fee-percentage');
+        const reductionNote = document.getElementById('fee-reduction-note');
+        
+        if (selfHost) {
+            feeDisplay.textContent = REDUCED_FEE.toFixed(2);
+            reductionNote.style.display = 'inline';
+        } else {
+            feeDisplay.textContent = STANDARD_FEE.toFixed(2);
+            reductionNote.style.display = 'none';
+        }
+    }
+
+    // Initialize fee display on page load based on current selection
+    document.addEventListener('DOMContentLoaded', function() {
+        const selfHost = document.getElementById('viewing_self_host').checked;
+        const feeDisplay = document.getElementById('fee-percentage');
+        const reductionNote = document.getElementById('fee-reduction-note');
+        
+        // Set initial fee based on saved preference or default
+        if (selfHost) {
+            feeDisplay.textContent = REDUCED_FEE.toFixed(2);
+            reductionNote.style.display = 'inline';
+        } else {
+            feeDisplay.textContent = STANDARD_FEE.toFixed(2);
+            reductionNote.style.display = 'none';
+        }
+    });
+
     document.getElementById('instructForm').addEventListener('submit', function(e) {
         // Validate all required checkboxes
         const requiredCheckboxes = [

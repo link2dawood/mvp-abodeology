@@ -391,22 +391,46 @@
     @endif
 
     @php
+        $instruction = $property->instruction;
+        $hasSignedInstruction = $instruction && $instruction->status === 'signed';
+        $activeHomeCheck = $property->homecheckReports->whereIn('status', ['pending', 'scheduled', 'in_progress'])->first();
         $completedHomeCheck = $property->homecheckReports->where('status', 'completed')->first();
+        $homeCheckReport = $completedHomeCheck ?? $activeHomeCheck;
     @endphp
 
-    @if($completedHomeCheck && $completedHomeCheck->report_path)
+    @if($hasSignedInstruction && $homeCheckReport)
         <div class="section-title">HomeCheck Report</div>
         <div class="card">
-            <div style="margin-bottom: 15px;">
-                <p><strong>Report Generated:</strong> {{ $completedHomeCheck->completed_at ? \Carbon\Carbon::parse($completedHomeCheck->completed_at)->format('l, F j, Y g:i A') : 'N/A' }}</p>
-                @if($completedHomeCheck->completed_by)
-                    <p><strong>Completed By:</strong> {{ $completedHomeCheck->completer->name ?? 'Agent' }}</p>
-                @endif
-            </div>
-            <a href="{{ route('seller.homecheck.report', $property->id) }}" target="_blank" class="btn btn-primary">View HomeCheck Report</a>
-            <p style="font-size: 13px; color: #666; margin-top: 10px;">
-                This AI-generated report analyzes your property's condition based on the HomeCheck images.
-            </p>
+            @if($completedHomeCheck && $completedHomeCheck->report_path)
+                <div style="margin-bottom: 15px;">
+                    <p><strong>Report Generated:</strong> {{ $completedHomeCheck->completed_at ? \Carbon\Carbon::parse($completedHomeCheck->completed_at)->format('l, F j, Y g:i A') : 'N/A' }}</p>
+                    @if($completedHomeCheck->completed_by)
+                        <p><strong>Completed By:</strong> {{ $completedHomeCheck->completer->name ?? 'Agent' }}</p>
+                    @endif
+                </div>
+                <a href="{{ route('seller.homecheck.report', $property->id) }}" target="_blank" class="btn btn-primary">View HomeCheck Report</a>
+                <p style="font-size: 13px; color: #666; margin-top: 10px;">
+                    This AI-generated report analyzes your property's condition based on the HomeCheck images.
+                </p>
+            @elseif($activeHomeCheck)
+                <div style="margin-bottom: 15px;">
+                    <p><strong>Status:</strong> 
+                        @if($activeHomeCheck->status === 'in_progress')
+                            Report being generated
+                        @elseif($activeHomeCheck->status === 'scheduled')
+                            Scheduled for {{ $activeHomeCheck->scheduled_date ? \Carbon\Carbon::parse($activeHomeCheck->scheduled_date)->format('l, F j, Y') : 'TBD' }}
+                        @else
+                            Pending
+                        @endif
+                    </p>
+                    @if($activeHomeCheck->scheduled_by)
+                        <p><strong>Scheduled By:</strong> {{ $activeHomeCheck->scheduler->name ?? 'Agent' }}</p>
+                    @endif
+                </div>
+                <p style="font-size: 13px; color: #666;">
+                    Your HomeCheck report is being prepared. You will have immediate access once it's completed. This technical assessment will help inform your property presentation strategy before marketing begins.
+                </p>
+            @endif
         </div>
     @endif
 </div>

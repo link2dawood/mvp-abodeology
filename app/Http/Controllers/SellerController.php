@@ -627,12 +627,19 @@ class SellerController extends Controller
         try {
             \DB::beginTransaction();
 
+            // Calculate fee based on viewing hosting preference
+            $selfHostViewings = $request->input('self_host_viewings') == '1';
+            $standardFee = 1.5;
+            $reducedFee = 1.25; // 0.25% reduction for self-hosted viewings
+            $finalFee = $selfHostViewings ? $reducedFee : $standardFee;
+
             // Create or update instruction
             $instruction = \App\Models\PropertyInstruction::updateOrCreate(
                 ['property_id' => $property->id],
                 [
                     'seller_id' => $user->id,
-                    'fee_percentage' => $request->input('fee_percentage', 1.5),
+                    'fee_percentage' => $finalFee,
+                    'self_host_viewings' => $selfHostViewings,
                     'declaration_accurate' => true,
                     'declaration_legal_entitlement' => true,
                     'declaration_immediate_marketing' => $validated['declaration_immediate_marketing'] ?? false,
@@ -900,18 +907,27 @@ class SellerController extends Controller
         
         // Verify seller owns this property
         $property = \App\Models\Property::where('seller_id', $user->id)
+            ->with(['instruction'])
             ->findOrFail($propertyId);
         
-        // Get the completed HomeCheck report
+        // Check if instruction is signed - HomeCheck report available immediately upon instruction signing
+        $instruction = $property->instruction;
+        if (!$instruction || $instruction->status !== 'signed') {
+            return redirect()->route('seller.dashboard')
+                ->with('error', 'HomeCheck report is available after you sign the Terms & Conditions.');
+        }
+        
+        // Get HomeCheck report (prefer completed, but allow in-progress if instruction is signed)
         $homecheckReport = \App\Models\HomecheckReport::where('property_id', $propertyId)
-            ->where('status', 'completed')
             ->with(['property', 'homecheckData'])
+            ->orderByRaw("CASE WHEN status = 'completed' THEN 0 ELSE 1 END")
             ->orderBy('completed_at', 'desc')
+            ->orderBy('created_at', 'desc')
             ->first();
         
         if (!$homecheckReport) {
-            return redirect()->route('seller.dashboard')
-                ->with('error', 'HomeCheck report not found or not yet completed.');
+            return redirect()->route('seller.properties.show', $propertyId)
+                ->with('info', 'Your HomeCheck report is being prepared. It will be available here once your property visit is completed.');
         }
         
         // Get all HomeCheck data grouped by room
