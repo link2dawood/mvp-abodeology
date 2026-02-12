@@ -173,6 +173,24 @@
                 width: 180px;
             }
         }
+
+        /* Style Google Places Autocomplete dropdown */
+        .pac-container {
+            font-family: inherit;
+            z-index: 9999 !important;
+        }
+        .pac-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 15px;
+        }
+        .pac-item-query {
+            font-size: 15px;
+        }
+        /* Hide any text nodes containing only UK or United Kingdom */
+        .pac-item {
+            position: relative;
+        }
     </style>
 </head>
 <body>
@@ -375,6 +393,126 @@
                 }
             );
 
+            // Intercept and modify autocomplete dropdown to remove UK
+            const addressInput = document.getElementById('property_address');
+            let observer = null;
+            
+            // Function to clean UK from dropdown suggestions
+            function cleanAutocompleteDropdown() {
+                setTimeout(function() {
+                    const pacContainer = document.querySelector('.pac-container');
+                    if (pacContainer) {
+                        const pacItems = pacContainer.querySelectorAll('.pac-item');
+                        pacItems.forEach(function(item) {
+                            const itemText = item.textContent || item.innerText;
+                            if (itemText) {
+                                // Remove UK/United Kingdom from the displayed text
+                                const cleanedText = itemText.replace(/,\s*UK\s*/gi, ', ').replace(/,\s*United Kingdom\s*/gi, ', ').trim();
+                                if (cleanedText !== itemText) {
+                                    // Update the text content
+                                    const querySpan = item.querySelector('.pac-item-query');
+                                    const matchedSpan = item.querySelector('.pac-matched');
+                                    if (querySpan && matchedSpan) {
+                                        // Try to update the visible parts
+                                        const fullText = itemText.replace(/,\s*UK\s*/gi, ', ').replace(/,\s*United Kingdom\s*/gi, ', ').trim();
+                                        // Split by comma to get parts
+                                        const parts = fullText.split(',').map(p => p.trim()).filter(p => p && !p.match(/^UK$/i) && !p.match(/^United Kingdom$/i));
+                                        if (parts.length > 0) {
+                                            querySpan.textContent = parts[0];
+                                            if (parts.length > 1) {
+                                                matchedSpan.textContent = parts.slice(1).join(', ');
+                                            } else {
+                                                matchedSpan.textContent = '';
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                    }
+                }, 50);
+            }
+
+            // Watch for autocomplete dropdown appearance and modify it
+            let pacObserver = null;
+            
+            function setupPacObserver() {
+                if (pacObserver) return;
+                
+                pacObserver = new MutationObserver(function(mutations) {
+                    const pacContainer = document.querySelector('.pac-container');
+                    if (pacContainer) {
+                        const pacItems = pacContainer.querySelectorAll('.pac-item');
+                        pacItems.forEach(function(item) {
+                            // Get all text nodes and modify them
+                            const walker = document.createTreeWalker(
+                                item,
+                                NodeFilter.SHOW_TEXT,
+                                null,
+                                false
+                            );
+                            
+                            let node;
+                            while (node = walker.nextNode()) {
+                                const text = node.textContent;
+                                if (text && (text.includes('UK') || text.includes('United Kingdom'))) {
+                                    const cleaned = text.replace(/,\s*UK\s*/gi, ', ').replace(/,\s*United Kingdom\s*/gi, ', ').trim();
+                                    if (cleaned !== text) {
+                                        node.textContent = cleaned;
+                                    }
+                                }
+                            }
+                            
+                            // Also modify the structured parts
+                            const querySpan = item.querySelector('.pac-item-query');
+                            const matchedSpan = item.querySelector('.pac-matched');
+                            
+                            if (querySpan && matchedSpan) {
+                                let fullText = item.textContent || item.innerText;
+                                fullText = fullText.replace(/,\s*UK\s*/gi, ', ').replace(/,\s*United Kingdom\s*/gi, ', ').trim();
+                                
+                                const parts = fullText.split(',').map(p => p.trim()).filter(p => p && !p.match(/^UK$/i) && !p.match(/^United Kingdom$/i));
+                                
+                                if (parts.length > 0) {
+                                    querySpan.textContent = parts[0];
+                                    if (parts.length > 1) {
+                                        matchedSpan.textContent = parts.slice(1).join(', ');
+                                    } else {
+                                        matchedSpan.textContent = '';
+                                    }
+                                }
+                            }
+                        });
+                    }
+                });
+                
+                pacObserver.observe(document.body, {
+                    childList: true,
+                    subtree: true
+                });
+            }
+
+            addressInput.addEventListener('focus', function() {
+                setupPacObserver();
+                // Also check immediately
+                setTimeout(cleanAutocompleteDropdown, 100);
+            });
+
+            // Also clean when input changes (user typing)
+            addressInput.addEventListener('input', function() {
+                setTimeout(cleanAutocompleteDropdown, 50);
+            });
+            
+            // Clean up observer when input loses focus
+            addressInput.addEventListener('blur', function() {
+                setTimeout(function() {
+                    if (pacObserver) {
+                        pacObserver.disconnect();
+                        pacObserver = null;
+                    }
+                }, 500);
+            });
+
             addressAutocomplete.addListener('place_changed', function() {
                 const place = addressAutocomplete.getPlace();
                 
@@ -474,38 +612,187 @@
                 }
             });
             
-            // Intercept autocomplete dropdown selections by watching for changes
-            let lastValue = addressInput.value;
-            const checkValue = setInterval(function() {
-                if (addressInput.value !== lastValue) {
-                    let newValue = addressInput.value;
-                    // Remove UK immediately if it appears
-                    if (newValue.includes('UK') || newValue.includes('United Kingdom')) {
-                        newValue = newValue.replace(/,\s*UK\s*/gi, ', ').replace(/,\s*United Kingdom\s*/gi, ', ').trim();
-                        newValue = newValue.replace(/,\s*,/g, ',').replace(/,\s*$/g, '').trim();
-                        if (newValue !== addressInput.value) {
-                            addressInput.value = newValue;
+            // Continuous cleanup of dropdown while visible
+            let dropdownCleanupInterval = null;
+            
+            addressInput.addEventListener('focus', function() {
+                // Start continuous cleanup when input is focused
+                if (!dropdownCleanupInterval) {
+                    dropdownCleanupInterval = setInterval(function() {
+                        const pacContainer = document.querySelector('.pac-container');
+                        if (pacContainer && pacContainer.style.display !== 'none') {
+                            // Clean all items in dropdown
+                            const pacItems = pacContainer.querySelectorAll('.pac-item');
+                            pacItems.forEach(function(item) {
+                                // Modify all text content
+                                const allText = item.textContent || item.innerText || '';
+                                if (allText.includes('UK') || allText.includes('United Kingdom')) {
+                                    // Replace text in all child nodes
+                                    const walker = document.createTreeWalker(
+                                        item,
+                                        NodeFilter.SHOW_TEXT,
+                                        null,
+                                        false
+                                    );
+                                    
+                                    let node;
+                                    while (node = walker.nextNode()) {
+                                        if (node.textContent) {
+                                            const cleaned = node.textContent.replace(/,\s*UK\s*/gi, ', ').replace(/,\s*United Kingdom\s*/gi, ', ').trim();
+                                            if (cleaned !== node.textContent) {
+                                                node.textContent = cleaned;
+                                            }
+                                        }
+                                    }
+                                    
+                                    // Also update structured parts
+                                    const querySpan = item.querySelector('.pac-item-query');
+                                    const matchedSpan = item.querySelector('.pac-matched');
+                                    if (querySpan) {
+                                        let queryText = querySpan.textContent || '';
+                                        queryText = queryText.replace(/,\s*UK\s*/gi, ', ').replace(/,\s*United Kingdom\s*/gi, ', ').trim();
+                                        querySpan.textContent = queryText;
+                                    }
+                                    if (matchedSpan) {
+                                        let matchedText = matchedSpan.textContent || '';
+                                        matchedText = matchedText.replace(/,\s*UK\s*/gi, ', ').replace(/,\s*United Kingdom\s*/gi, ', ').trim();
+                                        matchedSpan.textContent = matchedText;
+                                    }
+                                }
+                            });
                         }
-                    }
-                    lastValue = addressInput.value;
+                    }, 100); // Check every 100ms
                 }
-            }, 100);
+            });
             
             // Clean up interval when input loses focus
             addressInput.addEventListener('blur', function() {
-                clearInterval(checkValue);
+                setTimeout(function() {
+                    if (dropdownCleanupInterval) {
+                        clearInterval(dropdownCleanupInterval);
+                        dropdownCleanupInterval = null;
+                    }
+                }, 300);
             });
 
             // Initialize autocomplete for vendor address (if different from property)
             if (document.getElementById('vendor_address')) {
+                const vendorAddressInput = document.getElementById('vendor_address');
                 const vendorAddressAutocomplete = new google.maps.places.Autocomplete(
-                    document.getElementById('vendor_address'),
+                    vendorAddressInput,
                     {
                         types: ['address'],
                         componentRestrictions: { country: 'gb' },
                         fields: ['address_components', 'formatted_address']
                     }
                 );
+
+                // Function to clean UK from vendor address dropdown
+                function cleanVendorAutocompleteDropdown() {
+                    setTimeout(function() {
+                        const pacContainer = document.querySelector('.pac-container');
+                        if (pacContainer) {
+                            const pacItems = pacContainer.querySelectorAll('.pac-item');
+                            pacItems.forEach(function(item) {
+                                const itemText = item.textContent || item.innerText;
+                                if (itemText) {
+                                    const cleanedText = itemText.replace(/,\s*UK\s*/gi, ', ').replace(/,\s*United Kingdom\s*/gi, ', ').trim();
+                                    if (cleanedText !== itemText) {
+                                        const querySpan = item.querySelector('.pac-item-query');
+                                        const matchedSpan = item.querySelector('.pac-matched');
+                                        if (querySpan && matchedSpan) {
+                                            const fullText = itemText.replace(/,\s*UK\s*/gi, ', ').replace(/,\s*United Kingdom\s*/gi, ', ').trim();
+                                            const parts = fullText.split(',').map(p => p.trim()).filter(p => p && !p.match(/^UK$/i) && !p.match(/^United Kingdom$/i));
+                                            if (parts.length > 0) {
+                                                querySpan.textContent = parts[0];
+                                                if (parts.length > 1) {
+                                                    matchedSpan.textContent = parts.slice(1).join(', ');
+                                                } else {
+                                                    matchedSpan.textContent = '';
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            });
+                        }
+                    }, 50);
+                }
+
+                // Watch for vendor address autocomplete dropdown
+                let vendorPacObserver = null;
+                
+                function setupVendorPacObserver() {
+                    if (vendorPacObserver) return;
+                    
+                    vendorPacObserver = new MutationObserver(function(mutations) {
+                        const pacContainer = document.querySelector('.pac-container');
+                        if (pacContainer) {
+                            const pacItems = pacContainer.querySelectorAll('.pac-item');
+                            pacItems.forEach(function(item) {
+                                const walker = document.createTreeWalker(
+                                    item,
+                                    NodeFilter.SHOW_TEXT,
+                                    null,
+                                    false
+                                );
+                                
+                                let node;
+                                while (node = walker.nextNode()) {
+                                    const text = node.textContent;
+                                    if (text && (text.includes('UK') || text.includes('United Kingdom'))) {
+                                        const cleaned = text.replace(/,\s*UK\s*/gi, ', ').replace(/,\s*United Kingdom\s*/gi, ', ').trim();
+                                        if (cleaned !== text) {
+                                            node.textContent = cleaned;
+                                        }
+                                    }
+                                }
+                                
+                                const querySpan = item.querySelector('.pac-item-query');
+                                const matchedSpan = item.querySelector('.pac-matched');
+                                
+                                if (querySpan && matchedSpan) {
+                                    let fullText = item.textContent || item.innerText;
+                                    fullText = fullText.replace(/,\s*UK\s*/gi, ', ').replace(/,\s*United Kingdom\s*/gi, ', ').trim();
+                                    
+                                    const parts = fullText.split(',').map(p => p.trim()).filter(p => p && !p.match(/^UK$/i) && !p.match(/^United Kingdom$/i));
+                                    
+                                    if (parts.length > 0) {
+                                        querySpan.textContent = parts[0];
+                                        if (parts.length > 1) {
+                                            matchedSpan.textContent = parts.slice(1).join(', ');
+                                        } else {
+                                            matchedSpan.textContent = '';
+                                        }
+                                    }
+                                }
+                            });
+                        }
+                    });
+                    
+                    vendorPacObserver.observe(document.body, {
+                        childList: true,
+                        subtree: true
+                    });
+                }
+
+                vendorAddressInput.addEventListener('focus', function() {
+                    setupVendorPacObserver();
+                    setTimeout(cleanVendorAutocompleteDropdown, 100);
+                });
+
+                vendorAddressInput.addEventListener('input', function() {
+                    setTimeout(cleanVendorAutocompleteDropdown, 50);
+                });
+                
+                vendorAddressInput.addEventListener('blur', function() {
+                    setTimeout(function() {
+                        if (vendorPacObserver) {
+                            vendorPacObserver.disconnect();
+                            vendorPacObserver = null;
+                        }
+                    }, 500);
+                });
 
                 vendorAddressAutocomplete.addListener('place_changed', function() {
                     const place = vendorAddressAutocomplete.getPlace();
@@ -596,26 +883,61 @@
                     }
                 });
                 
-                // Intercept autocomplete dropdown selections for vendor address
-                let lastVendorValue = vendorAddressInput.value;
-                const checkVendorValue = setInterval(function() {
-                    if (vendorAddressInput.value !== lastVendorValue) {
-                        let newValue = vendorAddressInput.value;
-                        // Remove UK immediately if it appears
-                        if (newValue.includes('UK') || newValue.includes('United Kingdom')) {
-                            newValue = newValue.replace(/,\s*UK\s*/gi, ', ').replace(/,\s*United Kingdom\s*/gi, ', ').trim();
-                            newValue = newValue.replace(/,\s*,/g, ',').replace(/,\s*$/g, '').trim();
-                            if (newValue !== vendorAddressInput.value) {
-                                vendorAddressInput.value = newValue;
-                            }
-                        }
-                        lastVendorValue = vendorAddressInput.value;
-                    }
-                }, 100);
+                // Continuous cleanup of vendor address dropdown while visible
+                let vendorDropdownCleanupInterval = null;
                 
-                // Clean up interval when input loses focus
+                vendorAddressInput.addEventListener('focus', function() {
+                    if (!vendorDropdownCleanupInterval) {
+                        vendorDropdownCleanupInterval = setInterval(function() {
+                            const pacContainer = document.querySelector('.pac-container');
+                            if (pacContainer && pacContainer.style.display !== 'none') {
+                                const pacItems = pacContainer.querySelectorAll('.pac-item');
+                                pacItems.forEach(function(item) {
+                                    const allText = item.textContent || item.innerText || '';
+                                    if (allText.includes('UK') || allText.includes('United Kingdom')) {
+                                        const walker = document.createTreeWalker(
+                                            item,
+                                            NodeFilter.SHOW_TEXT,
+                                            null,
+                                            false
+                                        );
+                                        
+                                        let node;
+                                        while (node = walker.nextNode()) {
+                                            if (node.textContent) {
+                                                const cleaned = node.textContent.replace(/,\s*UK\s*/gi, ', ').replace(/,\s*United Kingdom\s*/gi, ', ').trim();
+                                                if (cleaned !== node.textContent) {
+                                                    node.textContent = cleaned;
+                                                }
+                                            }
+                                        }
+                                        
+                                        const querySpan = item.querySelector('.pac-item-query');
+                                        const matchedSpan = item.querySelector('.pac-matched');
+                                        if (querySpan) {
+                                            let queryText = querySpan.textContent || '';
+                                            queryText = queryText.replace(/,\s*UK\s*/gi, ', ').replace(/,\s*United Kingdom\s*/gi, ', ').trim();
+                                            querySpan.textContent = queryText;
+                                        }
+                                        if (matchedSpan) {
+                                            let matchedText = matchedSpan.textContent || '';
+                                            matchedText = matchedText.replace(/,\s*UK\s*/gi, ', ').replace(/,\s*United Kingdom\s*/gi, ', ').trim();
+                                            matchedSpan.textContent = matchedText;
+                                        }
+                                    }
+                                });
+                            }
+                        }, 100);
+                    }
+                });
+                
                 vendorAddressInput.addEventListener('blur', function() {
-                    clearInterval(checkVendorValue);
+                    setTimeout(function() {
+                        if (vendorDropdownCleanupInterval) {
+                            clearInterval(vendorDropdownCleanupInterval);
+                            vendorDropdownCleanupInterval = null;
+                        }
+                    }, 300);
                 });
             }
 
