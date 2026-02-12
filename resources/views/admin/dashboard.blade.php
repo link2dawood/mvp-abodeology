@@ -140,58 +140,72 @@
 
     /* TOP ROW: Compact Key Metrics + Reminders */
     .dashboard-top-row {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 20px;
-        margin-bottom: 28px;
-    }
-    @media (max-width: 900px) {
-        .dashboard-top-row {
-            grid-template-columns: 1fr;
-        }
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 20px;
+        align-items: flex-start;
     }
     .metrics-strip,
     .reminders-strip {
         background: #2db8b4;
         color: #fff;
-        border-radius: 10px;
-        padding: 14px 18px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        border-radius: 6px;
+        padding: 8px 12px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+        flex: 0 0 25%;
+        max-width: 25%; /* approx 3 of 12 columns */
     }
     .metrics-strip h3,
     .reminders-strip h3 {
-        margin: 0 0 12px 0;
-        font-size: 16px;
+        margin: 0 0 6px 0;
+        font-size: 13px;
         font-weight: 700;
         color: #fff;
-        padding-bottom: 8px;
+        padding-bottom: 4px;
         border-bottom: 1px solid rgba(255,255,255,0.25);
+    }
+    .metrics-strip .metric-rows,
+    .reminders-strip .reminder-rows {
+        display: block; /* simple vertical list */
+        font-size: 12px;
     }
     .metric-row,
     .reminder-row {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 6px 0;
-        font-size: 13px;
-        border-bottom: 1px solid rgba(255,255,255,0.12);
+        padding: 2px 0;
     }
-    .metric-row:last-child,
-    .reminder-row:last-child {
-        border-bottom: none;
+    .metric-row > span:first-child,
+    .reminder-row > a {
+        padding-right: 8px;
     }
-    .reminder-row a {
+    .reminder-row > a {
         color: #fff;
         text-decoration: none;
         font-weight: 600;
     }
-    .reminder-row a:hover {
+    .reminder-row > a:hover {
         text-decoration: underline;
     }
     .metric-row .value,
     .reminder-row .value {
-        font-weight: 700;
-        margin-left: 10px;
+        font-weight: 800;
+        font-size: 1.25em;
+        color: #fff;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.15);
+        text-align: right;
+        white-space: nowrap;
+        padding: 2px 0;
+    }
+
+    @media (max-width: 900px) {
+        .metrics-strip,
+        .reminders-strip {
+            flex: 1 1 100%;
+            max-width: 100%;
+        }
     }
 
     /* KPI BOXES (legacy, kept for any other use) */
@@ -407,12 +421,14 @@
     <div class="dashboard-top-row">
         <div class="metrics-strip">
             <h3>Key Metrics</h3>
-            <div class="metric-row"><span>Total Valuations</span><span class="value">{{ $stats['total_valuations'] ?? 0 }}</span></div>
-            <div class="metric-row"><span>Pending Requests</span><span class="value">{{ $stats['pending_valuations'] ?? 0 }}</span></div>
-            <div class="metric-row"><span>Live Listings</span><span class="value">{{ $stats['active_listings'] ?? 0 }}</span></div>
-            <div class="metric-row"><span>Offers Pending</span><span class="value">{{ $stats['offers_received'] ?? 0 }}</span></div>
-            <div class="metric-row"><span>Sales Progressing</span><span class="value">{{ $stats['sales_in_progress'] ?? 0 }}</span></div>
-            <div class="metric-row"><span>Active PVAs</span><span class="value">{{ $stats['pvas_active'] ?? 0 }}</span></div>
+            <div class="metric-rows">
+                <div class="metric-row"><span>Total Valuations</span><span class="value">({{ $stats['total_valuations'] ?? 0 }})</span></div>
+                <div class="metric-row"><span>Pending Requests</span><span class="value">({{ $stats['pending_valuations'] ?? 0 }})</span></div>
+                <div class="metric-row"><span>Live Listings</span><span class="value">({{ $stats['active_listings'] ?? 0 }})</span></div>
+                <div class="metric-row"><span>Offers Pending</span><span class="value">({{ $stats['offers_received'] ?? 0 }})</span></div>
+                <div class="metric-row"><span>Sales Progressing</span><span class="value">({{ $stats['sales_in_progress'] ?? 0 }})</span></div>
+                <div class="metric-row"><span>Active PVAs</span><span class="value">({{ $stats['pvas_active'] ?? 0 }})</span></div>
+            </div>
         </div>
         <div class="reminders-strip">
             <h3>Reminders</h3>
@@ -421,17 +437,19 @@
                 $offersCount = isset($offersPendingResponse) ? $offersPendingResponse->count() : 0;
                 $homecheckCount = isset($homecheckPending) ? $homecheckPending->count() : 0;
             @endphp
-            <div class="reminder-row">
-                <a href="{{ route('admin.aml-checks.index') }}">AML Pending Verification</a>
-                <span class="value">{{ $amlCount }}</span>
-            </div>
-            <div class="reminder-row">
-                <a href="{{ route('admin.properties.index') }}">Offers Pending Response</a>
-                <span class="value">{{ $offersCount }}</span>
-            </div>
-            <div class="reminder-row">
-                <a href="{{ route('admin.homechecks.index') }}">HomeCheck Pending</a>
-                <span class="value">{{ $homecheckCount }}</span>
+            <div class="reminder-rows">
+                <div class="reminder-row">
+                    <a href="{{ route('admin.aml-checks.index') }}">AML Pending Verification</a>
+                    <span class="value">({{ $amlCount }})</span>
+                </div>
+                <div class="reminder-row">
+                    <a href="{{ route('admin.properties.index') }}">Offers Pending Response</a>
+                    <span class="value">({{ $offersCount }})</span>
+                </div>
+                <div class="reminder-row">
+                    <a href="{{ route('admin.homechecks.index') }}">HomeCheck Pending</a>
+                    <span class="value">({{ $homecheckCount }})</span>
+                </div>
             </div>
         </div>
     </div>
