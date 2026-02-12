@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Mail\UserRegistrationWelcome;
 use Illuminate\Foundation\Auth\RegistersUsers;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 
 class RegisterController extends Controller
@@ -35,7 +37,7 @@ class RegisterController extends Controller
 
     /**
      * The user has been registered.
-     * Redirect to role-specific dashboard after registration.
+     * Send welcome email with credentials and redirect to role-specific dashboard.
      *
      * @param  \Illuminate\Http\Request  $request
      * @param  mixed  $user
@@ -43,6 +45,14 @@ class RegisterController extends Controller
      */
     protected function registered(\Illuminate\Http\Request $request, $user)
     {
+        // Send welcome email with login credentials
+        try {
+            Mail::to($user->email)->send(new UserRegistrationWelcome($user));
+        } catch (\Exception $e) {
+            // Log error but don't fail registration
+            \Log::error('Failed to send registration welcome email: ' . $e->getMessage());
+        }
+        
         return redirect($this->redirectTo($user));
     }
 
