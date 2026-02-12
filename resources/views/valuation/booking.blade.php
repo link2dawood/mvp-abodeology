@@ -414,10 +414,29 @@
                     }
                 }
 
-                // Set the full formatted address, removing ", UK" suffix
-                let formattedAddress = place.formatted_address || (streetNumber + ' ' + route).trim();
-                // Remove ", UK" or ", United Kingdom" from the end
+                // Build address from components, excluding country
+                let formattedAddress = '';
+                if (streetNumber && route) {
+                    formattedAddress = streetNumber + ' ' + route;
+                } else if (route) {
+                    formattedAddress = route;
+                } else {
+                    formattedAddress = place.formatted_address || '';
+                }
+                
+                // Add locality if available
+                if (locality && !formattedAddress.includes(locality)) {
+                    formattedAddress += ', ' + locality;
+                }
+                
+                // Add administrative area if available
+                if (administrativeArea && !formattedAddress.includes(administrativeArea)) {
+                    formattedAddress += ', ' + administrativeArea;
+                }
+                
+                // Remove any UK references
                 formattedAddress = formattedAddress.replace(/,\s*UK\s*$/i, '').replace(/,\s*United Kingdom\s*$/i, '').trim();
+                
                 document.getElementById('property_address').value = formattedAddress;
 
                 // Auto-fill postcode if found
@@ -426,14 +445,55 @@
                 }
             });
 
-            // Also remove ", UK" when user types or pastes manually
+            // Remove ", UK" in real-time as user types or when autocomplete suggestions appear
             const addressInput = document.getElementById('property_address');
+            
+            // Real-time removal as user types
+            addressInput.addEventListener('input', function() {
+                let value = this.value;
+                const originalValue = value;
+                // Remove UK from anywhere in the string (not just end)
+                value = value.replace(/,\s*UK\s*/gi, ', ').replace(/,\s*United Kingdom\s*/gi, ', ').trim();
+                // Clean up any double commas or trailing commas
+                value = value.replace(/,\s*,/g, ',').replace(/,\s*$/g, '').trim();
+                if (value !== originalValue) {
+                    const cursorPos = this.selectionStart;
+                    this.value = value;
+                    // Try to maintain cursor position
+                    const newCursorPos = Math.max(0, cursorPos - (originalValue.length - value.length));
+                    this.setSelectionRange(newCursorPos, newCursorPos);
+                }
+            });
+            
+            // Also remove ", UK" on blur
             addressInput.addEventListener('blur', function() {
                 let value = this.value.trim();
                 value = value.replace(/,\s*UK\s*$/i, '').replace(/,\s*United Kingdom\s*$/i, '').trim();
                 if (value !== this.value) {
                     this.value = value;
                 }
+            });
+            
+            // Intercept autocomplete dropdown selections by watching for changes
+            let lastValue = addressInput.value;
+            const checkValue = setInterval(function() {
+                if (addressInput.value !== lastValue) {
+                    let newValue = addressInput.value;
+                    // Remove UK immediately if it appears
+                    if (newValue.includes('UK') || newValue.includes('United Kingdom')) {
+                        newValue = newValue.replace(/,\s*UK\s*/gi, ', ').replace(/,\s*United Kingdom\s*/gi, ', ').trim();
+                        newValue = newValue.replace(/,\s*,/g, ',').replace(/,\s*$/g, '').trim();
+                        if (newValue !== addressInput.value) {
+                            addressInput.value = newValue;
+                        }
+                    }
+                    lastValue = addressInput.value;
+                }
+            }, 100);
+            
+            // Clean up interval when input loses focus
+            addressInput.addEventListener('blur', function() {
+                clearInterval(checkValue);
             });
 
             // Initialize autocomplete for vendor address (if different from property)
@@ -454,20 +514,108 @@
                         return;
                     }
 
-                    // Set the full formatted address, removing ", UK" suffix
-                    let formattedAddress = place.formatted_address || '';
+                    // Extract address components
+                    let streetNumber = '';
+                    let route = '';
+                    let locality = '';
+                    let administrativeArea = '';
+
+                    for (const component of place.address_components) {
+                        const componentType = component.types[0];
+
+                        switch (componentType) {
+                            case 'street_number':
+                                streetNumber = component.long_name;
+                                break;
+                            case 'route':
+                                route = component.long_name;
+                                break;
+                            case 'postal_town':
+                            case 'locality':
+                                if (!locality) {
+                                    locality = component.long_name;
+                                }
+                                break;
+                            case 'administrative_area_level_1':
+                                administrativeArea = component.short_name;
+                                break;
+                        }
+                    }
+
+                    // Build address from components, excluding country
+                    let formattedAddress = '';
+                    if (streetNumber && route) {
+                        formattedAddress = streetNumber + ' ' + route;
+                    } else if (route) {
+                        formattedAddress = route;
+                    } else {
+                        formattedAddress = place.formatted_address || '';
+                    }
+                    
+                    // Add locality if available
+                    if (locality && !formattedAddress.includes(locality)) {
+                        formattedAddress += ', ' + locality;
+                    }
+                    
+                    // Add administrative area if available
+                    if (administrativeArea && !formattedAddress.includes(administrativeArea)) {
+                        formattedAddress += ', ' + administrativeArea;
+                    }
+                    
+                    // Remove any UK references
                     formattedAddress = formattedAddress.replace(/,\s*UK\s*$/i, '').replace(/,\s*United Kingdom\s*$/i, '').trim();
+                    
                     document.getElementById('vendor_address').value = formattedAddress;
                 });
 
-                // Also remove ", UK" when user types or pastes manually for vendor address
+                // Remove ", UK" in real-time for vendor address
                 const vendorAddressInput = document.getElementById('vendor_address');
+                
+                // Real-time removal as user types
+                vendorAddressInput.addEventListener('input', function() {
+                    let value = this.value;
+                    const originalValue = value;
+                    // Remove UK from anywhere in the string
+                    value = value.replace(/,\s*UK\s*/gi, ', ').replace(/,\s*United Kingdom\s*/gi, ', ').trim();
+                    // Clean up any double commas or trailing commas
+                    value = value.replace(/,\s*,/g, ',').replace(/,\s*$/g, '').trim();
+                    if (value !== originalValue) {
+                        const cursorPos = this.selectionStart;
+                        this.value = value;
+                        const newCursorPos = Math.max(0, cursorPos - (originalValue.length - value.length));
+                        this.setSelectionRange(newCursorPos, newCursorPos);
+                    }
+                });
+                
+                // Also remove ", UK" on blur
                 vendorAddressInput.addEventListener('blur', function() {
                     let value = this.value.trim();
                     value = value.replace(/,\s*UK\s*$/i, '').replace(/,\s*United Kingdom\s*$/i, '').trim();
                     if (value !== this.value) {
                         this.value = value;
                     }
+                });
+                
+                // Intercept autocomplete dropdown selections for vendor address
+                let lastVendorValue = vendorAddressInput.value;
+                const checkVendorValue = setInterval(function() {
+                    if (vendorAddressInput.value !== lastVendorValue) {
+                        let newValue = vendorAddressInput.value;
+                        // Remove UK immediately if it appears
+                        if (newValue.includes('UK') || newValue.includes('United Kingdom')) {
+                            newValue = newValue.replace(/,\s*UK\s*/gi, ', ').replace(/,\s*United Kingdom\s*/gi, ', ').trim();
+                            newValue = newValue.replace(/,\s*,/g, ',').replace(/,\s*$/g, '').trim();
+                            if (newValue !== vendorAddressInput.value) {
+                                vendorAddressInput.value = newValue;
+                            }
+                        }
+                        lastVendorValue = vendorAddressInput.value;
+                    }
+                }, 100);
+                
+                // Clean up interval when input loses focus
+                vendorAddressInput.addEventListener('blur', function() {
+                    clearInterval(checkVendorValue);
                 });
             }
 
