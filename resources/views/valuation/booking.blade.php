@@ -7,7 +7,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     
     @if(config('services.google.maps_api_key'))
-    <script src="https://maps.googleapis.com/maps/api/js?key={{ config('services.google.maps_api_key') }}&libraries=places&callback=initAutocomplete" async defer></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key={{ config('services.google.maps_api_key') }}&libraries=places" async defer></script>
     @endif
     
     <style>
@@ -379,8 +379,19 @@
 
     @if(config('services.google.maps_api_key'))
     <script>
-        // Make initAutocomplete globally accessible
-        window.initAutocomplete = function() {
+        // Define initAutocomplete function
+        function initAutocomplete() {
+            // Wait for Google Maps API to be fully loaded
+            if (typeof google === 'undefined' || typeof google.maps === 'undefined' || typeof google.maps.places === 'undefined') {
+                setTimeout(initAutocomplete, 100);
+                return;
+            }
+            
+            // Wait for DOM to be ready
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initAutocomplete);
+                return;
+            }
             let addressAutocomplete;
             let postcodeAutocomplete;
 
@@ -666,8 +677,8 @@
             });
 
             // Initialize autocomplete for vendor address (if different from property)
-            if (document.getElementById('vendor_address')) {
-                const vendorAddressInput = document.getElementById('vendor_address');
+            const vendorAddressInput = document.getElementById('vendor_address');
+            if (vendorAddressInput) {
                 const vendorAddressAutocomplete = new google.maps.places.Autocomplete(
                     vendorAddressInput,
                     {
@@ -842,12 +853,10 @@
                     // Remove any UK references
                     formattedAddress = formattedAddress.replace(/,\s*UK\s*$/i, '').replace(/,\s*United Kingdom\s*$/i, '').trim();
                     
-                    document.getElementById('vendor_address').value = formattedAddress;
+                    vendorAddressInput.value = formattedAddress;
                 });
 
                 // Remove ", UK" in real-time for vendor address
-                const vendorAddressInput = document.getElementById('vendor_address');
-                
                 // Real-time removal as user types
                 vendorAddressInput.addEventListener('input', function() {
                     let value = this.value;
@@ -966,15 +975,25 @@
                     }
                 }
             });
-        }; // End of window.initAutocomplete function
+        } // End of initAutocomplete function
 
-        // Fallback if Google Maps API fails to load
+        // Initialize when both Google Maps API and DOM are ready
         window.addEventListener('load', function() {
-            if (typeof google === 'undefined' || typeof google.maps === 'undefined') {
-                console.warn('Google Maps API failed to load. Address autocomplete will not be available.');
-            } else if (typeof google.maps.places !== 'undefined' && typeof window.initAutocomplete === 'function') {
-                // If API loads after page load, initialize manually
-                window.initAutocomplete();
+            if (typeof google !== 'undefined' && typeof google.maps !== 'undefined' && typeof google.maps.places !== 'undefined') {
+                initAutocomplete();
+            } else {
+                // Retry if API hasn't loaded yet
+                let retries = 0;
+                const checkApi = setInterval(function() {
+                    retries++;
+                    if (typeof google !== 'undefined' && typeof google.maps !== 'undefined' && typeof google.maps.places !== 'undefined') {
+                        clearInterval(checkApi);
+                        initAutocomplete();
+                    } else if (retries > 50) {
+                        clearInterval(checkApi);
+                        console.warn('Google Maps API failed to load after 5 seconds. Address autocomplete will not be available.');
+                    }
+                }, 100);
             }
         });
     </script>
