@@ -398,13 +398,25 @@
                     }
                 }
 
-                // Set the full formatted address
-                document.getElementById('property_address').value = place.formatted_address || 
-                    (streetNumber + ' ' + route).trim() || place.formatted_address;
+                // Set the full formatted address, removing ", UK" suffix
+                let formattedAddress = place.formatted_address || (streetNumber + ' ' + route).trim();
+                // Remove ", UK" or ", United Kingdom" from the end
+                formattedAddress = formattedAddress.replace(/,\s*UK\s*$/i, '').replace(/,\s*United Kingdom\s*$/i, '').trim();
+                document.getElementById('property_address').value = formattedAddress;
 
                 // Auto-fill postcode if found
                 if (postcode) {
                     document.getElementById('postcode').value = postcode;
+                }
+            });
+
+            // Also remove ", UK" when user types or pastes manually
+            const addressInput = document.getElementById('property_address');
+            addressInput.addEventListener('blur', function() {
+                let value = this.value.trim();
+                value = value.replace(/,\s*UK\s*$/i, '').replace(/,\s*United Kingdom\s*$/i, '').trim();
+                if (value !== this.value) {
+                    this.value = value;
                 }
             });
 

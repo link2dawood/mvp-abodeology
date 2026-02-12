@@ -157,7 +157,36 @@ class AdminController extends Controller
             ->limit(10)
             ->get();
         
-        // 5. RECENT ACTIVITY - Comprehensive activity log
+        // 5. EXPIRING LISTINGS - Properties with sole selling agreement expiring soon (within 30 days)
+        // Assuming 12-week (84 days) sole selling agreement period from when property went live
+        $expiringListings = Property::whereIn('status', ['live', 'sstc', 'pre_marketing', 'signed'])
+            ->where('status', '!=', 'sold')
+            ->with(['seller', 'instruction'])
+            ->get()
+            ->filter(function($property) {
+                // Calculate expiration date: 84 days (12 weeks) from when property went live
+                // If property has instruction with signed_at, use that + 84 days
+                // Otherwise, use property created_at + 84 days as fallback
+                $agreementStart = $property->instruction && $property->instruction->signed_at 
+                    ? \Carbon\Carbon::parse($property->instruction->signed_at)
+                    : \Carbon\Carbon::parse($property->created_at);
+                
+                $agreementEnd = $agreementStart->copy()->addDays(84);
+                $daysUntilExpiry = now()->diffInDays($agreementEnd, false);
+                
+                // Expiring within next 30 days (including already expired)
+                return $daysUntilExpiry <= 30 && $daysUntilExpiry >= -7; // Show up to 7 days past expiry
+            })
+            ->sortBy(function($property) {
+                $agreementStart = $property->instruction && $property->instruction->signed_at 
+                    ? \Carbon\Carbon::parse($property->instruction->signed_at)
+                    : \Carbon\Carbon::parse($property->created_at);
+                return $agreementStart->copy()->addDays(84);
+            })
+            ->take(10)
+            ->values();
+        
+        // 6. RECENT ACTIVITY - Comprehensive activity log
         $recentActivity = collect();
         
         // Add recent valuations
@@ -267,7 +296,8 @@ class AdminController extends Controller
             'valuations', 
             'todaysAppointments', 
             'sellers', 
-            'buyers', 
+            'buyers',
+            'expiringListings', 
             'offers', 
             'sales', 
             'pvas', 

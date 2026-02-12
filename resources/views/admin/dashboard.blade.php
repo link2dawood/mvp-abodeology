@@ -436,6 +436,7 @@
                 $amlCount = isset($amlPending) ? $amlPending->count() : 0;
                 $offersCount = isset($offersPendingResponse) ? $offersPendingResponse->count() : 0;
                 $homecheckCount = isset($homecheckPending) ? $homecheckPending->count() : 0;
+                $expiringCount = isset($expiringListings) ? $expiringListings->count() : 0;
             @endphp
             <div class="reminder-rows">
                 <div class="reminder-row">
@@ -450,6 +451,10 @@
                     <a href="{{ route('admin.homechecks.index') }}">HomeCheck Pending</a>
                     <span class="value">({{ $homecheckCount }})</span>
                 </div>
+                <div class="reminder-row">
+                    <a href="{{ route('admin.properties.index', ['filter' => 'expiring']) }}">Expiring Listings</a>
+                    <span class="value">({{ $expiringCount }})</span>
+                </div>
             </div>
         </div>
     </div>
@@ -458,7 +463,8 @@
     @php
         $hasCriticalActions = (isset($amlPending) && $amlPending->count() > 0) || 
                              (isset($offersPendingResponse) && $offersPendingResponse->count() > 0) || 
-                             (isset($homecheckPending) && $homecheckPending->count() > 0);
+                             (isset($homecheckPending) && $homecheckPending->count() > 0) ||
+                             (isset($expiringListings) && $expiringListings->count() > 0);
     @endphp
     
     @if($hasCriticalActions)
@@ -594,6 +600,61 @@
                     @endforeach
                 </table>
                 <a href="{{ route('admin.properties.index') }}" class="btn btn-main">View All Properties</a>
+                </div>
+            </div>
+        @endif
+
+        <!-- EXPIRING LISTINGS -->
+        @if(isset($expiringListings) && $expiringListings->count() > 0)
+            <div class="card">
+                <div class="card-header" onclick="toggleCard(this)">
+                    <h3 style="color: #856404; margin: 0;">Expiring Listings</h3>
+                    <span class="card-toggle-icon">▼</span>
+                </div>
+                <div class="card-content">
+                <div style="margin-bottom: 15px; padding: 12px; background: #fff3cd; border-radius: 6px;">
+                    <strong style="color: #856404;">{{ $expiringListings->count() }} listing(s) with sole selling agreement expiring soon</strong>
+                    <p style="margin: 8px 0 0 0; font-size: 12px; color: #856404;">Contact sellers to discuss options: price reductions, fresh photos, auctions, or agreement renewal.</p>
+                </div>
+                <table class="table">
+                    <tr>
+                        <th>Property</th>
+                        <th>Seller</th>
+                        <th>Status</th>
+                        <th>Days Until Expiry</th>
+                        <th>Action</th>
+                    </tr>
+                    @foreach($expiringListings as $property)
+                        @php
+                            $agreementStart = $property->instruction && $property->instruction->signed_at 
+                                ? \Carbon\Carbon::parse($property->instruction->signed_at)
+                                : \Carbon\Carbon::parse($property->created_at);
+                            $agreementEnd = $agreementStart->copy()->addDays(84);
+                            $daysUntilExpiry = now()->diffInDays($agreementEnd, false);
+                            $isExpired = $daysUntilExpiry < 0;
+                        @endphp
+                        <tr>
+                            <td>
+                                <strong>{{ Str::limit($property->address ?? 'N/A', 25) }}</strong>
+                            </td>
+                            <td>{{ $property->seller->name ?? 'N/A' }}</td>
+                            <td>
+                                <span class="status status-{{ $property->status === 'live' ? 'active' : 'pending' }}">{{ ucfirst(str_replace('_', ' ', $property->status)) }}</span>
+                            </td>
+                            <td style="font-size: 12px; color: {{ $isExpired ? '#dc3545' : ($daysUntilExpiry <= 7 ? '#856404' : '#666') }}; font-weight: {{ $isExpired || $daysUntilExpiry <= 7 ? 'bold' : 'normal' }};">
+                                @if($isExpired)
+                                    Expired {{ abs($daysUntilExpiry) }} day(s) ago
+                                @else
+                                    {{ $daysUntilExpiry }} day(s)
+                                @endif
+                            </td>
+                            <td>
+                                <a href="{{ route('admin.properties.show', $property->id) }}" class="btn" style="padding: 6px 12px; font-size: 13px;">View</a>
+                            </td>
+                        </tr>
+                    @endforeach
+                </table>
+                <a href="{{ route('admin.properties.index', ['filter' => 'expiring']) }}" class="btn btn-main">View All Expiring Listings</a>
                 </div>
             </div>
         @endif

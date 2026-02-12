@@ -21,9 +21,6 @@
     <div style="background: #F4F4F4; padding: 20px; border-radius: 8px; margin: 20px 0;">
         <h3 style="margin-top: 0; color: #2CB8B4;">Valuation Request Details</h3>
         <p><strong>Property Address:</strong> {{ $valuation->property_address }}</p>
-        @if($valuation->postcode)
-            <p><strong>Postcode:</strong> {{ $valuation->postcode }}</p>
-        @endif
         @if($valuation->valuation_date)
             <p><strong>Preferred Date:</strong> {{ \Carbon\Carbon::parse($valuation->valuation_date)->format('l, F j, Y') }}</p>
         @endif
