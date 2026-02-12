@@ -44,6 +44,7 @@ class ValuationController extends Controller
             'role' => ['required', 'string', 'in:seller,both'],
             'property_address' => ['required', 'string', 'max:1000'],
             'postcode' => ['required', 'string', 'max:20'],
+            'vendor_address' => ['nullable', 'string', 'max:1000'],
             'property_type' => ['required', 'string', 'in:detached,semi,terraced,flat,maisonette,bungalow,other'],
             'bedrooms' => ['required', 'integer', 'min:0', 'max:50'],
             'seller_notes' => ['nullable', 'string', 'max:5000'],
@@ -79,6 +80,7 @@ class ValuationController extends Controller
                     'name' => $validated['name'],
                     'email' => $validated['email'],
                     'phone' => $validated['phone'] ?? null,
+                    'vendor_address' => $validated['vendor_address'] ?? null,
                     'password' => Hash::make($password),
                     'role' => $requestedRole, // Use the role selected by the user
                     'email_verified_at' => now(), // Auto-verify email for valuation bookings
@@ -88,6 +90,7 @@ class ValuationController extends Controller
                 $user->update([
                     'name' => $validated['name'],
                     'phone' => $validated['phone'] ?? $user->phone,
+                    'vendor_address' => $validated['vendor_address'] ?? $user->vendor_address,
                 ]);
 
                 // Update role based on requested role and existing role
@@ -125,7 +128,7 @@ class ValuationController extends Controller
             $valuation = Valuation::create([
                 'seller_id' => $user->id,
                 'property_address' => $validated['property_address'],
-                'postcode' => $validated['postcode'] ?? null,
+                'postcode' => strtoupper(trim($validated['postcode'] ?? '')),
                 'property_type' => $validated['property_type'] ?? null,
                 'bedrooms' => $validated['bedrooms'] ?? null,
                 // valuation_date and valuation_time will be set by admin/agent when scheduling

@@ -288,10 +288,26 @@
                    value="{{ old('postcode') }}"
                    required
                    class="{{ $errors->has('postcode') ? 'error' : '' }}"
-                   autocomplete="postal-code">
+                   autocomplete="postal-code"
+                   style="text-transform: uppercase;">
             @error('postcode')
                 <div class="error-message">{{ $message }}</div>
             @enderror
+
+            <label for="vendor_address">Your Address (if different from property address)</label>
+            <input type="text" 
+                   id="vendor_address"
+                   name="vendor_address" 
+                   placeholder="Start typing your address..." 
+                   value="{{ old('vendor_address') }}"
+                   class="{{ $errors->has('vendor_address') ? 'error' : '' }}"
+                   autocomplete="address-line1">
+            @error('vendor_address')
+                <div class="error-message">{{ $message }}</div>
+            @enderror
+            <p style="font-size: 13px; color: #666; margin-top: -15px; margin-bottom: 20px;">
+                This is your personal address, separate from the property you're selling. Useful if you own multiple properties.
+            </p>
 
             <label for="property_type">Property Type *</label>
             <select id="property_type" 
@@ -419,6 +435,52 @@
                     this.value = value;
                 }
             });
+
+            // Initialize autocomplete for vendor address (if different from property)
+            if (document.getElementById('vendor_address')) {
+                const vendorAddressAutocomplete = new google.maps.places.Autocomplete(
+                    document.getElementById('vendor_address'),
+                    {
+                        types: ['address'],
+                        componentRestrictions: { country: 'gb' },
+                        fields: ['address_components', 'formatted_address']
+                    }
+                );
+
+                vendorAddressAutocomplete.addListener('place_changed', function() {
+                    const place = vendorAddressAutocomplete.getPlace();
+                    
+                    if (!place.address_components) {
+                        return;
+                    }
+
+                    // Set the full formatted address, removing ", UK" suffix
+                    let formattedAddress = place.formatted_address || '';
+                    formattedAddress = formattedAddress.replace(/,\s*UK\s*$/i, '').replace(/,\s*United Kingdom\s*$/i, '').trim();
+                    document.getElementById('vendor_address').value = formattedAddress;
+                });
+
+                // Also remove ", UK" when user types or pastes manually for vendor address
+                const vendorAddressInput = document.getElementById('vendor_address');
+                vendorAddressInput.addEventListener('blur', function() {
+                    let value = this.value.trim();
+                    value = value.replace(/,\s*UK\s*$/i, '').replace(/,\s*United Kingdom\s*$/i, '').trim();
+                    if (value !== this.value) {
+                        this.value = value;
+                    }
+                });
+            }
+
+            // Format postcode to uppercase
+            const postcodeInput = document.getElementById('postcode');
+            if (postcodeInput) {
+                postcodeInput.addEventListener('input', function() {
+                    this.value = this.value.toUpperCase();
+                });
+                postcodeInput.addEventListener('blur', function() {
+                    this.value = this.value.trim().toUpperCase();
+                });
+            }
 
             // Initialize autocomplete for postcode (using geocoder for UK postcodes)
             postcodeAutocomplete = new google.maps.places.Autocomplete(

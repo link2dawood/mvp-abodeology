@@ -788,6 +788,7 @@ class AdminController extends Controller
             'managing_agent' => ['nullable', 'string', 'max:255'],
             'asking_price' => ['nullable', 'numeric', 'min:0'],
             'estimated_value' => ['nullable', 'numeric', 'min:0'],
+            'fee_percentage' => ['required', 'numeric', 'min:0', 'max:10'],
             
             // Material Information
             'heating_type' => ['nullable', 'string', 'in:gas,electric,oil,underfloor,other'],
@@ -867,9 +868,10 @@ class AdminController extends Controller
                 ]
             );
 
-            // Update valuation status and save agent notes + ID visual check
+            // Update valuation status and save agent notes + ID visual check + fee percentage
             $valuation->update([
                 'estimated_value' => $validated['estimated_value'] ?? null,
+                'fee_percentage' => $validated['fee_percentage'] ?? 1.5,
                 'status' => 'completed',
                 'notes' => $validated['agent_notes'] ?? $valuation->notes,
                 'id_visual_check' => true,
@@ -890,7 +892,7 @@ class AdminController extends Controller
 
             // Immediately send Terms & Conditions (instruction request) to seller after valuation
             try {
-                // Create or update instruction record
+                // Create or update instruction record with fee percentage from valuation
                 $instruction = \App\Models\PropertyInstruction::updateOrCreate(
                     ['property_id' => $property->id],
                     [
@@ -898,7 +900,7 @@ class AdminController extends Controller
                         'status' => 'pending',
                         'requested_by' => $user->id,
                         'requested_at' => now(),
-                        'fee_percentage' => 1.5, // Default fee
+                        'fee_percentage' => $valuation->fee_percentage ?? 1.5, // Use fee discussed during valuation
                     ]
                 );
 

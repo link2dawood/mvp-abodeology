@@ -471,6 +471,17 @@
                     <input type="number" name="estimated_value" value="{{ old('estimated_value', $onboarding->estimated_value ?? $valuation->estimated_value ?? '') }}" step="0.01" min="0">
                 </div>
                 <div class="form-group">
+                    <label class="required">Commission Fee Percentage (%)</label>
+                    <input type="number" 
+                           name="fee_percentage" 
+                           value="{{ old('fee_percentage', $onboarding->fee_percentage ?? $valuation->fee_percentage ?? '1.5') }}" 
+                           step="0.01" 
+                           min="0" 
+                           max="10"
+                           required>
+                    <div class="help-text">The percentage rate discussed with the seller for the sale commission (e.g., 1.5% or 1.25% for self-hosted viewings)</div>
+                </div>
+                <div class="form-group">
                     <label>Pricing Notes</label>
                     <select name="pricing_notes">
                         <option value="">Select pricing type...</option>
