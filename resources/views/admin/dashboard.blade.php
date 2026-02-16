@@ -621,7 +621,7 @@
                         <th>Property</th>
                         <th>Seller</th>
                         <th>Status</th>
-                        <th>Days Until Expiry</th>
+                        <th>Expiry Date & Time</th>
                         <th>Action</th>
                     </tr>
                     @foreach($expiringListings as $property)
@@ -629,9 +629,10 @@
                             $agreementStart = $property->instruction && $property->instruction->signed_at 
                                 ? \Carbon\Carbon::parse($property->instruction->signed_at)
                                 : \Carbon\Carbon::parse($property->created_at);
-                            $agreementEnd = $agreementStart->copy()->addDays(84);
+                            // Set expiry to end of day (23:59:59) on the 84th day
+                            $agreementEnd = $agreementStart->copy()->addDays(84)->endOfDay();
                             $daysUntilExpiry = now()->diffInDays($agreementEnd, false);
-                            $isExpired = $daysUntilExpiry < 0;
+                            $isExpired = $agreementEnd->isPast();
                         @endphp
                         <tr>
                             <td>
@@ -643,9 +644,9 @@
                             </td>
                             <td style="font-size: 12px; color: {{ $isExpired ? '#dc3545' : ($daysUntilExpiry <= 7 ? '#856404' : '#666') }}; font-weight: {{ $isExpired || $daysUntilExpiry <= 7 ? 'bold' : 'normal' }};">
                                 @if($isExpired)
-                                    Expired {{ abs($daysUntilExpiry) }} day(s) ago
+                                    Expired: {{ $agreementEnd->format('M j, Y') }} at {{ $agreementEnd->format('H:i') }}
                                 @else
-                                    {{ $daysUntilExpiry }} day(s)
+                                    {{ $agreementEnd->format('M j, Y') }} at {{ $agreementEnd->format('H:i') }}
                                 @endif
                             </td>
                             <td>
