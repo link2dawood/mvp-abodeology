@@ -61,6 +61,38 @@
         box-shadow: 0 0 0 2px rgba(44, 184, 180, 0.15);
     }
 
+    /* Time dropdown styled like native time input (clock icon) */
+    .schedule-form .time-field {
+        position: relative;
+        max-width: 280px;
+    }
+
+    .schedule-form .time-field .form-control {
+        max-width: 100%;
+        padding-right: 40px; /* room for clock icon */
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        background-color: #fff;
+    }
+
+    .schedule-form .time-field::after {
+        content: '';
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        width: 16px;
+        height: 16px;
+        transform: translateY(-50%);
+        pointer-events: none;
+        opacity: 0.65;
+        background-repeat: no-repeat;
+        background-position: center;
+        background-size: 16px 16px;
+        /* inline SVG clock icon */
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 7v5l3 2'/%3E%3C/svg%3E");
+    }
+
     .schedule-form .form-note {
         font-size: 12px;
         color: #888;
@@ -304,17 +336,25 @@
             </div>
             <div class="form-group">
                 <label for="valuation_time">Valuation Time (optional)</label>
-                <input
-                    type="time"
-                    id="valuation_time"
-                    name="valuation_time"
-                    class="form-control"
-                    step="1800"
-                    value="{{ old('valuation_time', $valuation->valuation_time ? \Carbon\Carbon::parse($valuation->valuation_time)->format('H:i') : '') }}"
-                >
-                <small class="text-muted" style="display:block; max-width: 280px; margin-top: 6px;">
-                    Times are saved in 30-minute increments (e.g. 09:00, 09:30).
-                </small>
+                @php
+                    $selectedValuationTime = old(
+                        'valuation_time',
+                        $valuation->valuation_time ? \Carbon\Carbon::parse($valuation->valuation_time)->format('H:i') : ''
+                    );
+                @endphp
+                <div class="time-field">
+                    <select id="valuation_time" name="valuation_time" class="form-control">
+                        <option value="">-- No time selected --</option>
+                        @for ($h = 0; $h < 24; $h++)
+                            @foreach (['00', '30'] as $m)
+                                @php $timeValue = sprintf('%02d:%s', $h, $m); @endphp
+                                <option value="{{ $timeValue }}" {{ $selectedValuationTime === $timeValue ? 'selected' : '' }}>
+                                    {{ $timeValue }}
+                                </option>
+                            @endforeach
+                        @endfor
+                    </select>
+                </div>
             </div>
             @if($agents)
             <div class="form-group">
@@ -336,42 +376,6 @@
         </form>
     </div>
     @endif
-
-@push('scripts')
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    const input = document.getElementById('valuation_time');
-    if (!input) return;
-
-    function pad2(n) { return String(n).padStart(2, '0'); }
-
-    function snapTo30Minutes() {
-        const val = String(input.value || '').trim();
-        if (!val) return;
-
-        const parts = val.split(':');
-        if (parts.length < 2) return;
-
-        const h = parseInt(parts[0], 10);
-        const m = parseInt(parts[1], 10);
-        if (Number.isNaN(h) || Number.isNaN(m)) return;
-
-        const total = (h * 60) + m;
-        const snapped = Math.round(total / 30) * 30;
-        const snappedH = Math.floor((snapped % 1440) / 60);
-        const snappedM = (snapped % 60);
-
-        const snappedValue = pad2(snappedH) + ':' + pad2(snappedM);
-        if (snappedValue !== val) {
-            input.value = snappedValue;
-        }
-    }
-
-    input.addEventListener('change', snapTo30Minutes);
-    input.addEventListener('blur', snapTo30Minutes);
-});
-</script>
-@endpush
 
     @if($valuation->seller_notes)
     <div class="card">
