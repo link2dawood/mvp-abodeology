@@ -616,6 +616,20 @@ class AdminController extends Controller
             'agent_id' => ['nullable', 'exists:users,id'],
         ]);
 
+        // Normalize valuation_time to 30-minute increments (server-side safety)
+        if (!empty($validated['valuation_time'])) {
+            try {
+                [$hh, $mm] = array_map('intval', explode(':', $validated['valuation_time']));
+                $total = ($hh * 60) + $mm;
+                $snapped = (int) round($total / 30) * 30;
+                $snappedH = (int) floor(($snapped % 1440) / 60);
+                $snappedM = (int) ($snapped % 60);
+                $validated['valuation_time'] = sprintf('%02d:%02d', $snappedH, $snappedM);
+            } catch (\Throwable $e) {
+                // If anything goes wrong, keep the original validated value
+            }
+        }
+
         // Ensure agent_id (if provided) belongs to an Agent user
         if (!empty($validated['agent_id'])) {
             $assignedAgent = User::find($validated['agent_id']);

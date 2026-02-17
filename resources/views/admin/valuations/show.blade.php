@@ -260,7 +260,7 @@
             @if($valuation->valuation_time)
             <div class="info-row">
                 <div class="info-label">Preferred Time:</div>
-                <div class="info-value">{{ \Carbon\Carbon::parse($valuation->valuation_time)->format('g:i A') }}</div>
+                <div class="info-value">{{ \Carbon\Carbon::parse($valuation->valuation_time)->format('H:i') }}</div>
             </div>
             @endif
             @if($valuation->estimated_value)
@@ -304,23 +304,17 @@
             </div>
             <div class="form-group">
                 <label for="valuation_time">Valuation Time (optional)</label>
-                @php
-                    $selectedValuationTime = old(
-                        'valuation_time',
-                        $valuation->valuation_time ? \Carbon\Carbon::parse($valuation->valuation_time)->format('H:i') : ''
-                    );
-                @endphp
-                <select id="valuation_time" name="valuation_time" class="form-control">
-                    <option value="">-- No time selected --</option>
-                    @for ($h = 0; $h < 24; $h++)
-                        @foreach (['00', '30'] as $m)
-                            @php $timeValue = sprintf('%02d:%s', $h, $m); @endphp
-                            <option value="{{ $timeValue }}" {{ $selectedValuationTime === $timeValue ? 'selected' : '' }}>
-                                {{ \Carbon\Carbon::createFromFormat('H:i', $timeValue)->format('g:i A') }}
-                            </option>
-                        @endforeach
-                    @endfor
-                </select>
+                <input
+                    type="time"
+                    id="valuation_time"
+                    name="valuation_time"
+                    class="form-control"
+                    step="1800"
+                    value="{{ old('valuation_time', $valuation->valuation_time ? \Carbon\Carbon::parse($valuation->valuation_time)->format('H:i') : '') }}"
+                >
+                <small class="text-muted" style="display:block; max-width: 280px; margin-top: 6px;">
+                    Times are saved in 30-minute increments (e.g. 09:00, 09:30).
+                </small>
             </div>
             @if($agents)
             <div class="form-group">
@@ -342,6 +336,42 @@
         </form>
     </div>
     @endif
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const input = document.getElementById('valuation_time');
+    if (!input) return;
+
+    function pad2(n) { return String(n).padStart(2, '0'); }
+
+    function snapTo30Minutes() {
+        const val = String(input.value || '').trim();
+        if (!val) return;
+
+        const parts = val.split(':');
+        if (parts.length < 2) return;
+
+        const h = parseInt(parts[0], 10);
+        const m = parseInt(parts[1], 10);
+        if (Number.isNaN(h) || Number.isNaN(m)) return;
+
+        const total = (h * 60) + m;
+        const snapped = Math.round(total / 30) * 30;
+        const snappedH = Math.floor((snapped % 1440) / 60);
+        const snappedM = (snapped % 60);
+
+        const snappedValue = pad2(snappedH) + ':' + pad2(snappedM);
+        if (snappedValue !== val) {
+            input.value = snappedValue;
+        }
+    }
+
+    input.addEventListener('change', snapTo30Minutes);
+    input.addEventListener('blur', snapTo30Minutes);
+});
+</script>
+@endpush
 
     @if($valuation->seller_notes)
     <div class="card">
