@@ -304,14 +304,23 @@
             </div>
             <div class="form-group">
                 <label for="valuation_time">Valuation Time (optional)</label>
-                <input
-                    type="time"
-                    id="valuation_time"
-                    name="valuation_time"
-                    class="form-control"
-                    step="1800"
-                    value="{{ old('valuation_time', $valuation->valuation_time ? \Carbon\Carbon::parse($valuation->valuation_time)->format('H:i') : '') }}"
-                >
+                @php
+                    $selectedValuationTime = old(
+                        'valuation_time',
+                        $valuation->valuation_time ? \Carbon\Carbon::parse($valuation->valuation_time)->format('H:i') : ''
+                    );
+                @endphp
+                <select id="valuation_time" name="valuation_time" class="form-control">
+                    <option value="">-- No time selected --</option>
+                    @for ($h = 0; $h < 24; $h++)
+                        @foreach (['00', '30'] as $m)
+                            @php $timeValue = sprintf('%02d:%s', $h, $m); @endphp
+                            <option value="{{ $timeValue }}" {{ $selectedValuationTime === $timeValue ? 'selected' : '' }}>
+                                {{ \Carbon\Carbon::createFromFormat('H:i', $timeValue)->format('g:i A') }}
+                            </option>
+                        @endforeach
+                    @endfor
+                </select>
             </div>
             @if($agents)
             <div class="form-group">
