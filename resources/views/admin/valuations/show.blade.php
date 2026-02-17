@@ -309,6 +309,7 @@
                     id="valuation_time"
                     name="valuation_time"
                     class="form-control"
+                    step="1800"
                     value="{{ old('valuation_time', $valuation->valuation_time ? \Carbon\Carbon::parse($valuation->valuation_time)->format('H:i') : '') }}"
                 >
             </div>

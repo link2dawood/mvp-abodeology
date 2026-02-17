@@ -574,10 +574,14 @@ class AdminController extends Controller
                 ->first();
         }
 
-        // Get all PVA users for the assignment dropdown (only show for admin/agent)
+        // Get all Agent users for the assignment dropdown (only show for admin/agent)
+        // Use TRIM/LOWER to handle case/whitespace differences across DBs (e.g. Postgres).
         $agents = null;
         if (in_array($user->role, ['admin', 'agent'])) {
-            $agents = User::where('role', 'pva')->orderBy('name')->get();
+            $agents = User::query()
+                ->whereRaw('LOWER(TRIM(role)) = ?', ['agent'])
+                ->orderBy('name')
+                ->get();
         }
 
         return view('admin.valuations.show', compact('valuation', 'agents', 'property', 'completedHomeCheck', 'activeHomeCheck'));
@@ -599,7 +603,12 @@ class AdminController extends Controller
                 ->with('error', 'You do not have permission to update valuation schedules.');
         }
 
-        $valuation = Valuation::with('seller')->findOrFail($id);
+        $valuation = Valuation::with(['seller', 'agent'])->findOrFail($id);
+
+        // Capture previous schedule details so we can decide whether to notify the vendor
+        $previousDate = $valuation->valuation_date ? $valuation->valuation_date->format('Y-m-d') : null;
+        $previousTime = $valuation->valuation_time ? \Carbon\Carbon::parse($valuation->valuation_time)->format('H:i') : null;
+        $previousAgentId = $valuation->agent_id;
 
         $validated = $request->validate([
             'valuation_date' => ['nullable', 'date'],
@@ -607,13 +616,14 @@ class AdminController extends Controller
             'agent_id' => ['nullable', 'exists:users,id'],
         ]);
 
-        // Ensure agent_id (if provided) belongs to a PVA user
+        // Ensure agent_id (if provided) belongs to an Agent user
         if (!empty($validated['agent_id'])) {
-            $assignedPva = User::find($validated['agent_id']);
-            if (!$assignedPva || $assignedPva->role !== 'pva') {
+            $assignedAgent = User::find($validated['agent_id']);
+            $assignedRole = strtolower(trim((string) ($assignedAgent->role ?? '')));
+            if (!$assignedAgent || $assignedRole !== 'agent') {
                 return redirect()
                     ->route('admin.valuations.show', $valuation->id)
-                    ->with('error', 'Invalid PVA selected. Only PVA users can be assigned.');
+                    ->with('error', 'Invalid agent selected. Only Agent users can be assigned.');
             }
         }
 
@@ -631,6 +641,33 @@ class AdminController extends Controller
         }
 
         $valuation->save();
+
+        // Notify vendor when a valuation is scheduled or rescheduled (date/time/agent changed)
+        try {
+            // Refresh relations after possible agent_id change
+            $valuation->loadMissing(['seller', 'agent']);
+
+            $seller = $valuation->seller;
+            $hasDate = !empty($valuation->valuation_date);
+
+            $currentDate = $valuation->valuation_date ? $valuation->valuation_date->format('Y-m-d') : null;
+            $currentTime = $valuation->valuation_time ? \Carbon\Carbon::parse($valuation->valuation_time)->format('H:i') : null;
+            $currentAgentId = $valuation->agent_id;
+
+            $scheduleChanged = $hasDate && (
+                $previousDate !== $currentDate ||
+                $previousTime !== $currentTime ||
+                (string) $previousAgentId !== (string) $currentAgentId
+            );
+
+            if ($seller && !empty($seller->email) && $scheduleChanged) {
+                Mail::to($seller->email)->send(
+                    new \App\Mail\ValuationScheduledNotification($valuation)
+                );
+            }
+        } catch (\Exception $e) {
+            \Log::error('Failed to send valuation scheduled email: ' . $e->getMessage());
+        }
 
         return redirect()
             ->route('admin.valuations.show', $valuation->id)
