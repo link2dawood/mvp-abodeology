@@ -590,6 +590,23 @@
                 <div class="error-message">{{ $message }}</div>
             @enderror
 
+            <label for="fee_percentage">Commission Fee Percentage (%)</label>
+            <input
+                id="fee_percentage"
+                type="number"
+                name="fee_percentage"
+                placeholder="e.g. 1.50"
+                value="{{ old('fee_percentage', $onboarding->fee_percentage ?? $valuation->fee_percentage ?? '1.5') }}"
+                min="0"
+                max="10"
+                step="0.01"
+                required
+                class="{{ $errors->has('fee_percentage') ? 'error' : '' }}"
+            >
+            @error('fee_percentage')
+                <div class="error-message">{{ $message }}</div>
+            @enderror
+
             <label for="agent_notes">Agent Notes</label>
             <textarea
                 id="agent_notes"
