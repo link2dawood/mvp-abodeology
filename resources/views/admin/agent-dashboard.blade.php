@@ -157,7 +157,107 @@
             grid-template-columns: 1fr;
         }
     }
+
+    /* DRAG AND DROP */
+    .sortable-ghost {
+        opacity: 0.4;
+    }
+
+    .card {
+        cursor: move;
+        position: relative;
+    }
+
+    .card::before {
+        content: '⋮⋮';
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        color: #ccc;
+        font-size: 18px;
+        line-height: 1;
+        opacity: 0.5;
+        pointer-events: none;
+    }
+
+    .card:hover::before {
+        opacity: 1;
+    }
+
+    .kpi-box {
+        cursor: move;
+        position: relative;
+    }
+
+    .kpi-box::before {
+        content: '⋮⋮';
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        color: rgba(255, 255, 255, 0.6);
+        font-size: 18px;
+        line-height: 1;
+        opacity: 0.5;
+        pointer-events: none;
+    }
+
+    .kpi-box:hover::before {
+        opacity: 1;
+    }
 </style>
+@endpush
+
+@push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const savedPositions = @json(auth()->user()->agent_dashboard_card_positions ?: []);
+    
+    // Initialize both grids (KPI and Main)
+    const grids = document.querySelectorAll('.grid[data-sortable="true"]');
+    
+    grids.forEach(function(grid) {
+        const gridType = grid.dataset.gridType;
+        const savedGridPositions = (savedPositions && savedPositions[gridType]) ? savedPositions[gridType] : [];
+        
+        // Reorder cards based on saved positions
+        if (savedGridPositions.length > 0) {
+            const cards = Array.from(grid.children);
+            savedGridPositions.forEach(function(cardId, index) {
+                const card = cards.find(function(c) { return c.dataset.cardId === cardId; });
+                if (card) {
+                    grid.insertBefore(card, grid.children[index]);
+                }
+            });
+        }
+
+        const sortable = Sortable.create(grid, {
+            animation: 150,
+            ghostClass: 'sortable-ghost',
+            onEnd: function(evt) {
+                // Get all grid positions
+                const allPositions = {};
+                document.querySelectorAll('.grid[data-sortable="true"]').forEach(function(g) {
+                    const type = g.dataset.gridType;
+                    allPositions[type] = Array.from(g.children).map(function(card) { return card.dataset.cardId; });
+                });
+                
+                // Save positions via AJAX
+                fetch('{{ route("admin.agent.dashboard.save-positions") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({ positions: allPositions })
+                }).catch(function(err) {
+                    console.error('Failed to save card positions:', err);
+                });
+            }
+        });
+    });
+});
+</script>
 @endpush
 
 @section('content')
@@ -184,28 +284,28 @@
     @endif
 
     <!-- KPIs -->
-    <div class="grid">
-        <div class="kpi-box">
+    <div class="grid" data-sortable="true" data-grid-type="kpi">
+        <div class="kpi-box" data-card-id="kpi-my-properties">
             <div class="kpi-number">{{ $stats['assigned_properties'] ?? 0 }}</div>
             <div class="kpi-label">My Properties</div>
         </div>
-        <div class="kpi-box">
+        <div class="kpi-box" data-card-id="kpi-live-listings">
             <div class="kpi-number">{{ $stats['active_listings'] ?? 0 }}</div>
             <div class="kpi-label">Live Listings</div>
         </div>
-        <div class="kpi-box">
+        <div class="kpi-box" data-card-id="kpi-pending-valuations">
             <div class="kpi-number">{{ $stats['pending_valuations'] ?? 0 }}</div>
             <div class="kpi-label">Pending Valuations</div>
         </div>
-        <div class="kpi-box">
+        <div class="kpi-box" data-card-id="kpi-pending-offers">
             <div class="kpi-number">{{ $stats['pending_offers'] ?? 0 }}</div>
             <div class="kpi-label">Pending Offers</div>
         </div>
-        <div class="kpi-box">
+        <div class="kpi-box" data-card-id="kpi-upcoming-viewings">
             <div class="kpi-number">{{ $stats['upcoming_viewings'] ?? 0 }}</div>
             <div class="kpi-label">Upcoming Viewings</div>
         </div>
-        <div class="kpi-box">
+        <div class="kpi-box" data-card-id="kpi-sales-progressing">
             <div class="kpi-number">{{ $stats['sales_in_progress'] ?? 0 }}</div>
             <div class="kpi-label">Sales Progressing</div>
         </div>
@@ -214,10 +314,10 @@
     <br><br>
 
     <!-- MAIN DATA GRID -->
-    <div class="grid">
+    <div class="grid" data-sortable="true" data-grid-type="main">
         <!-- TODAY'S APPOINTMENTS -->
         @if(isset($todaysAppointments) && $todaysAppointments->count() > 0)
-        <div class="card" style="background: linear-gradient(135deg, rgba(44, 184, 180, 0.1), rgba(37, 162, 159, 0.1));">
+        <div class="card" data-card-id="todays-appointments" style="background: linear-gradient(135deg, rgba(44, 184, 180, 0.1), rgba(37, 162, 159, 0.1));">
             <h3 style="color: var(--abodeology-teal); margin-top: 0;">📅 Today's Appointments</h3>
             <table class="table">
                 <tr>
@@ -247,7 +347,7 @@
         @endif
 
         <!-- MY PROPERTIES -->
-        <div class="card">
+        <div class="card" data-card-id="my-properties">
             <h3>My Properties</h3>
             <table class="table">
                 <tr>
@@ -277,7 +377,7 @@
         </div>
 
         <!-- VALUATIONS -->
-        <div class="card">
+        <div class="card" data-card-id="recent-valuations">
             <h3>Recent Valuations</h3>
             <table class="table">
                 <tr>
@@ -305,7 +405,7 @@
         </div>
 
         <!-- OFFERS -->
-        <div class="card">
+        <div class="card" data-card-id="recent-offers">
             <h3>Recent Offers</h3>
             <table class="table">
                 <tr>
@@ -334,7 +434,7 @@
         </div>
 
         <!-- VIEWINGS -->
-        <div class="card">
+        <div class="card" data-card-id="upcoming-viewings">
             <h3>Upcoming Viewings</h3>
             <table class="table">
                 <tr>
@@ -363,7 +463,7 @@
 
         <!-- SALES -->
         @if(($sales ?? collect())->count() > 0)
-        <div class="card">
+        <div class="card" data-card-id="recent-sales">
             <h3>Recent Sales</h3>
             <table class="table">
                 <tr>
@@ -385,7 +485,7 @@
         @endif
 
         <!-- PVA MANAGEMENT -->
-        <div class="card">
+        <div class="card" data-card-id="pva-management">
             <h3>PVA Management</h3>
             <p style="color: #666; margin-bottom: 15px;">Add and manage Property Viewing Assistants</p>
             <a href="{{ route('admin.agent.pvas.create') }}" class="btn btn-main">Add New PVA</a>

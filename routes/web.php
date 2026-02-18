@@ -55,6 +55,7 @@ Route::middleware(['auth', 'role.web:admin,agent'])->prefix('admin')->name('admi
     // Agent Dashboard (separate from admin)
     Route::prefix('agent')->name('agent.')->group(function () {
         Route::get('/dashboard', [App\Http\Controllers\AdminController::class, 'agentDashboard'])->name('dashboard');
+        Route::post('/dashboard/save-positions', [App\Http\Controllers\AdminController::class, 'saveAgentDashboardPositions'])->name('dashboard.save-positions');
         
         // PVA Management Routes (Agents can add PVAs)
         Route::get('/pvas/create', [App\Http\Controllers\AdminController::class, 'createPva'])->name('pvas.create');

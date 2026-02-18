@@ -423,6 +423,35 @@ class AdminController extends Controller
     }
 
     /**
+     * Save agent dashboard card positions.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function saveAgentDashboardPositions(Request $request)
+    {
+        $user = auth()->user();
+        
+        // Only agents can save their dashboard positions
+        if ($user->role !== 'agent') {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $validated = $request->validate([
+            'positions' => 'required|array',
+            'positions.kpi' => 'nullable|array',
+            'positions.main' => 'nullable|array',
+            'positions.kpi.*' => 'string',
+            'positions.main.*' => 'string',
+        ]);
+
+        $user->agent_dashboard_card_positions = $validated['positions'];
+        $user->save();
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
      * List all users with their roles (Admin Only).
      * Agents cannot access this page - they can only view their clients through property relationships.
      *
