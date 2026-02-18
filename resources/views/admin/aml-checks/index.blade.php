@@ -90,6 +90,8 @@
         border: none;
         cursor: pointer;
         transition: opacity 0.3s ease;
+        box-sizing: border-box;
+        max-width: 100%;
     }
 
     .btn:hover {
@@ -104,8 +106,104 @@
         background: #25A29F;
     }
 
+    .aml-desktop {
+        display: block;
+    }
+
+    .aml-mobile {
+        display: none;
+    }
+
     /* RESPONSIVE DESIGN */
     @media (max-width: 768px) {
+        .container {
+            padding: 10px;
+        }
+
+        h2 {
+            font-size: 22px;
+            margin-bottom: 12px;
+        }
+
+        .page-subtitle {
+            font-size: 14px;
+            margin-bottom: 14px;
+        }
+
+        .card {
+            padding: 18px;
+            overflow: hidden;
+        }
+
+        .aml-desktop {
+            display: none;
+        }
+
+        .aml-mobile {
+            display: block;
+        }
+
+        .aml-mobile-card {
+            border: 1px solid var(--line-grey);
+            border-radius: 12px;
+            padding: 14px;
+            margin-bottom: 12px;
+            background: #fff;
+            box-shadow: 0px 2px 10px rgba(0, 0, 0, 0.04);
+            overflow: hidden;
+        }
+
+        .aml-mobile-name {
+            font-size: 15px;
+            font-weight: 700;
+            margin-bottom: 4px;
+            word-break: break-word;
+        }
+
+        .aml-mobile-email {
+            color: #6b7280;
+            font-size: 12px;
+            margin-bottom: 8px;
+            word-break: break-word;
+            overflow-wrap: anywhere;
+        }
+
+        .aml-mobile-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 7px 0;
+            border-top: 1px solid #f2f2f2;
+        }
+
+        .aml-mobile-label {
+            color: #4b5563;
+            font-size: 12px;
+            font-weight: 700;
+            flex: 0 0 38%;
+        }
+
+        .aml-mobile-value {
+            color: #1f2937;
+            font-size: 13px;
+            text-align: right;
+            flex: 1;
+            word-break: break-word;
+            overflow-wrap: anywhere;
+        }
+
+        .aml-mobile-actions {
+            margin-top: 10px;
+        }
+
+        .aml-mobile-actions .btn {
+            width: 100%;
+            text-align: center;
+            margin: 0;
+            margin-right: 0;
+            box-sizing: border-box;
+        }
+
         .table {
             display: block;
             overflow-x: auto;
@@ -116,7 +214,42 @@
         .table td {
             padding: 8px;
             font-size: 13px;
-            white-space: nowrap;
+            white-space: normal;
+        }
+
+        .card .pagination {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            justify-content: center;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .container {
+            padding: 8px;
+        }
+
+        h2 {
+            font-size: 20px;
+        }
+
+        .card {
+            padding: 14px;
+        }
+
+        .aml-mobile-name {
+            font-size: 14px;
+        }
+
+        .aml-mobile-label,
+        .aml-mobile-value {
+            font-size: 12px;
+        }
+
+        .status {
+            font-size: 11px;
+            padding: 5px 9px;
         }
     }
 </style>
@@ -140,49 +273,90 @@
     @endif
 
     <div class="card">
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>User</th>
-                    <th>Email</th>
-                    <th>Status</th>
-                    <th>Uploaded</th>
-                    <th>Checked By</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse($amlChecks as $check)
+        <div class="aml-desktop">
+            <table class="table">
+                <thead>
                     <tr>
-                        <td>{{ $check->user->name ?? 'N/A' }}</td>
-                        <td>{{ $check->user->email ?? 'N/A' }}</td>
-                        <td>
+                        <th>User</th>
+                        <th>Email</th>
+                        <th>Status</th>
+                        <th>Uploaded</th>
+                        <th>Checked By</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($amlChecks as $check)
+                        <tr>
+                            <td>{{ $check->user->name ?? 'N/A' }}</td>
+                            <td>{{ $check->user->email ?? 'N/A' }}</td>
+                            <td>
+                                <span class="status status-{{ $check->verification_status }}">
+                                    {{ ucfirst($check->verification_status) }}
+                                </span>
+                            </td>
+                            <td>{{ $check->created_at->format('M j, Y') }}</td>
+                            <td>
+                                @if($check->checker)
+                                    {{ $check->checker->name }}<br>
+                                    <small style="color: #666;">{{ $check->checked_at ? $check->checked_at->format('M j, Y') : '' }}</small>
+                                @else
+                                    <span style="color: #999;">Not checked</span>
+                                @endif
+                            </td>
+                            <td>
+                                <a href="{{ route('admin.aml-checks.show', $check->id) }}" class="btn btn-main">View Documents</a>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="6" style="text-align: center; padding: 30px; color: #666;">
+                                No AML checks found.
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+
+        <div class="aml-mobile">
+            @forelse($amlChecks as $check)
+                <div class="aml-mobile-card">
+                    <div class="aml-mobile-name">{{ $check->user->name ?? 'N/A' }}</div>
+                    <div class="aml-mobile-email">{{ $check->user->email ?? 'N/A' }}</div>
+
+                    <div class="aml-mobile-row">
+                        <div class="aml-mobile-label">Status</div>
+                        <div class="aml-mobile-value">
                             <span class="status status-{{ $check->verification_status }}">
                                 {{ ucfirst($check->verification_status) }}
                             </span>
-                        </td>
-                        <td>{{ $check->created_at->format('M j, Y') }}</td>
-                        <td>
+                        </div>
+                    </div>
+                    <div class="aml-mobile-row">
+                        <div class="aml-mobile-label">Uploaded</div>
+                        <div class="aml-mobile-value">{{ $check->created_at->format('M j, Y') }}</div>
+                    </div>
+                    <div class="aml-mobile-row">
+                        <div class="aml-mobile-label">Checked By</div>
+                        <div class="aml-mobile-value">
                             @if($check->checker)
                                 {{ $check->checker->name }}<br>
                                 <small style="color: #666;">{{ $check->checked_at ? $check->checked_at->format('M j, Y') : '' }}</small>
                             @else
                                 <span style="color: #999;">Not checked</span>
                             @endif
-                        </td>
-                        <td>
-                            <a href="{{ route('admin.aml-checks.show', $check->id) }}" class="btn btn-main">View Documents</a>
-                        </td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="6" style="text-align: center; padding: 30px; color: #666;">
-                            No AML checks found.
-                        </td>
-                    </tr>
-                @endforelse
-            </tbody>
-        </table>
+                        </div>
+                    </div>
+
+                    <div class="aml-mobile-actions">
+                        <a href="{{ route('admin.aml-checks.show', $check->id) }}" class="btn btn-main">View Documents</a>
+                    </div>
+                </div>
+            @empty
+                <div style="text-align: center; padding: 20px; color: #666;">No AML checks found.</div>
+            @endforelse
+        </div>
 
         @if($amlChecks->hasPages())
             <div style="margin-top: 20px;">

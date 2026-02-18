@@ -97,12 +97,138 @@
         border-radius: 4px;
         font-size: 14px;
     }
+
+    .homechecks-desktop {
+        display: block;
+    }
+
+    .homechecks-mobile {
+        display: none;
+    }
+
+    /* RESPONSIVE DESIGN */
+    @media (max-width: 768px) {
+        .container {
+            padding: 0 12px;
+        }
+
+        .page-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .card {
+            padding: 18px;
+        }
+
+        .filter-bar {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .filter-bar form {
+            width: 100%;
+            flex-direction: column;
+            align-items: stretch !important;
+            gap: 8px !important;
+        }
+
+        .filter-bar label {
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .filter-bar select {
+            width: 100%;
+        }
+
+        .homechecks-desktop {
+            display: none;
+        }
+
+        .homechecks-mobile {
+            display: block;
+        }
+
+        .homecheck-mobile-card {
+            border: 1px solid var(--line-grey);
+            border-radius: 12px;
+            padding: 14px;
+            margin-bottom: 12px;
+            background: #fff;
+            box-shadow: 0px 2px 10px rgba(0, 0, 0, 0.04);
+        }
+
+        .homecheck-mobile-address {
+            font-size: 15px;
+            font-weight: 700;
+            line-height: 1.35;
+            word-break: break-word;
+        }
+
+        .homecheck-mobile-postcode {
+            color: #6b7280;
+            font-size: 12px;
+            margin: 4px 0 10px;
+        }
+
+        .homecheck-mobile-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 7px 0;
+            border-top: 1px solid #f2f2f2;
+        }
+
+        .homecheck-mobile-label {
+            color: #4b5563;
+            font-size: 12px;
+            font-weight: 700;
+            flex: 0 0 40%;
+        }
+
+        .homecheck-mobile-value {
+            color: #1f2937;
+            font-size: 13px;
+            text-align: right;
+            flex: 1;
+            word-break: break-word;
+            overflow-wrap: anywhere;
+        }
+
+        .homecheck-mobile-actions {
+            margin-top: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .btn {
+            width: 100%;
+            margin: 0;
+            text-align: center;
+            box-sizing: border-box;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .container {
+            padding: 0 10px;
+        }
+
+        h2 {
+            font-size: 24px;
+            margin-bottom: 14px;
+        }
+    }
 </style>
 @endpush
 
 @section('content')
 <div class="container">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <div class="page-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
         <h2>HomeCheck Reports</h2>
     </div>
 
@@ -134,65 +260,128 @@
         </div>
 
         @if($homechecks->count() > 0)
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Property</th>
-                        <th>Seller</th>
-                        <th>Status</th>
-                        <th>Scheduled Date</th>
-                        <th>Completed Date</th>
-                        <th>Rooms</th>
-                        <th>Images</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($homechecks as $homecheck)
+            <div class="homechecks-desktop">
+                <table class="table">
+                    <thead>
                         <tr>
-                            <td>
-                                <strong>{{ Str::limit($homecheck->property->address ?? 'N/A', 30) }}</strong>
-                                @if($homecheck->property->postcode)
-                                    <br><small style="color: #666;">{{ $homecheck->property->postcode }}</small>
-                                @endif
-                            </td>
-                            <td>{{ $homecheck->property->seller->name ?? 'N/A' }}</td>
-                            <td>
+                            <th>Property</th>
+                            <th>Seller</th>
+                            <th>Status</th>
+                            <th>Scheduled Date</th>
+                            <th>Completed Date</th>
+                            <th>Rooms</th>
+                            <th>Images</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($homechecks as $homecheck)
+                            <tr>
+                                <td>
+                                    <strong>{{ Str::limit($homecheck->property->address ?? 'N/A', 30) }}</strong>
+                                    @if($homecheck->property->postcode)
+                                        <br><small style="color: #666;">{{ $homecheck->property->postcode }}</small>
+                                    @endif
+                                </td>
+                                <td>{{ $homecheck->property->seller->name ?? 'N/A' }}</td>
+                                <td>
+                                    <span class="status status-{{ $homecheck->status }}">
+                                        {{ ucfirst(str_replace('_', ' ', $homecheck->status)) }}
+                                    </span>
+                                </td>
+                                <td>
+                                    @if($homecheck->scheduled_date)
+                                        {{ $homecheck->scheduled_date->format('M j, Y') }}
+                                    @else
+                                        <span style="color: #999;">Not scheduled</span>
+                                    @endif
+                                </td>
+                                <td>
+                                    @if($homecheck->completed_at)
+                                        {{ $homecheck->completed_at->format('M j, Y') }}
+                                    @else
+                                        <span style="color: #999;">Not completed</span>
+                                    @endif
+                                </td>
+                                <td>
+                                    @php
+                                        $roomCount = $homecheck->homecheckData->groupBy('room_name')->count();
+                                    @endphp
+                                    {{ $roomCount }} {{ $roomCount === 1 ? 'room' : 'rooms' }}
+                                </td>
+                                <td>
+                                    {{ $homecheck->homecheckData->count() }} {{ $homecheck->homecheckData->count() === 1 ? 'image' : 'images' }}
+                                </td>
+                                <td>
+                                    <a href="{{ route('admin.homechecks.show', $homecheck->id) }}" class="btn btn-main" style="padding: 6px 12px; font-size: 13px;">View</a>
+                                    <a href="{{ route('admin.homechecks.edit', $homecheck->id) }}" class="btn btn-secondary" style="padding: 6px 12px; font-size: 13px;">Edit</a>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="homechecks-mobile">
+                @foreach($homechecks as $homecheck)
+                    @php
+                        $roomCount = $homecheck->homecheckData->groupBy('room_name')->count();
+                        $imageCount = $homecheck->homecheckData->count();
+                    @endphp
+                    <div class="homecheck-mobile-card">
+                        <div class="homecheck-mobile-address">{{ $homecheck->property->address ?? 'N/A' }}</div>
+                        @if($homecheck->property && $homecheck->property->postcode)
+                            <div class="homecheck-mobile-postcode">{{ $homecheck->property->postcode }}</div>
+                        @endif
+
+                        <div class="homecheck-mobile-row">
+                            <div class="homecheck-mobile-label">Seller</div>
+                            <div class="homecheck-mobile-value">{{ $homecheck->property->seller->name ?? 'N/A' }}</div>
+                        </div>
+                        <div class="homecheck-mobile-row">
+                            <div class="homecheck-mobile-label">Status</div>
+                            <div class="homecheck-mobile-value">
                                 <span class="status status-{{ $homecheck->status }}">
                                     {{ ucfirst(str_replace('_', ' ', $homecheck->status)) }}
                                 </span>
-                            </td>
-                            <td>
+                            </div>
+                        </div>
+                        <div class="homecheck-mobile-row">
+                            <div class="homecheck-mobile-label">Scheduled</div>
+                            <div class="homecheck-mobile-value">
                                 @if($homecheck->scheduled_date)
                                     {{ $homecheck->scheduled_date->format('M j, Y') }}
                                 @else
                                     <span style="color: #999;">Not scheduled</span>
                                 @endif
-                            </td>
-                            <td>
+                            </div>
+                        </div>
+                        <div class="homecheck-mobile-row">
+                            <div class="homecheck-mobile-label">Completed</div>
+                            <div class="homecheck-mobile-value">
                                 @if($homecheck->completed_at)
                                     {{ $homecheck->completed_at->format('M j, Y') }}
                                 @else
                                     <span style="color: #999;">Not completed</span>
                                 @endif
-                            </td>
-                            <td>
-                                @php
-                                    $roomCount = $homecheck->homecheckData->groupBy('room_name')->count();
-                                @endphp
-                                {{ $roomCount }} {{ $roomCount === 1 ? 'room' : 'rooms' }}
-                            </td>
-                            <td>
-                                {{ $homecheck->homecheckData->count() }} {{ $homecheck->homecheckData->count() === 1 ? 'image' : 'images' }}
-                            </td>
-                            <td>
-                                <a href="{{ route('admin.homechecks.show', $homecheck->id) }}" class="btn btn-main" style="padding: 6px 12px; font-size: 13px;">View</a>
-                                <a href="{{ route('admin.homechecks.edit', $homecheck->id) }}" class="btn btn-secondary" style="padding: 6px 12px; font-size: 13px;">Edit</a>
-                            </td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
+                            </div>
+                        </div>
+                        <div class="homecheck-mobile-row">
+                            <div class="homecheck-mobile-label">Rooms</div>
+                            <div class="homecheck-mobile-value">{{ $roomCount }} {{ $roomCount === 1 ? 'room' : 'rooms' }}</div>
+                        </div>
+                        <div class="homecheck-mobile-row">
+                            <div class="homecheck-mobile-label">Images</div>
+                            <div class="homecheck-mobile-value">{{ $imageCount }} {{ $imageCount === 1 ? 'image' : 'images' }}</div>
+                        </div>
+
+                        <div class="homecheck-mobile-actions">
+                            <a href="{{ route('admin.homechecks.show', $homecheck->id) }}" class="btn btn-main">View</a>
+                            <a href="{{ route('admin.homechecks.edit', $homecheck->id) }}" class="btn btn-secondary">Edit</a>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
 
             <div style="margin-top: 20px;">
                 {{ $homechecks->links() }}

@@ -343,6 +343,15 @@
             font-size: 24px;
         }
 
+        .container {
+            padding: 0 12px;
+        }
+
+        .page-subtitle {
+            font-size: 14px;
+            margin-bottom: 14px;
+        }
+
         .grid {
             grid-template-columns: 1fr;
             gap: 15px;
@@ -358,19 +367,36 @@
 
         .card {
             padding: 20px;
+            overflow: hidden;
+        }
+
+        .card-header {
+            padding: 8px;
+            margin: -8px -8px 12px -8px;
+        }
+
+        .card-header h3 {
+            font-size: 16px;
         }
 
         .table {
             display: block;
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
+            white-space: normal;
+        }
+
+        .table tr {
+            white-space: normal;
         }
 
         .table th,
         .table td {
             padding: 8px;
             font-size: 13px;
-            white-space: nowrap;
+            white-space: normal;
+            word-break: break-word;
+            overflow-wrap: anywhere;
         }
 
         .btn {
@@ -379,12 +405,52 @@
             width: 100%;
             text-align: center;
             margin-top: 8px;
+            margin-left: 0 !important;
+            box-sizing: border-box;
+        }
+
+        .card .btn + .btn {
+            margin-top: 8px;
+        }
+
+        .dashboard-top-row {
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .metrics-strip,
+        .reminders-strip {
+            padding: 10px;
+        }
+
+        .metric-row,
+        .reminder-row {
+            align-items: flex-start;
+            gap: 6px;
+        }
+
+        .metric-row > span:first-child,
+        .reminder-row > a {
+            flex: 1;
+            min-width: 0;
+            word-break: break-word;
+            overflow-wrap: anywhere;
+            padding-right: 6px;
+        }
+
+        .metric-row .value,
+        .reminder-row .value {
+            font-size: 1.05em;
         }
     }
 
     @media (max-width: 480px) {
         h2 {
             font-size: 20px;
+        }
+
+        .container {
+            padding: 0 10px;
         }
 
         .grid {
@@ -403,10 +469,24 @@
             padding: 15px;
         }
 
+        .card-header h3 {
+            font-size: 15px;
+        }
+
         .table th,
         .table td {
             padding: 6px;
             font-size: 12px;
+        }
+
+        .metrics-strip h3,
+        .reminders-strip h3 {
+            font-size: 12px;
+        }
+
+        .metric-row,
+        .reminder-row {
+            font-size: 11px;
         }
     }
 </style>

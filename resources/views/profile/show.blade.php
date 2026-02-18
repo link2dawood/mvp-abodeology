@@ -138,6 +138,112 @@
         gap: 10px;
         margin-top: 20px;
     }
+
+    @media (max-width: 768px) {
+        .container {
+            padding: 0 12px;
+            margin: 22px auto;
+        }
+
+        h2 {
+            font-size: 24px;
+            margin-bottom: 6px;
+        }
+
+        .page-subtitle {
+            margin-bottom: 18px;
+            font-size: 14px;
+        }
+
+        .card {
+            padding: 18px;
+            margin-bottom: 16px;
+            overflow: hidden;
+        }
+
+        .card h3 {
+            font-size: 18px;
+            margin-bottom: 14px;
+        }
+
+        .profile-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 18px;
+            padding-bottom: 14px;
+        }
+
+        .avatar {
+            width: 84px;
+            height: 84px;
+        }
+
+        .profile-info h3 {
+            font-size: 20px;
+            margin-bottom: 4px;
+            word-break: break-word;
+        }
+
+        .profile-info p {
+            word-break: break-word;
+            overflow-wrap: anywhere;
+        }
+
+        .info-row {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 4px;
+            padding: 10px 0;
+        }
+
+        .info-label {
+            font-size: 12px;
+        }
+
+        .info-value {
+            width: 100%;
+            word-break: break-word;
+            overflow-wrap: anywhere;
+        }
+
+        .action-buttons {
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 14px;
+        }
+
+        .action-buttons .btn {
+            width: 100%;
+            text-align: center;
+            margin-top: 0;
+            box-sizing: border-box;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .container {
+            padding: 0 10px;
+            margin: 16px auto;
+        }
+
+        h2 {
+            font-size: 20px;
+        }
+
+        .card {
+            padding: 14px;
+        }
+
+        .profile-info h3 {
+            font-size: 18px;
+        }
+
+        .btn {
+            padding: 10px 14px;
+            font-size: 14px;
+        }
+    }
 </style>
 @endpush
 

@@ -64,6 +64,8 @@
         transition: background 0.3s ease;
         border: none;
         cursor: pointer;
+        box-sizing: border-box;
+        max-width: 100%;
     }
 
     .btn-main {
@@ -121,6 +123,123 @@
         background: #ffc107;
         color: #000;
     }
+
+    .table td strong,
+    .table td span {
+        word-break: break-word;
+    }
+
+    .properties-desktop {
+        display: block;
+    }
+
+    .properties-mobile {
+        display: none;
+    }
+
+    @media (max-width: 900px) {
+        .container {
+            padding: 0 14px;
+            margin: 22px auto;
+        }
+
+        .page-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            font-size: 24px;
+            margin: 0;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .properties-desktop {
+            display: none;
+        }
+
+        .properties-mobile {
+            display: block;
+        }
+
+        .property-mobile-card {
+            background: var(--white);
+            border: 1px solid var(--line-grey);
+            border-radius: 12px;
+            box-shadow: 0px 3px 12px rgba(0, 0, 0, 0.05);
+            padding: 14px;
+            margin-bottom: 12px;
+        }
+
+        .property-mobile-address {
+            font-size: 15px;
+            font-weight: 700;
+            line-height: 1.35;
+            margin-bottom: 4px;
+            word-break: break-word;
+        }
+
+        .property-mobile-postcode {
+            color: #6b7280;
+            font-size: 12px;
+            margin-bottom: 10px;
+        }
+
+        .property-mobile-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 7px 0;
+            border-top: 1px solid #f2f2f2;
+            font-size: 13px;
+        }
+
+        .property-mobile-row:first-of-type {
+            border-top: none;
+            padding-top: 0;
+        }
+
+        .property-mobile-label {
+            color: #4b5563;
+            font-weight: 600;
+            flex: 0 0 38%;
+        }
+
+        .property-mobile-value {
+            color: #1f2937;
+            text-align: right;
+            flex: 1;
+            word-break: break-word;
+        }
+
+        .property-mobile-actions {
+            margin-top: 12px;
+        }
+
+        .property-mobile-actions .btn {
+            display: block;
+            width: 100%;
+            text-align: center;
+            margin: 0;
+        }
+
+        .status {
+            font-size: 11px;
+            padding: 4px 8px;
+        }
+
+        .property-mobile-value .status {
+            display: inline-block;
+        }
+
+        .btn {
+            padding: 9px 14px;
+            font-size: 13px;
+        }
+    }
 </style>
 @endpush
 
@@ -147,54 +266,102 @@
     @endif
 
     @if($properties && $properties->count() > 0)
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Address</th>
-                    <th>Seller</th>
-                    <th>Status</th>
-                    <th>Price</th>
-                    <th>Created</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($properties as $property)
+        <div class="properties-desktop">
+            <table class="table">
+                <thead>
                     <tr>
-                        <td>
-                            <strong>{{ $property->address }}</strong>
-                            @if($property->postcode)
-                                <br><span style="color: #666; font-size: 13px;">{{ $property->postcode }}</span>
-                            @endif
-                        </td>
-                        <td>
+                        <th>Address</th>
+                        <th>Seller</th>
+                        <th>Status</th>
+                        <th>Price</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($properties as $property)
+                        <tr>
+                            <td data-label="Address">
+                                <strong>{{ $property->address }}</strong>
+                                @if($property->postcode)
+                                    <br><span style="color: #666; font-size: 13px;">{{ $property->postcode }}</span>
+                                @endif
+                            </td>
+                            <td data-label="Seller">
+                                {{ $property->seller->name ?? 'N/A' }}
+                                @if($property->seller)
+                                    <br><span style="color: #666; font-size: 13px;">{{ $property->seller->email }}</span>
+                                @endif
+                            </td>
+                            <td data-label="Status">
+                                <span class="status status-{{ $property->status }}">
+                                    {{ ucfirst(str_replace('_', ' ', $property->status)) }}
+                                </span>
+                            </td>
+                            <td data-label="Price">
+                                @if($property->asking_price)
+                                    £{{ number_format($property->asking_price, 0) }}
+                                @else
+                                    <span style="color: #999;">N/A</span>
+                                @endif
+                            </td>
+                            <td data-label="Created">
+                                {{ $property->created_at->format('M d, Y') }}
+                            </td>
+                            <td data-label="Actions">
+                                <a href="{{ route('admin.properties.show', $property->id) }}" class="btn btn-main">View</a>
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+
+        <div class="properties-mobile">
+            @foreach($properties as $property)
+                <div class="property-mobile-card">
+                    <div class="property-mobile-address">{{ $property->address }}</div>
+                    @if($property->postcode)
+                        <div class="property-mobile-postcode">{{ $property->postcode }}</div>
+                    @endif
+
+                    <div class="property-mobile-row">
+                        <div class="property-mobile-label">Seller</div>
+                        <div class="property-mobile-value">
                             {{ $property->seller->name ?? 'N/A' }}
                             @if($property->seller)
-                                <br><span style="color: #666; font-size: 13px;">{{ $property->seller->email }}</span>
+                                <br><span style="color: #6b7280; font-size: 12px;">{{ $property->seller->email }}</span>
                             @endif
-                        </td>
-                        <td>
+                        </div>
+                    </div>
+                    <div class="property-mobile-row">
+                        <div class="property-mobile-label">Status</div>
+                        <div class="property-mobile-value">
                             <span class="status status-{{ $property->status }}">
                                 {{ ucfirst(str_replace('_', ' ', $property->status)) }}
                             </span>
-                        </td>
-                        <td>
+                        </div>
+                    </div>
+                    <div class="property-mobile-row">
+                        <div class="property-mobile-label">Price</div>
+                        <div class="property-mobile-value">
                             @if($property->asking_price)
                                 £{{ number_format($property->asking_price, 0) }}
                             @else
                                 <span style="color: #999;">N/A</span>
                             @endif
-                        </td>
-                        <td>
-                            {{ $property->created_at->format('M d, Y') }}
-                        </td>
-                        <td>
-                            <a href="{{ route('admin.properties.show', $property->id) }}" class="btn btn-main">View</a>
-                        </td>
-                    </tr>
-                @endforeach
-            </tbody>
-        </table>
+                        </div>
+                    </div>
+                    <div class="property-mobile-row">
+                        <div class="property-mobile-label">Created</div>
+                        <div class="property-mobile-value">{{ $property->created_at->format('M d, Y') }}</div>
+                    </div>
+                    <div class="property-mobile-actions">
+                        <a href="{{ route('admin.properties.show', $property->id) }}" class="btn btn-main">View</a>
+                    </div>
+                </div>
+            @endforeach
+        </div>
 
         @if($properties->hasPages())
             <div style="margin-top: 20px;">

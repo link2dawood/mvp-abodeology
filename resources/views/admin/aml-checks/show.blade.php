@@ -118,6 +118,8 @@
         cursor: pointer;
         transition: opacity 0.3s ease;
         margin-right: 10px;
+        box-sizing: border-box;
+        max-width: 100%;
     }
 
     .btn:hover {
@@ -178,12 +180,90 @@
 
     /* RESPONSIVE DESIGN */
     @media (max-width: 768px) {
+        .container {
+            padding: 12px;
+            margin: 20px auto;
+        }
+
+        .page-header {
+            flex-direction: column;
+            align-items: flex-start !important;
+            gap: 10px;
+        }
+
+        .page-header .btn {
+            width: 100%;
+            text-align: center;
+            margin-right: 0;
+        }
+
+        .card {
+            padding: 18px;
+            margin-bottom: 16px;
+            overflow: hidden;
+        }
+
         .info-row {
             flex-direction: column;
+            align-items: flex-start;
+            gap: 4px;
         }
 
         .info-value {
             margin-top: 5px;
+            word-break: break-word;
+            overflow-wrap: anywhere;
+        }
+
+        .document-preview {
+            padding: 12px;
+        }
+
+        .document-preview a {
+            width: 100%;
+            word-break: break-word;
+            overflow-wrap: anywhere;
+        }
+
+        textarea,
+        select {
+            font-size: 16px;
+        }
+
+        form .btn {
+            width: 100%;
+            margin-right: 0;
+            text-align: center;
+            margin-top: 8px;
+        }
+
+        form div[style*="margin-top: 20px"] {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        form div[style*="margin-top: 20px"] .btn {
+            margin-top: 0;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .container {
+            padding: 10px;
+            margin: 16px auto;
+        }
+
+        h2 {
+            font-size: 20px;
+        }
+
+        .card {
+            padding: 14px;
+        }
+
+        .card h3 {
+            font-size: 16px;
         }
     }
 </style>
@@ -191,7 +271,7 @@
 
 @section('content')
 <div class="container">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <div class="page-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
         <h2 style="margin: 0; border: none; padding: 0;">AML Document Check</h2>
         <a href="{{ route('admin.aml-checks.index') }}" class="btn btn-secondary">← Back to AML Checks</a>
     </div>
