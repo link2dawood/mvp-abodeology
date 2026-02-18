@@ -15,7 +15,9 @@
 
     <p>Dear {{ $seller->name }},</p>
 
-    <p>Your agent has requested that you sign the Terms & Conditions to proceed with listing your property for sale.</p>
+    <p>We’re ready to get your property moving towards the market — and there’s just one quick step to unlock the next stage.</p>
+
+    <p>We just need you to sign the Estate Agency Terms & Conditions so we can proceed with listing your home for sale.</p>
 
     <div style="background: #F4F4F4; padding: 20px; border-radius: 8px; margin: 20px 0;">
         <h3 style="margin-top: 0; color: #2CB8B4;">Property Details</h3>

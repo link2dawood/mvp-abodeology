@@ -3,6 +3,7 @@
 @section('title', 'Valuation Form - Valuation #' . $valuation->id)
 
 @push('styles')
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <style>
     .container {
         max-width: 1180px;
@@ -105,6 +106,50 @@
         font-size: 12px;
         color: #666;
         margin-top: 5px;
+    }
+
+    /* Select2 styling to match existing inputs */
+    .select2-container {
+        width: 100% !important;
+    }
+
+    .select2-container .select2-selection--multiple {
+        min-height: 42px !important;
+        border: 1px solid var(--line-grey);
+        border-radius: 6px;
+        padding: 6px 10px !important;
+        font-size: 14px;
+        box-sizing: border-box;
+        background: #fff;
+    }
+
+    .select2-container--default.select2-container--focus .select2-selection--multiple {
+        border-color: var(--abodeology-teal);
+        box-shadow: 0 0 0 2px rgba(44, 184, 180, 0.15);
+    }
+
+    .select2-container--default .select2-selection--multiple .select2-selection__rendered {
+        display: flex !important;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 6px;
+        min-height: 24px;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    .select2-container--default .select2-selection--multiple .select2-selection__choice {
+        margin: 0 !important;
+        line-height: 20px;
+    }
+
+    .select2-container--default .select2-selection--multiple .select2-search--inline {
+        margin-top: 0;
+    }
+
+    .select2-container--default .select2-selection--multiple .select2-search__field {
+        margin-top: 0 !important;
+        height: 22px;
     }
 
     .form-row {
@@ -283,18 +328,6 @@
             </div>
             <div class="form-row">
                 <div class="form-group">
-                    <label>Parking</label>
-                    <select name="parking">
-                        <option value="">Select...</option>
-                        <option value="none" {{ old('parking', $onboarding->parking ?? '') === 'none' ? 'selected' : '' }}>None</option>
-                        <option value="on_street" {{ old('parking', $onboarding->parking ?? '') === 'on_street' ? 'selected' : '' }}>On Street</option>
-                        <option value="driveway" {{ old('parking', $onboarding->parking ?? '') === 'driveway' ? 'selected' : '' }}>Driveway</option>
-                        <option value="garage" {{ old('parking', $onboarding->parking ?? '') === 'garage' ? 'selected' : '' }}>Garage</option>
-                        <option value="allocated" {{ old('parking', $onboarding->parking ?? '') === 'allocated' ? 'selected' : '' }}>Allocated</option>
-                        <option value="permit" {{ old('parking', $onboarding->parking ?? '') === 'permit' ? 'selected' : '' }}>Permit</option>
-                    </select>
-                </div>
-                <div class="form-group">
                     <label class="required">Tenure</label>
                     <select name="tenure" required>
                         <option value="">Select...</option>
@@ -304,6 +337,26 @@
                         <option value="unknown" {{ old('tenure', $onboarding->tenure ?? '') === 'unknown' ? 'selected' : '' }}>Unknown</option>
                     </select>
                 </div>
+            </div>
+            <div class="form-group">
+                <label>Parking</label>
+                @php
+                    $selectedParking = old('parking');
+                    if (!is_array($selectedParking)) {
+                        $selectedParking = $onboarding->parking_options ?? [];
+                        if (empty($selectedParking) && !empty($onboarding->parking)) {
+                            $selectedParking = [$onboarding->parking];
+                        }
+                    }
+                @endphp
+                <select id="parking" name="parking[]" class="parking-select2" multiple data-placeholder="Select parking options">
+                    <option value="none" {{ in_array('none', $selectedParking ?? [], true) ? 'selected' : '' }}>None</option>
+                    <option value="on_street" {{ in_array('on_street', $selectedParking ?? [], true) ? 'selected' : '' }}>On Street</option>
+                    <option value="driveway" {{ in_array('driveway', $selectedParking ?? [], true) ? 'selected' : '' }}>Driveway</option>
+                    <option value="garage" {{ in_array('garage', $selectedParking ?? [], true) ? 'selected' : '' }}>Garage</option>
+                    <option value="allocated" {{ in_array('allocated', $selectedParking ?? [], true) ? 'selected' : '' }}>Allocated</option>
+                    <option value="permit" {{ in_array('permit', $selectedParking ?? [], true) ? 'selected' : '' }}>Permit</option>
+                </select>
             </div>
             @if($onboarding->tenure === 'leasehold' || !$onboarding->tenure || old('tenure') == 'leasehold')
             <div class="form-row" id="leasehold-details">
@@ -512,6 +565,8 @@
     </form>
 </div>
 
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
 // Show/hide leasehold details based on tenure selection
 document.querySelector('select[name="tenure"]')?.addEventListener('change', function() {
@@ -527,6 +582,15 @@ document.querySelector('select[name="tenure"]')?.addEventListener('change', func
 
 // Initialize leasehold details visibility on page load
 document.addEventListener('DOMContentLoaded', function() {
+    if (window.jQuery && window.jQuery.fn && window.jQuery.fn.select2) {
+        window.jQuery('#parking.parking-select2').select2({
+            placeholder: 'Select parking options',
+            closeOnSelect: false,
+            allowClear: false,
+            width: '100%'
+        });
+    }
+
     const tenureSelect = document.querySelector('select[name="tenure"]');
     if (tenureSelect) {
         tenureSelect.dispatchEvent(new Event('change'));

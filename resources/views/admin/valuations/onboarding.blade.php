@@ -3,6 +3,7 @@
 @section('title', 'Complete Seller Onboarding - Valuation #' . $valuation->id)
 
 @push('styles')
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <style>
     .container {
         max-width: 1180px;
@@ -124,6 +125,50 @@
 
     .btn-secondary:hover {
         background: #25A29F;
+    }
+
+    /* Select2 styling to match existing inputs */
+    .select2-container {
+        width: 100% !important;
+    }
+
+    .select2-container .select2-selection--multiple {
+        min-height: 50px !important;
+        border: 1px solid #D9D9D9;
+        border-radius: 6px;
+        padding: 8px 12px !important;
+        font-size: 15px;
+        box-sizing: border-box;
+        background: #fff;
+    }
+
+    .select2-container--default.select2-container--focus .select2-selection--multiple {
+        border-color: var(--abodeology-teal);
+        box-shadow: 0 0 0 3px rgba(44, 184, 180, 0.1);
+    }
+
+    .select2-container--default .select2-selection--multiple .select2-selection__rendered {
+        display: flex !important;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 6px;
+        min-height: 30px;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    .select2-container--default .select2-selection--multiple .select2-selection__choice {
+        margin: 0 !important;
+        line-height: 20px;
+    }
+
+    .select2-container--default .select2-selection--multiple .select2-search--inline {
+        margin-top: 0;
+    }
+
+    .select2-container--default .select2-selection--multiple .select2-search__field {
+        margin-top: 0 !important;
+        height: 24px;
     }
 </style>
 @endpush
@@ -265,26 +310,6 @@
                 @enderror
 
                 <div>
-                    <label for="parking">Parking</label>
-                    <select
-                        id="parking"
-                        name="parking"
-                        class="{{ $errors->has('parking') ? 'error' : '' }}"
-                    >
-                        <option value="">Parking</option>
-                        <option value="none" {{ old('parking', $onboarding->parking ?? '') == 'none' ? 'selected' : '' }}>None</option>
-                        <option value="on_street" {{ old('parking', $onboarding->parking ?? '') == 'on_street' ? 'selected' : '' }}>On-street</option>
-                        <option value="driveway" {{ old('parking', $onboarding->parking ?? '') == 'driveway' ? 'selected' : '' }}>Driveway</option>
-                        <option value="garage" {{ old('parking', $onboarding->parking ?? '') == 'garage' ? 'selected' : '' }}>Garage</option>
-                        <option value="allocated" {{ old('parking', $onboarding->parking ?? '') == 'allocated' ? 'selected' : '' }}>Allocated</option>
-                        <option value="permit" {{ old('parking', $onboarding->parking ?? '') == 'permit' ? 'selected' : '' }}>Permit</option>
-                    </select>
-                </div>
-                @error('parking')
-                    <div class="error-message">{{ $message }}</div>
-                @enderror
-
-                <div>
                     <label for="asking_price">Asking Price (£)</label>
                     <input
                         id="asking_price"
@@ -301,6 +326,36 @@
                     <div class="error-message">{{ $message }}</div>
                 @enderror
             </div>
+
+            <div>
+                <label for="parking">Parking</label>
+                @php
+                    $selectedParking = old('parking');
+                    if (!is_array($selectedParking)) {
+                        $selectedParking = $onboarding->parking_options ?? [];
+                        if (empty($selectedParking) && !empty($onboarding->parking)) {
+                            $selectedParking = [$onboarding->parking];
+                        }
+                    }
+                @endphp
+                <select
+                    id="parking"
+                    name="parking[]"
+                    multiple
+                    data-placeholder="Select parking options"
+                    class="parking-select2 {{ $errors->has('parking') ? 'error' : '' }}"
+                >
+                    <option value="none" {{ in_array('none', $selectedParking ?? [], true) ? 'selected' : '' }}>None</option>
+                    <option value="on_street" {{ in_array('on_street', $selectedParking ?? [], true) ? 'selected' : '' }}>On-street</option>
+                    <option value="driveway" {{ in_array('driveway', $selectedParking ?? [], true) ? 'selected' : '' }}>Driveway</option>
+                    <option value="garage" {{ in_array('garage', $selectedParking ?? [], true) ? 'selected' : '' }}>Garage</option>
+                    <option value="allocated" {{ in_array('allocated', $selectedParking ?? [], true) ? 'selected' : '' }}>Allocated</option>
+                    <option value="permit" {{ in_array('permit', $selectedParking ?? [], true) ? 'selected' : '' }}>Permit</option>
+                </select>
+            </div>
+            @error('parking')
+                <div class="error-message">{{ $message }}</div>
+            @enderror
         </div>
 
         <!-- TENURE -->
@@ -668,11 +723,22 @@
 </div>
 
 @push('scripts')
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 @if(config('services.google.maps_api_key'))
 <script src="https://maps.googleapis.com/maps/api/js?key={{ config('services.google.maps_api_key') }}&libraries=places" async defer></script>
 @endif
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    if (window.jQuery && window.jQuery.fn && window.jQuery.fn.select2) {
+        window.jQuery('#parking.parking-select2').select2({
+            placeholder: 'Select parking options',
+            closeOnSelect: false,
+            allowClear: false,
+            width: '100%'
+        });
+    }
+
     const tenureSelect = document.getElementById('tenure');
     const leaseholdFields = document.getElementById('leasehold-fields');
     

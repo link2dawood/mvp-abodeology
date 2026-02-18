@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Foundation\Auth\ResetsPasswords;
-use Illuminate\Http\Request;
 
 class ResetPasswordController extends Controller
 {
@@ -42,12 +41,11 @@ class ResetPasswordController extends Controller
     /**
      * Get the redirect URL based on user role after password reset.
      *
-     * @param  \Illuminate\Http\Request  $request
      * @return string
      */
-    protected function redirectTo(Request $request)
+    protected function redirectTo($request = null)
     {
-        $user = $request->user();
+        $user = $this->guard()->user();
         
         if (!$user) {
             return '/home';

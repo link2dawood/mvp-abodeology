@@ -338,6 +338,12 @@
     <!-- HOMECHECK REPORTS SECTION - Always visible -->
     <h2>HomeCheck Reports</h2>
     <div class="card">
+        @php
+            $signedPropertiesForHomecheck = collect($properties ?? [])->filter(function ($prop) {
+                return !empty($prop->instruction) && $prop->instruction->status === 'signed';
+            });
+        @endphp
+
         @if(isset($homecheckReports) && $homecheckReports->count() > 0)
             <table>
                     <tr>
@@ -382,21 +388,49 @@
                                 @endif
                             </td>
                             <td>
-                                @if($report->status === 'completed' && $report->homecheckData && $report->homecheckData->count() > 0)
+                                @if($report->property && $report->property->instruction && $report->property->instruction->status === 'signed')
                                     <a href="{{ route('seller.homecheck.report', $report->property_id) }}" target="_blank" class="btn" style="padding: 6px 12px; font-size: 13px;">
                                         View Report
                                     </a>
                                 @else
-                                    <span style="font-size: 13px; color: #666;">HomeCheck will be completed by your Abodeology consultant during the property visit.</span>
+                                    <span style="font-size: 13px; color: #666;">HomeCheck access unlocks once Terms & Conditions are signed.</span>
                                 @endif
                             </td>
                         </tr>
                     @endforeach
                 </table>
+            @if($signedPropertiesForHomecheck->count() > 0)
+                <div style="margin-top: 18px; padding-top: 14px; border-top: 1px solid #dcdcdc;">
+                    <p style="margin: 0 0 12px 0; font-size: 13px; color: #4b5563;">
+                        Signed sellers have immediate HomeCheck access. HomeCheck images are captured during the on-site survey and added to your report.
+                    </p>
+                    @foreach($signedPropertiesForHomecheck as $signedProperty)
+                        <a href="{{ route('seller.homecheck.report', $signedProperty->id) }}" class="btn" style="margin: 6px 8px 0 0; padding: 8px 14px; font-size: 13px;">
+                            View HomeCheck ({{ Str::limit($signedProperty->address, 28) }})
+                        </a>
+                    @endforeach
+                </div>
+            @endif
         @else
-            <p style="text-align: center; color: #999; padding: 20px;">
-                No HomeCheck reports yet. Your Abodeology team will schedule and complete a HomeCheck during your on-site visit.
-            </p>
+            @if($signedPropertiesForHomecheck->count() > 0)
+                <div style="padding: 6px 0;">
+                    <p style="margin: 0 0 10px 0; color: #1E1E1E; font-weight: 600;">
+                        HomeCheck access is now enabled for your signed property.
+                    </p>
+                    <p style="margin: 0 0 16px 0; color: #666;">
+                        Your Abodeology HomeCheck Report is available from sign-up. HomeCheck images will be taken during the survey and added to this report.
+                    </p>
+                    @foreach($signedPropertiesForHomecheck as $signedProperty)
+                        <a href="{{ route('seller.homecheck.report', $signedProperty->id) }}" class="btn" style="margin: 6px 8px 0 0;">
+                            View HomeCheck Report
+                        </a>
+                    @endforeach
+                </div>
+            @else
+                <p style="text-align: center; color: #999; padding: 20px;">
+                    No HomeCheck reports yet. Access is enabled once Terms & Conditions are signed, and images are added during the on-site survey.
+                </p>
+            @endif
         @endif
     </div>
 

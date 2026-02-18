@@ -228,6 +228,12 @@
         </div>
     @endif
 
+    @if(session('warning'))
+        <div style="background: #fff3cd; border: 1px solid #ffeeba; color: #856404; padding: 12px 20px; border-radius: 4px; margin-bottom: 20px;">
+            {{ session('warning') }}
+        </div>
+    @endif
+
     {{-- Client details and Valuation information at top, side by side --}}
     <div class="top-cards">
         <div class="card">

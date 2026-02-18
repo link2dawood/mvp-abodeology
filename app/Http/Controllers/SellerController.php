@@ -144,7 +144,7 @@ class SellerController extends Controller
             
             // 4. HOMECHECK REPORTS - For all properties
             $homecheckReports = \App\Models\HomecheckReport::whereIn('property_id', $propertyIds)
-                ->with(['property', 'homecheckData'])
+                ->with(['property.instruction', 'homecheckData'])
                 ->orderBy('created_at', 'desc')
                 ->get();
             

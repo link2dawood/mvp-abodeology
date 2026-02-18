@@ -207,7 +207,7 @@
                            onchange="updateFeeDisplay()">
                     <label for="viewing_abodeology">
                         <strong>Abodeology-hosted viewings</strong> (Standard fee)<br>
-                        <span style="font-size: 13px; color: #666;">Our team or Property Viewing Assistants (PVAs) will conduct all viewings on your behalf.</span>
+                        <span style="font-size: 13px; color: #666;">Our Agents and Property Viewing Assistants (PVAs) will conduct all viewings on your behalf.</span>
                     </label>
                 </div>
                 <div class="checkbox-block">

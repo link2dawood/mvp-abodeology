@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Schema;
 use App\Models\Valuation;
 use App\Models\Property;
 use App\Models\PropertyMaterialInformation;
@@ -657,18 +658,19 @@ class AdminController extends Controller
         $valuation->save();
 
         // Notify vendor when a valuation is scheduled or rescheduled (date/time/agent changed)
+        $vendorEmailWarning = null;
         try {
             // Refresh relations after possible agent_id change
             $valuation->loadMissing(['seller', 'agent']);
 
             $seller = $valuation->seller;
-            $hasDate = !empty($valuation->valuation_date);
+            $hasDateTime = !empty($valuation->valuation_date) && !empty($valuation->valuation_time);
 
             $currentDate = $valuation->valuation_date ? $valuation->valuation_date->format('Y-m-d') : null;
             $currentTime = $valuation->valuation_time ? \Carbon\Carbon::parse($valuation->valuation_time)->format('H:i') : null;
             $currentAgentId = $valuation->agent_id;
 
-            $scheduleChanged = $hasDate && (
+            $scheduleChanged = $hasDateTime && (
                 $previousDate !== $currentDate ||
                 $previousTime !== $currentTime ||
                 (string) $previousAgentId !== (string) $currentAgentId
@@ -681,11 +683,18 @@ class AdminController extends Controller
             }
         } catch (\Exception $e) {
             \Log::error('Failed to send valuation scheduled email: ' . $e->getMessage());
+            $vendorEmailWarning = 'Valuation was scheduled, but the vendor email could not be sent. Please check mail/queue configuration and logs.';
         }
 
-        return redirect()
+        $redirect = redirect()
             ->route('admin.valuations.show', $valuation->id)
             ->with('success', 'Valuation schedule updated successfully.');
+
+        if ($vendorEmailWarning) {
+            $redirect->with('warning', $vendorEmailWarning);
+        }
+
+        return $redirect;
     }
 
     /**
@@ -766,7 +775,8 @@ class AdminController extends Controller
             'reception_rooms' => $existingProperty->reception_rooms ?? null,
             'outbuildings' => $existingProperty->outbuildings ?? null,
             'garden_details' => $existingProperty->garden_details ?? null,
-            'parking' => null,
+            'parking' => $existingProperty->parking ?? null,
+            'parking_options' => $existingProperty->parking_options ?? null,
             'tenure' => null,
             'lease_years' => null,
             'ground_rent' => null,
@@ -831,7 +841,8 @@ class AdminController extends Controller
             'reception_rooms' => ['nullable', 'integer', 'min:0'],
             'outbuildings' => ['nullable', 'string', 'max:500'],
             'garden_details' => ['nullable', 'string', 'max:2000'],
-            'parking' => ['nullable', 'string', 'in:none,on_street,driveway,garage,allocated,permit'],
+            'parking' => ['nullable', 'array'],
+            'parking.*' => ['string', 'in:none,on_street,driveway,garage,allocated,permit'],
             'tenure' => ['required', 'string', 'in:freehold,leasehold,share_freehold,unknown'],
             'lease_years_remaining' => ['nullable', 'integer', 'min:0'],
             'ground_rent' => ['nullable', 'numeric', 'min:0'],
@@ -877,29 +888,37 @@ class AdminController extends Controller
             \DB::beginTransaction();
 
             // Create or update property from valuation
+            $propertyData = [
+                'postcode' => $validated['postcode'] ?? $valuation->postcode,
+                'property_type' => $validated['property_type'],
+                'bedrooms' => $validated['bedrooms'],
+                'bathrooms' => $validated['bathrooms'],
+                'reception_rooms' => $validated['reception_rooms'] ?? null,
+                'outbuildings' => $validated['outbuildings'] ?? null,
+                'garden_details' => $validated['garden_details'] ?? null,
+                // Keep legacy single parking field for backwards compatibility.
+                'parking' => !empty($validated['parking']) ? $validated['parking'][0] : null,
+                'tenure' => $validated['tenure'],
+                'lease_years_remaining' => $validated['lease_years_remaining'] ?? null,
+                'ground_rent' => $validated['ground_rent'] ?? null,
+                'service_charge' => $validated['service_charge'] ?? null,
+                'managing_agent' => $validated['managing_agent'] ?? null,
+                'asking_price' => $validated['asking_price'] ?? null,
+                'pricing_notes' => $validated['pricing_notes'] ?? null,
+                'status' => 'property_details_captured', // Set status after Valuation Form completion
+            ];
+
+            // Persist all selected parking options if the new column exists.
+            if (Schema::hasColumn('properties', 'parking_options')) {
+                $propertyData['parking_options'] = !empty($validated['parking']) ? array_values($validated['parking']) : null;
+            }
+
             $property = Property::updateOrCreate(
                 [
                     'seller_id' => $valuation->seller_id,
                     'address' => $validated['property_address'],
                 ],
-                [
-                    'postcode' => $validated['postcode'] ?? $valuation->postcode,
-                    'property_type' => $validated['property_type'],
-                    'bedrooms' => $validated['bedrooms'],
-                    'bathrooms' => $validated['bathrooms'],
-                    'reception_rooms' => $validated['reception_rooms'] ?? null,
-                    'outbuildings' => $validated['outbuildings'] ?? null,
-                    'garden_details' => $validated['garden_details'] ?? null,
-                    'parking' => $validated['parking'] ?? null,
-                    'tenure' => $validated['tenure'],
-                    'lease_years_remaining' => $validated['lease_years_remaining'] ?? null,
-                    'ground_rent' => $validated['ground_rent'] ?? null,
-                    'service_charge' => $validated['service_charge'] ?? null,
-                    'managing_agent' => $validated['managing_agent'] ?? null,
-                    'asking_price' => $validated['asking_price'] ?? null,
-                    'pricing_notes' => $validated['pricing_notes'] ?? null,
-                    'status' => 'property_details_captured', // Set status after Valuation Form completion
-                ]
+                $propertyData
             );
 
             // Create or update material information
