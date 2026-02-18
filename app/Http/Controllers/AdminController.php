@@ -349,40 +349,31 @@ class AdminController extends Controller
                 ->with('error', 'You do not have permission to access the agent dashboard.');
         }
 
-        // Get agent's assigned property IDs
-        $agentPropertyIds = $this->getAgentPropertyIds($user->id);
-        
-        // Get agent's assigned properties
-        $properties = Property::whereIn('id', $agentPropertyIds)
+        // Get agent's assigned properties (where assigned_agent_id equals user id)
+        $properties = Property::where('assigned_agent_id', $user->id)
             ->with('seller')
             ->orderBy('created_at', 'desc')
             ->limit(10)
             ->get();
 
-        // Get valuations for agent's assigned properties
-        $valuations = Valuation::whereHas('seller', function($q) use ($agentPropertyIds) {
-                $q->whereHas('properties', function($query) use ($agentPropertyIds) {
-                    $query->whereIn('properties.id', $agentPropertyIds);
-                });
-            })
+        // Get valuations where agent_id equals user id
+        $valuations = Valuation::where('agent_id', $user->id)
             ->with('seller')
             ->orderBy('created_at', 'desc')
             ->limit(10)
             ->get();
 
         // Get offers for agent's assigned properties
-        $offers = Offer::whereIn('property_id', $agentPropertyIds)
+        $offers = Offer::whereHas('property', function($query) use ($user) {
+                $query->where('assigned_agent_id', $user->id);
+            })
             ->with(['property', 'buyer'])
             ->orderBy('created_at', 'desc')
             ->limit(10)
             ->get();
 
         // Get today's scheduled valuations (appointments) for agent
-        $todaysAppointments = Valuation::whereHas('seller', function($q) use ($agentPropertyIds) {
-                $q->whereHas('properties', function($query) use ($agentPropertyIds) {
-                    $query->whereIn('properties.id', $agentPropertyIds);
-                });
-            })
+        $todaysAppointments = Valuation::where('agent_id', $user->id)
             ->where('status', 'scheduled')
             ->whereDate('valuation_date', today())
             ->with('seller')
@@ -390,14 +381,16 @@ class AdminController extends Controller
             ->get();
 
         // Get viewings for agent's assigned properties
-        $viewings = \App\Models\Viewing::whereIn('property_id', $agentPropertyIds)
+        $viewings = \App\Models\Viewing::whereHas('property', function($query) use ($user) {
+                $query->where('assigned_agent_id', $user->id);
+            })
             ->with(['property', 'buyer', 'pva'])
             ->orderBy('viewing_date', 'asc')
             ->limit(10)
             ->get();
 
         // Get sales (sold properties) for agent's assigned properties
-        $sales = Property::whereIn('id', $agentPropertyIds)
+        $sales = Property::where('assigned_agent_id', $user->id)
             ->where('status', 'sold')
             ->with('seller')
             ->orderBy('updated_at', 'desc')
@@ -406,22 +399,22 @@ class AdminController extends Controller
 
         // Calculate statistics
         $stats = [
-            'assigned_properties' => Property::whereIn('id', $agentPropertyIds)->count(),
-            'active_listings' => Property::whereIn('id', $agentPropertyIds)->where('status', 'live')->count(),
-            'pending_valuations' => Valuation::whereHas('seller', function($q) use ($agentPropertyIds) {
-                    $q->whereHas('properties', function($query) use ($agentPropertyIds) {
-                        $query->whereIn('properties.id', $agentPropertyIds);
-                    });
+            'assigned_properties' => Property::where('assigned_agent_id', $user->id)->count(),
+            'active_listings' => Property::where('assigned_agent_id', $user->id)->where('status', 'live')->count(),
+            'pending_valuations' => Valuation::where('agent_id', $user->id)
+                ->where('status', 'pending')
+                ->count(),
+            'pending_offers' => Offer::whereHas('property', function($query) use ($user) {
+                    $query->where('assigned_agent_id', $user->id);
                 })
                 ->where('status', 'pending')
                 ->count(),
-            'pending_offers' => Offer::whereIn('property_id', $agentPropertyIds)
-                ->where('status', 'pending')
-                ->count(),
-            'upcoming_viewings' => \App\Models\Viewing::whereIn('property_id', $agentPropertyIds)
+            'upcoming_viewings' => \App\Models\Viewing::whereHas('property', function($query) use ($user) {
+                    $query->where('assigned_agent_id', $user->id);
+                })
                 ->where('viewing_date', '>=', now())
                 ->count(),
-            'sales_in_progress' => Property::whereIn('id', $agentPropertyIds)
+            'sales_in_progress' => Property::where('assigned_agent_id', $user->id)
                 ->whereIn('status', ['sold', 'under_offer'])
                 ->count(),
         ];
@@ -498,18 +491,9 @@ class AdminController extends Controller
 
         $valuationsQuery = Valuation::with('seller');
         
-        // For agents, only show valuations for their assigned properties
+        // For agents, only show valuations where agent_id equals their user id
         if ($user->role === 'agent') {
-            $agentPropertyIds = $this->getAgentPropertyIds($user->id);
-            if (empty($agentPropertyIds)) {
-                $valuations = collect([]);
-            } else {
-                $valuationsQuery->whereHas('seller', function($q) use ($agentPropertyIds) {
-                    $q->whereHas('properties', function($query) use ($agentPropertyIds) {
-                        $query->whereIn('properties.id', $agentPropertyIds);
-                    });
-                });
-            }
+            $valuationsQuery->where('agent_id', $user->id);
         }
         
         $valuations = $valuationsQuery->orderBy('created_at', 'desc')->paginate(20);
@@ -545,11 +529,9 @@ class AdminController extends Controller
             ->where('address', $valuation->property_address)
             ->first();
         
-        // For agents, verify they have access to this valuation's property
+        // For agents, verify they have access to this valuation (check agent_id)
         if ($user->role === 'agent') {
-            $agentPropertyIds = $this->getAgentPropertyIds($user->id);
-            
-            if (!$property || !in_array($property->id, $agentPropertyIds)) {
+            if ($valuation->agent_id !== $user->id) {
                 return redirect()->route('admin.valuations.index')
                     ->with('error', 'You do not have permission to view this valuation.');
             }
@@ -1018,14 +1000,9 @@ class AdminController extends Controller
             $propertiesQuery->where('status', $request->status);
         }
         
-        // For agents, only show their assigned properties
+        // For agents, only show properties where assigned_agent_id equals their user id
         if ($user->role === 'agent') {
-            $agentPropertyIds = $this->getAgentPropertyIds($user->id);
-            if (empty($agentPropertyIds)) {
-                $properties = collect([]);
-            } else {
-                $propertiesQuery->whereIn('id', $agentPropertyIds);
-            }
+            $propertiesQuery->where('assigned_agent_id', $user->id);
         }
         
         $properties = $propertiesQuery->orderBy('created_at', 'desc')->paginate(20);
@@ -1050,10 +1027,9 @@ class AdminController extends Controller
 
         $property = Property::with(['seller', 'instruction', 'materialInformation', 'homecheckReports', 'homecheckData', 'photos', 'documents', 'offers.buyer', 'offers.latestDecision'])->findOrFail($id);
         
-        // For agents, verify they have access to this property
+        // For agents, verify they have access to this property (check assigned_agent_id)
         if ($user->role === 'agent') {
-            $agentPropertyIds = $this->getAgentPropertyIds($user->id);
-            if (!in_array($property->id, $agentPropertyIds)) {
+            if ($property->assigned_agent_id !== $user->id) {
                 return redirect()->route('admin.properties.index')
                     ->with('error', 'You do not have permission to view this property.');
             }
