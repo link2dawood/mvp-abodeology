@@ -50,6 +50,7 @@ Route::prefix('valuation')->name('valuation.')->group(function () {
 // Admin Routes
 Route::middleware(['auth', 'role.web:admin,agent'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [App\Http\Controllers\AdminController::class, 'dashboard'])->name('dashboard');
+    Route::post('/dashboard/save-positions', [App\Http\Controllers\AdminController::class, 'saveAdminDashboardPositions'])->name('dashboard.save-positions');
     Route::get('/notifications', [App\Http\Controllers\AdminController::class, 'notifications'])->name('notifications');
     
     // Agent Dashboard (separate from admin)

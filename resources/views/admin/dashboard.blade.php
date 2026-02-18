@@ -155,6 +155,27 @@
         box-shadow: 0 2px 6px rgba(0,0,0,0.08);
         flex: 0 0 25%;
         max-width: 25%; /* approx 3 of 12 columns */
+        cursor: move;
+        position: relative;
+    }
+
+    .metrics-strip::after,
+    .reminders-strip::after {
+        content: '⋮⋮';
+        position: absolute;
+        top: 8px;
+        right: 12px;
+        color: rgba(255, 255, 255, 0.6);
+        font-size: 18px;
+        line-height: 1;
+        opacity: 0.5;
+        pointer-events: none;
+        z-index: 1;
+    }
+
+    .metrics-strip:hover::after,
+    .reminders-strip:hover::after {
+        opacity: 1;
     }
     .metrics-strip h3,
     .reminders-strip h3 {
@@ -337,6 +358,33 @@
         border-bottom: none;
     }
 
+    /* DRAG AND DROP */
+    .sortable-ghost {
+        opacity: 0.4;
+    }
+
+    .card {
+        cursor: move;
+        position: relative;
+    }
+
+    .card::after {
+        content: '⋮⋮';
+        position: absolute;
+        top: 10px;
+        right: 35px;
+        color: #ccc;
+        font-size: 18px;
+        line-height: 1;
+        opacity: 0.5;
+        pointer-events: none;
+        z-index: 1;
+    }
+
+    .card:hover::after {
+        opacity: 1;
+    }
+
     /* RESPONSIVE DESIGN */
     @media (max-width: 768px) {
         h2 {
@@ -498,8 +546,8 @@
     <p class="page-subtitle">Complete visibility and control across the entire Abodeology platform.</p>
 
     <!-- TOP ROW: Key Metrics + Reminders (compact) -->
-    <div class="dashboard-top-row">
-        <div class="metrics-strip">
+    <div class="dashboard-top-row" data-sortable="true" data-grid-type="top">
+        <div class="metrics-strip" data-card-id="key-metrics">
             <h3>Key Metrics</h3>
             <div class="metric-rows">
                 <div class="metric-row"><span>Total Valuations</span><span class="value">({{ $stats['total_valuations'] ?? 0 }})</span></div>
@@ -510,7 +558,7 @@
                 <div class="metric-row"><span>Active PVAs</span><span class="value">({{ $stats['pvas_active'] ?? 0 }})</span></div>
             </div>
         </div>
-        <div class="reminders-strip">
+        <div class="reminders-strip" data-card-id="reminders">
             <h3>Reminders</h3>
             @php
                 $amlCount = isset($amlPending) ? $amlPending->count() : 0;
@@ -549,10 +597,10 @@
     
     @if($hasCriticalActions)
     <h2 style="margin-top: 0; margin-bottom: 14px; font-size: 20px;">Critical Actions</h2>
-    <div class="grid">
+    <div class="grid" data-sortable="true" data-grid-type="critical">
         <!-- AML PENDING -->
         @if(isset($amlPending) && $amlPending->count() > 0)
-            <div class="card">
+            <div class="card" data-card-id="aml-pending">
                 <div class="card-header" onclick="toggleCard(this)">
                     <h3 style="color: #856404; margin: 0;">AML Pending Verification</h3>
                     <span class="card-toggle-icon">▼</span>
@@ -594,7 +642,7 @@
 
         <!-- OFFERS PENDING SELLER RESPONSE -->
         @if(isset($offersPendingResponse) && $offersPendingResponse->count() > 0)
-            <div class="card">
+            <div class="card" data-card-id="offers-pending-response">
                 <div class="card-header" onclick="toggleCard(this)">
                     <h3 style="color: #856404; margin: 0;">Offers Pending Seller Response</h3>
                     <span class="card-toggle-icon">▼</span>
@@ -644,7 +692,7 @@
 
         <!-- HOMECHECK PENDING -->
         @if(isset($homecheckPending) && $homecheckPending->count() > 0)
-            <div class="card">
+            <div class="card" data-card-id="homecheck-pending">
                 <div class="card-header" onclick="toggleCard(this)">
                     <h3 style="color: #856404; margin: 0;">HomeCheck Pending</h3>
                     <span class="card-toggle-icon">▼</span>
@@ -686,7 +734,7 @@
 
         <!-- EXPIRING LISTINGS -->
         @if(isset($expiringListings) && $expiringListings->count() > 0)
-            <div class="card">
+            <div class="card" data-card-id="expiring-listings">
                 <div class="card-header" onclick="toggleCard(this)">
                     <h3 style="color: #856404; margin: 0;">Expiring Listings</h3>
                     <span class="card-toggle-icon">▼</span>
@@ -744,10 +792,10 @@
 
     <!-- MAIN DATA GRID -->
     <h2 style="margin-top: 28px; margin-bottom: 18px;">Overview</h2>
-    <div class="grid">
+    <div class="grid" data-sortable="true" data-grid-type="main">
         <!-- TODAY'S APPOINTMENTS -->
         @if(isset($todaysAppointments) && $todaysAppointments->count() > 0)
-        <div class="card">
+        <div class="card" data-card-id="todays-appointments">
             <div class="card-header" onclick="toggleCard(this)">
                 <h3 style="margin: 0;">Today's Appointments</h3>
                 <span class="card-toggle-icon">▼</span>
@@ -782,7 +830,7 @@
         @endif
 
         <!-- NEW VALUATIONS -->
-        <div class="card">
+        <div class="card" data-card-id="recent-valuations">
             <div class="card-header" onclick="toggleCard(this)">
                 <h3 style="margin: 0;">Recent Valuation Requests</h3>
                 <span class="card-toggle-icon">▼</span>
@@ -817,7 +865,7 @@
         </div>
 
         <!-- LIVE PROPERTIES -->
-        <div class="card">
+        <div class="card" data-card-id="live-properties">
             <div class="card-header" onclick="toggleCard(this)">
                 <h3 style="margin: 0;">Live Properties</h3>
                 <span class="card-toggle-icon">▼</span>
@@ -863,7 +911,7 @@
         </div>
 
         <!-- PROPERTIES -->
-        <div class="card">
+        <div class="card" data-card-id="all-properties">
             <div class="card-header" onclick="toggleCard(this)">
                 <h3 style="margin: 0;">All Properties</h3>
                 <span class="card-toggle-icon">▼</span>
@@ -902,7 +950,7 @@
         </div>
 
         <!-- NEW SELLERS -->
-        <div class="card">
+        <div class="card" data-card-id="new-sellers">
             <div class="card-header" onclick="toggleCard(this)">
                 <h3 style="margin: 0;">New Seller Onboardings</h3>
                 <span class="card-toggle-icon">▼</span>
@@ -929,7 +977,7 @@
         </div>
 
         <!-- BUYERS -->
-        <div class="card">
+        <div class="card" data-card-id="new-buyers">
             <div class="card-header" onclick="toggleCard(this)">
                 <h3 style="margin: 0;">New Buyer Registrations</h3>
                 <span class="card-toggle-icon">▼</span>
@@ -960,7 +1008,7 @@
         </div>
 
         <!-- OFFERS -->
-        <div class="card">
+        <div class="card" data-card-id="offers-received">
             <div class="card-header" onclick="toggleCard(this)">
                 <h3 style="margin: 0;">Offers Received</h3>
                 <span class="card-toggle-icon">▼</span>
@@ -989,7 +1037,7 @@
         </div>
 
         <!-- SALES PROGRESSION -->
-        <div class="card">
+        <div class="card" data-card-id="sales-progression">
             <div class="card-header" onclick="toggleCard(this)">
                 <h3 style="margin: 0;">Sales Progression Overview</h3>
                 <span class="card-toggle-icon">▼</span>
@@ -1016,7 +1064,7 @@
         </div>
 
         <!-- PVA ACTIVITY -->
-        <div class="card">
+        <div class="card" data-card-id="pva-activity">
             <div class="card-header" onclick="toggleCard(this)">
                 <h3 style="margin: 0;">PVA Activity</h3>
                 <span class="card-toggle-icon">▼</span>
@@ -1044,7 +1092,7 @@
         </div>
 
         <!-- SYSTEM ALERTS -->
-        <div class="card">
+        <div class="card" data-card-id="system-alerts">
             <div class="card-header" onclick="toggleCard(this)">
                 <h3 style="margin: 0;">System Alerts</h3>
                 <span class="card-toggle-icon">▼</span>
@@ -1064,6 +1112,7 @@
 </div>
 
 @push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
 <script>
 function toggleCard(header) {
     const card = header.closest('.card');
@@ -1077,25 +1126,74 @@ function toggleSection(header) {
 
 function expandAllCards() {
     const cards = document.querySelectorAll('.card');
-    cards.forEach(card => {
+    cards.forEach(function(card) {
         card.classList.remove('collapsed');
     });
     const sections = document.querySelectorAll('.collapsible-section');
-    sections.forEach(section => {
+    sections.forEach(function(section) {
         section.classList.remove('collapsed');
     });
 }
 
 function collapseAllCards() {
     const cards = document.querySelectorAll('.card');
-    cards.forEach(card => {
+    cards.forEach(function(card) {
         card.classList.add('collapsed');
     });
     const sections = document.querySelectorAll('.collapsible-section');
-    sections.forEach(section => {
+    sections.forEach(function(section) {
         section.classList.add('collapsed');
     });
 }
+
+// Drag and drop functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const savedPositions = @json(auth()->user()->admin_dashboard_card_positions ?: []);
+    
+    // Initialize all sortable containers (grids and top row)
+    const sortableContainers = document.querySelectorAll('[data-sortable="true"]');
+    
+    sortableContainers.forEach(function(container) {
+        const containerType = container.dataset.gridType;
+        const savedContainerPositions = (savedPositions && savedPositions[containerType]) ? savedPositions[containerType] : [];
+        
+        // Reorder cards based on saved positions
+        if (savedContainerPositions.length > 0) {
+            const cards = Array.from(container.children);
+            savedContainerPositions.forEach(function(cardId, index) {
+                const card = cards.find(function(c) { return c.dataset.cardId === cardId; });
+                if (card) {
+                    container.insertBefore(card, container.children[index]);
+                }
+            });
+        }
+
+        const sortable = Sortable.create(container, {
+            animation: 150,
+            ghostClass: 'sortable-ghost',
+            onEnd: function(evt) {
+                // Get all container positions
+                const allPositions = {};
+                document.querySelectorAll('[data-sortable="true"]').forEach(function(c) {
+                    const type = c.dataset.gridType;
+                    allPositions[type] = Array.from(c.children).map(function(card) { return card.dataset.cardId; });
+                });
+                
+                // Save positions via AJAX
+                fetch('{{ route("admin.dashboard.save-positions") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({ positions: allPositions })
+                }).catch(function(err) {
+                    console.error('Failed to save card positions:', err);
+                });
+            }
+        });
+    });
+});
 </script>
 @endpush
 @endsection

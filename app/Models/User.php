@@ -29,6 +29,7 @@ class User extends Authenticatable implements MustVerifyEmail, JWTSubject
         'failed_login_attempts',
         'locked_until',
         'agent_dashboard_card_positions',
+        'admin_dashboard_card_positions',
     ];
 
     /**
@@ -53,6 +54,7 @@ class User extends Authenticatable implements MustVerifyEmail, JWTSubject
             'password' => 'hashed',
             'locked_until' => 'datetime',
             'agent_dashboard_card_positions' => 'array',
+            'admin_dashboard_card_positions' => 'array',
         ];
     }
 
