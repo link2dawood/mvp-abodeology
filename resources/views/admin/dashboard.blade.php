@@ -18,7 +18,7 @@
     /* GRID LAYOUT */
     .grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        grid-template-columns: repeat(3, 1fr);
         gap: 18px;
     }
 
@@ -72,7 +72,8 @@
 
     .card-content {
         transition: max-height 0.3s ease, opacity 0.3s ease;
-        overflow: hidden;
+        overflow-y: hidden;
+        overflow-x: auto;
     }
 
     .card.collapsed .card-content {
@@ -768,7 +769,7 @@
                             </td>
                             <td>{{ $property->seller->name ?? 'N/A' }}</td>
                             <td>
-                                <span class="status status-{{ $property->status === 'live' ? 'active' : 'pending' }}">{{ ucfirst(str_replace('_', ' ', $property->status)) }}</span>
+                                <span class="status status-{{ $property->status === 'live' ? 'active' : 'pending' }}">{{ str_replace(' aml', ' AML', ucfirst(str_replace('_', ' ', $property->status))) }}</span>
                             </td>
                             <td style="font-size: 12px; color: {{ $isExpired ? '#dc3545' : ($daysUntilExpiry <= 7 ? '#856404' : '#666') }}; font-weight: {{ $isExpired || $daysUntilExpiry <= 7 ? 'bold' : 'normal' }};">
                                 @if($isExpired)
@@ -935,7 +936,7 @@
                         <td>{{ $property->seller->name ?? 'N/A' }}</td>
                         <td>
                             <span class="status status-{{ $property->status === 'draft' ? 'pending' : ($property->status === 'live' ? 'active' : 'active') }}">
-                                {{ ucfirst(str_replace('_', ' ', $property->status)) }}
+                                {{ str_replace(' aml', ' AML', ucfirst(str_replace('_', ' ', $property->status))) }}
                             </span>
                         </td>
                     </tr>

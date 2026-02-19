@@ -1,4 +1,4 @@
-@extends('layouts.admin')
+timizei@extends('layouts.admin')
 
 @section('title', 'Property Details')
 
@@ -144,7 +144,7 @@
             <div class="info-label">Status:</div>
             <div class="info-value">
                 <span class="status status-{{ $property->status }}">
-                    {{ ucfirst(str_replace('_', ' ', $property->status)) }}
+                    {{ $property->status === 'awaiting_aml' ? 'Awaiting AML' : ucfirst(str_replace('_', ' ', $property->status)) }}
                 </span>
             </div>
         </div>

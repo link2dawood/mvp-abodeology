@@ -112,6 +112,7 @@ Route::middleware(['auth', 'role.web:admin,agent'])->prefix('admin')->name('admi
     Route::post('/properties/{id}/schedule-homecheck', [App\Http\Controllers\AdminController::class, 'storeScheduleHomeCheck'])->name('properties.schedule-homecheck.store');
     Route::get('/properties/{id}/complete-homecheck', [App\Http\Controllers\AdminController::class, 'showCompleteHomeCheck'])->name('properties.complete-homecheck');
     Route::post('/properties/{id}/complete-homecheck', [App\Http\Controllers\AdminController::class, 'storeCompleteHomeCheck'])->name('properties.complete-homecheck.store');
+    Route::post('/properties/{id}/save-homecheck-room', [App\Http\Controllers\AdminController::class, 'saveHomecheckRoom'])->name('properties.homecheck.save-room');
     
     // Listing Management Routes
     Route::get('/properties/{id}/listing-upload', [App\Http\Controllers\AdminController::class, 'showListingUpload'])->name('properties.listing-upload');

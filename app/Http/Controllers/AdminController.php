@@ -1355,11 +1355,18 @@ class AdminController extends Controller
                 ->with('error', 'No scheduled HomeCheck found. Please schedule a HomeCheck first.');
         }
 
-        // Get existing homecheck data
+        // Get existing homecheck data with pre-generated image URLs
+        $isS3 = $this->isS3Configured();
         $homecheckData = \App\Models\HomecheckData::where('property_id', $property->id)
             ->orderBy('room_name')
             ->orderBy('created_at')
-            ->get();
+            ->get()
+            ->map(function ($item) use ($isS3) {
+                $item->image_url = $isS3
+                    ? \Storage::disk('s3')->temporaryUrl($item->image_path, now()->addMinutes(60))
+                    : \Storage::disk('public')->url($item->image_path);
+                return $item;
+            });
 
         return view('admin.properties.complete-homecheck', compact('property', 'homecheckReport', 'homecheckData'));
     }
@@ -1502,6 +1509,83 @@ class AdminController extends Controller
             return back()
                 ->withInput()
                 ->with('error', 'An error occurred while completing the HomeCheck. Please try again.');
+        }
+    }
+
+    /**
+     * Save a single room's images for a HomeCheck (AJAX).
+     */
+    public function saveHomecheckRoom(Request $request, $id)
+    {
+        $user = auth()->user();
+
+        if (!in_array($user->role, ['admin', 'agent'])) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        $property = Property::findOrFail($id);
+
+        if ($user->role === 'agent') {
+            $agentPropertyIds = $this->getAgentPropertyIds($user->id);
+            if (!in_array($property->id, $agentPropertyIds)) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+            }
+        }
+
+        $homecheckReport = \App\Models\HomecheckReport::where('property_id', $property->id)
+            ->whereIn('status', ['pending', 'scheduled', 'in_progress'])
+            ->first();
+
+        if (!$homecheckReport) {
+            return response()->json(['success' => false, 'message' => 'No scheduled HomeCheck found.'], 404);
+        }
+
+        $validated = $request->validate([
+            'room_name' => ['required', 'string', 'max:255'],
+            'images'    => ['required', 'array', 'min:1'],
+            'images.*'  => ['required', 'image', 'mimes:jpeg,png,jpg,webp'],
+            'is_360'    => ['nullable', 'boolean'],
+        ]);
+
+        try {
+            if ($homecheckReport->status !== 'in_progress') {
+                $homecheckReport->update(['status' => 'in_progress']);
+            }
+
+            $roomName = $validated['room_name'];
+            $is360    = !empty($validated['is_360']);
+            $disk     = $this->getStorageDisk();
+            $saved    = 0;
+
+            foreach ($validated['images'] as $image) {
+                $ext       = $image->getClientOriginalExtension();
+                $fileName  = uniqid() . '.' . $ext;
+                $imagePath = 'homechecks/' . $property->id . '/rooms/' . $roomName . '/' . ($is360 ? '360' : 'photos') . '/' . $fileName;
+
+                Storage::disk($disk)->put($imagePath, file_get_contents($image->getRealPath()));
+
+                $homecheckData = \App\Models\HomecheckData::create([
+                    'property_id'         => $property->id,
+                    'homecheck_report_id' => $homecheckReport->id,
+                    'room_name'           => $roomName,
+                    'image_path'          => $imagePath,
+                    'is_360'              => $is360,
+                    'moisture_reading'    => null,
+                    'created_at'          => now(),
+                ]);
+
+                $this->processImageCompression($imagePath, $disk, $homecheckData->id, 1920, 85);
+                $saved++;
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => "Room \"{$roomName}\" saved — {$saved} image(s) uploaded.",
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('saveHomecheckRoom error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'An error occurred while saving the room.'], 500);
         }
     }
 

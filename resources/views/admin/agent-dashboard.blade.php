@@ -360,7 +360,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <td>{{ Str::limit($property->address, 30) }}</td>
                         <td>
                             <span class="status status-{{ $property->status === 'live' ? 'live' : ($property->status === 'sold' ? 'sold' : 'pending') }}">
-                                {{ ucfirst(str_replace('_', ' ', $property->status)) }}
+                                {{ str_replace(' aml', ' AML', ucfirst(str_replace('_', ' ', $property->status))) }}
                             </span>
                         </td>
                         <td>

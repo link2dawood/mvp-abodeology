@@ -250,16 +250,70 @@
     .add-room-btn {
         background: #28a745;
         color: white;
-        padding: 12px 25px;
+        padding: 10px 20px;
         border: none;
         border-radius: 6px;
+        font-size: 14px;
         font-weight: 600;
         cursor: pointer;
-        margin-bottom: 20px;
     }
 
     .add-room-btn:hover {
         background: #218838;
+    }
+
+    .btn-room-control {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        background: #6c757d;
+        color: white;
+        text-decoration: none;
+        display: inline-block;
+    }
+
+    .btn-room-control:hover {
+        background: #5a6268;
+    }
+
+    .save-room-btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        background: var(--abodeology-teal);
+        color: white;
+        margin-top: 12px;
+    }
+
+    .save-room-btn:hover {
+        background: #25A29F;
+    }
+
+    .save-room-btn:disabled {
+        background: #6c757d;
+        cursor: not-allowed;
+    }
+
+    .room-save-status {
+        display: inline-block;
+        margin-left: 10px;
+        font-size: 13px;
+        font-weight: 600;
+        vertical-align: middle;
+    }
+
+    .room-saved-badge {
+        font-size: 13px;
+        font-weight: 600;
+        color: #28a745;
+        margin-right: 10px;
+        white-space: nowrap;
     }
 
     .notes-textarea {
@@ -336,10 +390,29 @@
         @if($homecheckData && $homecheckData->count() > 0)
         <div class="card">
             <h3>Previously Uploaded Images</h3>
-            <p style="color: #666; margin-bottom: 15px;">You can add more images to existing rooms or create new rooms below.</p>
+            <p style="color: #666; margin-bottom: 15px;">{{ $homecheckData->groupBy('room_name')->count() }} room(s) already saved. Add more rooms below.</p>
             @foreach($homecheckData->groupBy('room_name') as $roomName => $roomImages)
-                <div style="margin-bottom: 20px; padding: 15px; background: #F9F9F9; border-radius: 6px;">
-                    <strong>{{ $roomName }}</strong> - {{ $roomImages->count() }} image(s)
+                <div style="margin-bottom: 25px; padding: 15px; background: #F9F9F9; border-radius: 8px; border: 1px solid #e0e0e0;">
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+                        <i class="fa fa-check-circle" style="color: #28a745; font-size: 16px;"></i>
+                        <strong style="font-size: 15px;">{{ $roomName }}</strong>
+                        <span style="font-size: 13px; color: #666;">{{ $roomImages->count() }} image(s)</span>
+                        @if($roomImages->where('is_360', true)->count() > 0)
+                            <span style="font-size: 12px; background: var(--abodeology-teal); color: white; padding: 2px 8px; border-radius: 4px;">{{ $roomImages->where('is_360', true)->count() }} × 360°</span>
+                        @endif
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px;">
+                        @foreach($roomImages as $image)
+                            <div style="position: relative; border-radius: 6px; overflow: hidden; border: 1px solid #ddd;">
+                                <img src="{{ $image->image_url }}"
+                                     alt="{{ $roomName }}"
+                                     style="width: 100%; height: 100px; object-fit: cover; display: block;">
+                                @if($image->is_360)
+                                    <span style="position: absolute; bottom: 4px; left: 4px; background: rgba(44,184,180,0.9); color: white; font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 3px;">360°</span>
+                                @endif
+                            </div>
+                        @endforeach
+                    </div>
                 </div>
             @endforeach
         </div>
@@ -352,9 +425,9 @@
 
         <!-- Room Controls -->
         <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-            <button type="button" class="add-room-btn" id="addRoomBtn">+ Add Room</button>
-            <button type="button" class="btn btn-secondary" id="expandAllBtn" style="background: #6c757d; color: white;">Expand All</button>
-            <button type="button" class="btn btn-secondary" id="collapseAllBtn" style="background: #6c757d; color: white;">Collapse All</button>
+            <button type="button" class="add-room-btn" id="addRoomBtn"><i class="fa fa-plus"></i> Add Room</button>
+            <button type="button" class="btn-room-control" id="expandAllBtn"><i class="fa fa-expand"></i> Expand All</button>
+            <button type="button" class="btn-room-control" id="collapseAllBtn"><i class="fa fa-compress"></i> Collapse All</button>
         </div>
 
         <!-- Notes Section -->
@@ -365,7 +438,7 @@
 
         <!-- Submit Button -->
         <div style="margin-top: 30px;">
-            <button type="submit" class="btn btn-main" style="font-size: 16px; padding: 15px 30px;">Complete HomeCheck</button>
+            <button type="submit" class="btn btn-main">Complete HomeCheck</button>
             <a href="{{ route('admin.properties.show', $property->id) }}" class="btn btn-secondary">Cancel</a>
         </div>
     </form>
@@ -408,16 +481,17 @@ function addRoomBlock() {
                        onclick="event.stopPropagation();"
                        style="flex: 1;">
             </div>
-            <button type="button" class="remove-room-btn" onclick="event.stopPropagation(); removeRoom(this)">✕ Remove Room</button>
+            <span class="room-saved-badge" id="roomSavedBadge_${roomId}"></span>
+            <button type="button" class="remove-room-btn" onclick="event.stopPropagation(); removeRoom(this)"><i class="fa fa-trash"></i> Remove Room</button>
         </div>
         
         <div class="room-content">
         <div class="image-type-toggle">
             <button type="button" class="image-type-btn active" data-room="${roomId}" data-type="photo" onclick="setImageType('${roomId}', 'photo')">
-                📷 Regular Photo
+                <i class="fa fa-camera"></i> Regular Photo
             </button>
             <button type="button" class="image-type-btn" data-room="${roomId}" data-type="360" onclick="setImageType('${roomId}', '360')">
-                🌐 360° Image
+                <i class="fa fa-street-view"></i> 360° Image
             </button>
         </div>
         
@@ -428,7 +502,7 @@ function addRoomBlock() {
              ondrop="handleDrop(event, '${roomId}')"
              onclick="document.getElementById('fileInput_${roomId}').click()">
             <p style="margin: 0; font-size: 16px; color: #666;">
-                📤 Drag & drop images here or click to upload
+                <i class="fa fa-upload"></i> Drag & drop images here or click to upload
             </p>
             <p style="margin: 10px 0 0 0; font-size: 13px; color: #999;">
                 Supported formats: JPG, PNG
@@ -447,19 +521,15 @@ function addRoomBlock() {
         
         <div class="preview-grid" id="preview_${roomId}"></div>
         
-        <div style="margin-top: 15px;">
-            <label style="display: block; font-weight: 600; margin-bottom: 6px; color: #1E1E1E;">Moisture Reading (%)</label>
-            <input type="number" 
-                   name="rooms[${roomIndex}][moisture_reading]" 
-                   step="0.1" 
-                   min="0" 
-                   max="100"
-                   placeholder="e.g., 45.5"
-                   style="width: 100%; padding: 10px; border: 1px solid #D9D9D9; border-radius: 6px; font-size: 15px; box-sizing: border-box;">
-            <p style="font-size: 12px; color: #666; margin-top: 5px;">Optional: Enter moisture reading for this room (0-100%)</p>
-        </div>
         
         <div class="error-message" id="error_${roomId}" style="display: none;"></div>
+
+        <div style="margin-top: 12px; border-top: 1px solid #e0e0e0; padding-top: 12px;">
+            <button type="button" class="save-room-btn" onclick="saveRoom('${roomId}')">
+                <i class="fa fa-save"></i> Save Room
+            </button>
+            <span class="room-save-status" id="saveStatus_${roomId}"></span>
+        </div>
         </div>
     `;
     
@@ -696,6 +766,68 @@ document.getElementById('collapseAllBtn').addEventListener('click', function() {
         block.classList.add('collapsed');
     });
 });
+
+// Save individual room via AJAX
+async function saveRoom(roomId) {
+    const roomBlock = document.querySelector(`[data-room-id="${roomId}"]`);
+    const roomNameInput = roomBlock.querySelector('.room-name-input');
+    const errorDiv = document.getElementById('error_' + roomId);
+    const statusSpan = document.getElementById('saveStatus_' + roomId);
+    const saveBtn = roomBlock.querySelector('.save-room-btn');
+
+    // Validate
+    if (!roomNameInput.value.trim()) {
+        roomNameInput.style.borderColor = '#dc3545';
+        errorDiv.textContent = 'Room name is required';
+        errorDiv.style.display = 'block';
+        return;
+    }
+    if (!roomImages[roomId] || roomImages[roomId].images.length === 0) {
+        errorDiv.textContent = 'Please upload at least one image for this room';
+        errorDiv.style.display = 'block';
+        return;
+    }
+
+    errorDiv.style.display = 'none';
+    roomNameInput.style.borderColor = '';
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Saving…';
+    statusSpan.textContent = '';
+    statusSpan.style.color = '';
+
+    const formData = new FormData();
+    formData.append('_token', '{{ csrf_token() }}');
+    formData.append('room_name', roomNameInput.value.trim());
+    formData.append('is_360', roomImages[roomId].is360 ? '1' : '0');
+    roomImages[roomId].images.forEach(file => formData.append('images[]', file));
+
+    try {
+        const response = await fetch('{{ route("admin.properties.homecheck.save-room", $property->id) }}', {
+            method: 'POST',
+            body: formData,
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            statusSpan.innerHTML = '<i class="fa fa-check"></i> ' + data.message;
+            statusSpan.style.color = '#28a745';
+            saveBtn.innerHTML = '<i class="fa fa-check"></i> Saved';
+            saveBtn.style.background = '#28a745';
+            const badge = document.getElementById('roomSavedBadge_' + roomId);
+            if (badge) badge.innerHTML = '<i class="fa fa-check-circle"></i> Saved';
+        } else {
+            statusSpan.innerHTML = '<i class="fa fa-times"></i> ' + data.message;
+            statusSpan.style.color = '#dc3545';
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = '<i class="fa fa-save"></i> Save Room';
+        }
+    } catch (err) {
+        statusSpan.innerHTML = '<i class="fa fa-times"></i> Network error — please try again';
+        statusSpan.style.color = '#dc3545';
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = '<i class="fa fa-save"></i> Save Room';
+    }
+}
 
 // Add first room on page load
 window.addEventListener('DOMContentLoaded', function() {

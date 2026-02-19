@@ -295,7 +295,7 @@
                             </td>
                             <td data-label="Status">
                                 <span class="status status-{{ $property->status }}">
-                                    {{ ucfirst(str_replace('_', ' ', $property->status)) }}
+                                    {{ str_replace(' aml', ' AML', ucfirst(str_replace('_', ' ', $property->status))) }}
                                 </span>
                             </td>
                             <td data-label="Price">
@@ -338,7 +338,7 @@
                         <div class="property-mobile-label">Status</div>
                         <div class="property-mobile-value">
                             <span class="status status-{{ $property->status }}">
-                                {{ ucfirst(str_replace('_', ' ', $property->status)) }}
+                                {{ str_replace(' aml', ' AML', ucfirst(str_replace('_', ' ', $property->status))) }}
                             </span>
                         </div>
                     </div>
