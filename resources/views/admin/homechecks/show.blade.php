@@ -751,7 +751,8 @@
         }
         
         if (aiComments && aiComments.trim() !== '') {
-            bodyContent += '<div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd;"><h4 style="margin-bottom: 8px; color: var(--abodeology-teal); font-size: 16px;">AI Analysis</h4><p style="line-height: 1.6; color: #333;">' + aiComments.replace(/\n/g, '<br>') + '</p></div>';
+            var escaped = aiComments.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g, '<br>');
+            bodyContent += '<div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd;"><h4 style="margin-bottom: 8px; color: var(--abodeology-teal); font-size: 16px;">AI Analysis</h4><p style="line-height: 1.6; color: #333;">' + escaped + '</p></div>';
         }
         
         if (!bodyContent) {

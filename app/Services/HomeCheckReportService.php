@@ -68,7 +68,7 @@ class HomeCheckReportService
                 ]
             );
 
-            // Update AI analysis in HomecheckData records
+            // Update AI analysis in HomecheckData records (only set when we have values, so fallback does not overwrite OpenAI comments)
             foreach ($homecheckData as $index => $data) {
                 if (isset($aiAnalysis['rooms'][$data->room_name])) {
                     $roomAnalysis = $aiAnalysis['rooms'][$data->room_name];
@@ -76,11 +76,16 @@ class HomeCheckReportService
                     if (is_array($comments)) {
                         $comments = implode(' ', $comments);
                     }
-                    $data->update([
-                        'ai_rating' => $roomAnalysis['rating'] ?? null,
-                        'ai_comments' => $comments !== '' ? $comments : null,
-                        'moisture_reading' => $roomAnalysis['moisture'] ?? null,
-                    ]);
+                    $updates = [
+                        'moisture_reading' => $roomAnalysis['moisture'] ?? $data->moisture_reading,
+                    ];
+                    if (isset($roomAnalysis['rating']) && $roomAnalysis['rating'] !== null && $roomAnalysis['rating'] !== '') {
+                        $updates['ai_rating'] = $roomAnalysis['rating'];
+                    }
+                    if ($comments !== null && $comments !== '') {
+                        $updates['ai_comments'] = $comments;
+                    }
+                    $data->update($updates);
                 }
             }
 
@@ -326,6 +331,24 @@ class HomeCheckReportService
                     $decoded['rooms'][$rName]['comments'] = $c !== '' ? $c : null;
                 }
             }
+            // Remap room keys to match DB room_name (case/trim): API may return "Asdad", DB has "ASDAD"
+            $dbRoomNames = $grouped->keys();
+            $remapped = [];
+            foreach ($decoded['rooms'] as $apiKey => $roomData) {
+                $norm = strtolower(trim((string) $apiKey));
+                $matched = false;
+                foreach ($dbRoomNames as $dbName) {
+                    if (strtolower(trim($dbName)) === $norm) {
+                        $remapped[$dbName] = $roomData;
+                        $matched = true;
+                        break;
+                    }
+                }
+                if (!$matched) {
+                    $remapped[$apiKey] = $roomData;
+                }
+            }
+            $decoded['rooms'] = $remapped;
         }
 
         return $decoded;
