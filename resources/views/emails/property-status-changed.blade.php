@@ -36,11 +36,11 @@
         </div>
         
         @if($status === 'sold')
-            <p style="color: #856404; background: #fff3cd; padding: 15px; border-radius: 6px; border-left: 4px solid #ffc107;">
+            <p style="color: #856404; background: #fff3cd; padding: 15px; border-radius: 6px;">
                 <strong>Note:</strong> This property has been sold and is no longer available. Any pending offers or scheduled viewings have been automatically cancelled.
             </p>
         @elseif($status === 'withdrawn')
-            <p style="color: #856404; background: #fff3cd; padding: 15px; border-radius: 6px; border-left: 4px solid #ffc107;">
+            <p style="color: #856404; background: #fff3cd; padding: 15px; border-radius: 6px;">
                 <strong>Note:</strong> This property has been withdrawn from the market. Any pending offers or scheduled viewings have been automatically cancelled.
             </p>
         @endif

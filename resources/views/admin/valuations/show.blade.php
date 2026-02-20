@@ -494,7 +494,7 @@
         @endif
     </div>
     @elseif($valuation->status === 'completed')
-    <div class="card" style="background: #F9F9F9; border-left: 4px solid #ffc107;">
+    <div class="card" style="background: #F9F9F9;">
         <h3 style="color: #856404; margin-top: 0;">HomeCheck Status</h3>
         <p style="font-size: 14px; color: #666; margin-bottom: 10px;">
             Property must be created first before scheduling a HomeCheck. Complete the Valuation Form to create the property.
