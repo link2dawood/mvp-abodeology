@@ -340,29 +340,14 @@ class HomeCheckReportService
      */
     protected function analyzeRoom(string $roomName, $images): array
     {
-        // Simulate room analysis
-        // In production, this would analyze images through AI
-        
-        $rating = rand(7, 10); // Simulated rating
-        $has360Images = $images->where('is_360', true)->count() > 0;
-
-        $comments = [];
-        if ($has360Images) {
-            $comments[] = '360° images captured successfully.';
-        }
-
-        // Simulate detection based on room type
+        // Fallback when OpenAI is not used: do not set fake 'comments' so AI Comment shows —.
+        $rating = rand(7, 10);
         $roomType = strtolower($roomName);
-        
+
         if (strpos($roomType, 'bathroom') !== false || strpos($roomType, 'kitchen') !== false) {
-            $comments[] = 'Moisture levels within normal range.';
             $moisture = round(rand(40, 60) / 10, 1);
         } else {
             $moisture = round(rand(30, 50) / 10, 1);
-        }
-
-        if (strpos($roomType, 'kitchen') !== false) {
-            $comments[] = 'Appliances appear to be in working order.';
         }
 
         $issues = [];
@@ -372,7 +357,7 @@ class HomeCheckReportService
 
         return [
             'rating' => $rating,
-            'comments' => implode(' ', $comments),
+            'comments' => null,
             'moisture' => $moisture ?? null,
             'images_count' => $images->count(),
             '360_images_count' => $images->where('is_360', true)->count(),
