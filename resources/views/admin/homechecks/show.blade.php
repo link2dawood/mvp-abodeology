@@ -68,14 +68,39 @@
     .btn {
         padding: 10px 20px;
         border-radius: 6px;
-        display: inline-block;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
         text-decoration: none;
         font-weight: 600;
         font-size: 14px;
-        margin-right: 10px;
+        min-height: 42px;
+        min-width: 140px;
+        box-sizing: border-box;
         transition: background 0.3s ease;
         border: none;
         cursor: pointer;
+        white-space: nowrap;
+    }
+
+    .homecheck-header-actions {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .homecheck-header-actions .btn,
+    .homecheck-header-actions button.btn {
+        margin: 0;
+    }
+
+    .homecheck-header-actions form {
+        display: inline-flex;
+    }
+
+    .homecheck-header-actions form .btn {
+        width: 100%;
     }
 
     .btn-main {
@@ -86,6 +111,10 @@
     .btn-secondary {
         background: #666;
         color: #fff;
+    }
+
+    .btn-ai-report {
+        gap: 8px;
     }
 
     .room-section {
@@ -451,15 +480,15 @@
                 {{ ($aiConfigured ?? false) ? '✓ AI connected' : '○ AI fallback' }}
             </span>
         </div>
-        <div>
+        <div class="homecheck-header-actions">
             <a href="{{ route('admin.homechecks.index') }}" class="btn btn-secondary">← Back to List</a>
             @if($homecheckData && $homecheckData->count() > 0)
-                <form action="{{ route('admin.homechecks.process-ai', $homecheckReport->id) }}" method="POST" style="display: inline-block;" onsubmit="return confirm('This will generate the HomeCheck report using AI (all images will be analysed). It may take a few moments. Continue?');">
+                <form action="{{ route('admin.homechecks.process-ai', $homecheckReport->id) }}" method="POST" onsubmit="return confirm('This will generate the HomeCheck report using AI (all images will be analysed). It may take a few moments. Continue?');">
                     @csrf
-                    <button type="submit" class="btn btn-ai-report" style="background: #28a745; color: #fff; display: inline-flex; align-items: center; gap: 8px;">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2L14 8L20 10L14 12L12 18L10 12L4 10L10 8L12 2Z"/></svg>
-                    Generate HomeCheck Report using AI
-                </button>
+                    <button type="submit" class="btn btn-ai-report" style="background: #28a745; color: #fff;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2L14 8L20 10L14 12L12 18L10 12L4 10L10 8L12 2Z"/></svg>
+                        <span>Generate HomeCheck Report using AI</span>
+                    </button>
                 </form>
             @endif
             <a href="{{ route('admin.homechecks.edit', $homecheckReport->id) }}" class="btn btn-main">Edit HomeCheck</a>
