@@ -84,6 +84,48 @@
         color: #fff;
     }
 
+    .report-badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        text-decoration: none;
+    }
+    .report-badge.report-yes {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+    .report-badge.report-yes:hover {
+        background: #c3e6cb;
+    }
+    .report-badge.report-no {
+        color: #999;
+        background: #f5f5f5;
+    }
+
+    .ai-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        margin-left: 12px;
+    }
+    .ai-status.connected {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+    .ai-status.fallback {
+        background: #fff3cd;
+        color: #856404;
+        border: 1px solid #ffeeba;
+    }
+
     .filter-bar {
         display: flex;
         gap: 15px;
@@ -228,8 +270,13 @@
 
 @section('content')
 <div class="container">
-    <div class="page-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-        <h2>HomeCheck Reports</h2>
+    <div class="page-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+        <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px;">
+            <h2 style="margin: 0;">HomeCheck Reports</h2>
+            <span class="ai-status {{ ($aiConfigured ?? false) ? 'connected' : 'fallback' }}" title="{{ ($aiConfigured ?? false) ? 'OpenAI API is configured. Analysis will use real AI.' : 'OpenAI not configured. Analysis will use fallback (simulated).' }}">
+                {{ ($aiConfigured ?? false) ? '✓ AI connected' : '○ AI fallback' }}
+            </span>
+        </div>
     </div>
 
     @if(session('success'))
@@ -271,6 +318,7 @@
                             <th>Completed Date</th>
                             <th>Rooms</th>
                             <th>Images</th>
+                            <th>AI Report</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -311,6 +359,13 @@
                                 </td>
                                 <td>
                                     {{ $homecheck->homecheckData->count() }} {{ $homecheck->homecheckData->count() === 1 ? 'image' : 'images' }}
+                                </td>
+                                <td>
+                                    @if($homecheck->report_path)
+                                        <a href="{{ route('admin.homechecks.show', $homecheck->id) }}" class="report-badge report-yes" title="View AI report">✓ Report</a>
+                                    @else
+                                        <span class="report-badge report-no">—</span>
+                                    @endif
                                 </td>
                                 <td>
                                     <a href="{{ route('admin.homechecks.show', $homecheck->id) }}" class="btn btn-main" style="padding: 6px 12px; font-size: 13px;">View</a>
@@ -373,6 +428,16 @@
                         <div class="homecheck-mobile-row">
                             <div class="homecheck-mobile-label">Images</div>
                             <div class="homecheck-mobile-value">{{ $imageCount }} {{ $imageCount === 1 ? 'image' : 'images' }}</div>
+                        </div>
+                        <div class="homecheck-mobile-row">
+                            <div class="homecheck-mobile-label">AI Report</div>
+                            <div class="homecheck-mobile-value">
+                                @if($homecheck->report_path)
+                                    <a href="{{ route('admin.homechecks.show', $homecheck->id) }}" class="report-badge report-yes">✓ Report</a>
+                                @else
+                                    <span class="report-badge report-no">—</span>
+                                @endif
+                            </div>
                         </div>
 
                         <div class="homecheck-mobile-actions">

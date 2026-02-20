@@ -1688,7 +1688,8 @@ class AdminController extends Controller
             if (empty($agentPropertyIds)) {
                 // Agent has no assigned properties, return empty result
                 $homechecks = \App\Models\HomecheckReport::whereRaw('1 = 0')->paginate(20);
-                return view('admin.homechecks.index', compact('homechecks'));
+                $aiConfigured = !empty(config('services.openai.api_key')) && !empty(config('services.openai.assistant_id'));
+                return view('admin.homechecks.index', compact('homechecks', 'aiConfigured'));
             }
             $query->whereIn('property_id', $agentPropertyIds);
         }
@@ -1704,7 +1705,8 @@ class AdminController extends Controller
         // Paginate results
         $homechecks = $query->paginate(20)->withQueryString();
 
-        return view('admin.homechecks.index', compact('homechecks'));
+        $aiConfigured = !empty(config('services.openai.api_key')) && !empty(config('services.openai.assistant_id'));
+        return view('admin.homechecks.index', compact('homechecks', 'aiConfigured'));
     }
 
     /**
@@ -1770,7 +1772,10 @@ class AdminController extends Controller
                 }
             }
 
-            return view('admin.homechecks.show', compact('homecheckReport', 'property', 'roomsData', 'homecheckData', 'aiAnalysis'));
+            // AI status: whether OpenAI is configured (real AI) or fallback will be used
+            $aiConfigured = !empty(config('services.openai.api_key')) && !empty(config('services.openai.assistant_id'));
+
+            return view('admin.homechecks.show', compact('homecheckReport', 'property', 'roomsData', 'homecheckData', 'aiAnalysis', 'aiConfigured'));
             
         } catch (\Exception $e) {
             \Log::error('Error loading HomeCheck show page: ' . $e->getMessage(), [

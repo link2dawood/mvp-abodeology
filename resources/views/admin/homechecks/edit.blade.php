@@ -208,11 +208,10 @@
  .delete-img:hover {
  background: #c9302c;
  }
- /* AI TEXT BOX */
- .ai-box {
- background: #f3fdfa;
- border-left: 4px solid var(--primary);
- padding: 15px;
+/* AI TEXT BOX */
+.ai-box {
+background: #f3fdfa;
+padding: 15px;
  border-radius: var(--radius);
  margin-top: 20px;
  font-size: 14px;

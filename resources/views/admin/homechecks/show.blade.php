@@ -144,6 +144,40 @@
         padding: 0;
     }
 
+    .ai-report-card {
+        background: #f3fdfa;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+    .ai-report-card h3 {
+        margin-top: 0;
+        margin-bottom: 15px;
+    }
+    .ai-report-room {
+        padding: 12px 0;
+        border-bottom: 1px solid rgba(0,0,0,0.06);
+    }
+    .ai-report-room:last-child {
+        border-bottom: none;
+    }
+    .ai-report-room-name {
+        font-weight: 600;
+        color: var(--dark-text);
+        margin-bottom: 6px;
+    }
+    .ai-report-room-meta {
+        font-size: 13px;
+        color: #666;
+        margin-bottom: 4px;
+    }
+    .ai-report-room-comments {
+        font-size: 14px;
+        color: #333;
+        line-height: 1.5;
+        margin-top: 6px;
+    }
+
     .room-controls {
         display: flex;
         justify-content: space-between;
@@ -223,6 +257,17 @@
         background: #fff;
         font-size: 12px;
         color: #666;
+    }
+    .image-info-comment {
+        margin-top: 6px;
+        padding: 8px;
+        background: #f5f5f5;
+        border-radius: 4px;
+        font-size: 11px;
+        color: #333;
+        text-align: left;
+        max-height: 80px;
+        overflow-y: auto;
     }
 
     .modal {
@@ -373,13 +418,39 @@
         color: #666;
         margin-top: 5px;
     }
+
+    .ai-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        margin-left: 12px;
+    }
+    .ai-status.connected {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+    .ai-status.fallback {
+        background: #fff3cd;
+        color: #856404;
+        border: 1px solid #ffeeba;
+    }
 </style>
 @endpush
 
 @section('content')
 <div class="container">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-        <h2>HomeCheck Report Details</h2>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+        <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px;">
+            <h2 style="margin: 0;">HomeCheck Report Details</h2>
+            <span class="ai-status {{ ($aiConfigured ?? false) ? 'connected' : 'fallback' }}" title="{{ ($aiConfigured ?? false) ? 'OpenAI API is configured. Analysis will use real AI.' : 'OpenAI not configured. Analysis will use fallback (simulated).' }}">
+                {{ ($aiConfigured ?? false) ? '✓ AI connected' : '○ AI fallback' }}
+            </span>
+        </div>
         <div>
             <a href="{{ route('admin.homechecks.index') }}" class="btn btn-secondary">← Back to List</a>
             @if($homecheckData && $homecheckData->count() > 0 && !$homecheckReport->report_path)
@@ -479,6 +550,35 @@
     </div>
     @endif
 
+    <!-- AI Report & Comments -->
+    @if($homecheckReport->report_path && isset($aiAnalysis) && !empty($aiAnalysis['rooms']))
+    <div class="card ai-report-card">
+        <h3>AI Report & Analysis</h3>
+        @if(isset($aiAnalysis['overall_rating']) && $aiAnalysis['overall_rating'] !== null)
+            <div style="margin-bottom: 16px; padding: 12px; background: rgba(44, 184, 180, 0.1); border-radius: 6px;">
+                <strong style="color: var(--abodeology-teal);">Overall rating:</strong> {{ $aiAnalysis['overall_rating'] }}/10
+            </div>
+        @endif
+        @if(isset($aiAnalysis['summary']) && $aiAnalysis['summary'])
+            <div style="margin-bottom: 16px; line-height: 1.6;">{{ $aiAnalysis['summary'] }}</div>
+        @endif
+        @foreach($aiAnalysis['rooms'] ?? [] as $roomName => $roomData)
+            <div class="ai-report-room">
+                <div class="ai-report-room-name">{{ ucfirst($roomName) }}</div>
+                @if(!empty($roomData['rating']))
+                    <div class="ai-report-room-meta">Rating: {{ $roomData['rating'] }}/10</div>
+                @endif
+                @if(!empty($roomData['moisture']))
+                    <div class="ai-report-room-meta">Moisture: {{ $roomData['moisture'] }}%</div>
+                @endif
+                @if(!empty($roomData['comments']))
+                    <div class="ai-report-room-comments">{{ $roomData['comments'] }}</div>
+                @endif
+            </div>
+        @endforeach
+    </div>
+    @endif
+
     <!-- Room Data -->
     @if($roomsData && $roomsData->count() > 0)
         <div class="card">
@@ -559,17 +659,13 @@
                                     @if($image->moisture_reading)
                                         <strong>Moisture:</strong> {{ $image->moisture_reading }}%<br>
                                     @endif
-                                    @if($image->ai_rating)
-                                        <strong>AI Rating:</strong> {{ $image->ai_rating }}/10<br>
-                                    @endif
-                                    @if($image->ai_comments)
-                                        <div style="margin-top: 8px; padding: 8px; background: #f0f0f0; border-radius: 4px; font-size: 11px; color: #333; text-align: left; max-height: 80px; overflow-y: auto;">
-                                            <strong>AI Notes:</strong><br>
-                                            {{ \Illuminate\Support\Str::limit($image->ai_comments ?? '', 150) }}
-                                        </div>
-                                    @endif
+                                    <strong>AI Rating:</strong> {{ $image->ai_rating ? $image->ai_rating . '/10' : '—' }}<br>
+                                    <div class="image-info-comment">
+                                        <strong>AI Comment:</strong><br>
+                                        {{ $image->ai_comments ? \Illuminate\Support\Str::limit($image->ai_comments, 150) : '—' }}
+                                    </div>
                                     @if($image->created_at)
-                                        <br><small style="color: #999;">{{ $image->created_at->format('M j, Y g:i A') }}</small>
+                                        <small style="color: #999;">{{ $image->created_at->format('M j, Y g:i A') }}</small>
                                     @endif
                                 </div>
                             </div>
