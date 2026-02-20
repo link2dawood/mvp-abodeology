@@ -536,6 +536,78 @@ class AdminController extends Controller
     }
 
     /**
+     * Show the form for creating a new user (any role). Admin only.
+     *
+     * @return \Illuminate\Contracts\Support\Renderable|\Illuminate\Http\RedirectResponse
+     */
+    public function createUser()
+    {
+        $user = auth()->user();
+        if ($user->role !== 'admin') {
+            return redirect()->route($this->getRoleDashboard($user->role))
+                ->with('error', 'You do not have permission to create users.');
+        }
+        return view('admin.users.create');
+    }
+
+    /**
+     * Store a new user (any role). Admin only.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function storeUser(Request $request)
+    {
+        $authUser = auth()->user();
+        if ($authUser->role !== 'admin') {
+            return redirect()->route($this->getRoleDashboard($authUser->role))
+                ->with('error', 'You do not have permission to create users.');
+        }
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
+            'phone' => ['required', 'string', 'max:20'],
+            'role' => ['required', 'string', 'in:admin,agent,seller,buyer,both,pva'],
+        ], [
+            'name.required' => 'Please provide the user name.',
+            'email.required' => 'Please provide the email address.',
+            'email.email' => 'Please provide a valid email address.',
+            'email.unique' => 'This email is already registered.',
+            'phone.required' => 'Please provide the phone number.',
+            'role.required' => 'Please select a role.',
+            'role.in' => 'Please select a valid role.',
+        ]);
+
+        try {
+            $password = Str::random(12);
+
+            $newUser = User::create([
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'phone' => $validated['phone'],
+                'password' => Hash::make($password),
+                'role' => $validated['role'],
+                'email_verified_at' => now(),
+            ]);
+
+            try {
+                Mail::to($newUser->email)->send(new \App\Mail\UserCreated($newUser, $password));
+            } catch (\Exception $e) {
+                \Log::error('Failed to send user creation email: ' . $e->getMessage());
+            }
+
+            return redirect()->route('admin.users.index')
+                ->with('success', 'User created successfully. Login credentials have been sent to ' . $newUser->email);
+        } catch (\Exception $e) {
+            \Log::error('Error creating user: ' . $e->getMessage());
+            return back()
+                ->withInput()
+                ->with('error', 'Failed to create user. Please try again.');
+        }
+    }
+
+    /**
      * List all valuations for agents/admins.
      *
      * @return \Illuminate\Contracts\Support\Renderable

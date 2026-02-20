@@ -66,6 +66,8 @@ Route::middleware(['auth', 'role.web:admin,agent'])->prefix('admin')->name('admi
     // User Management Routes (Admin Only)
     Route::middleware(['role.web:admin'])->group(function () {
         Route::get('/users', [App\Http\Controllers\AdminController::class, 'users'])->name('users.index');
+        Route::get('/users/create', [App\Http\Controllers\AdminController::class, 'createUser'])->name('users.create');
+        Route::post('/users', [App\Http\Controllers\AdminController::class, 'storeUser'])->name('users.store');
         
         // PVA Management Routes (Admin can manage and assign jobs)
         Route::get('/pvas', [App\Http\Controllers\AdminController::class, 'managePvas'])->name('pvas.index');
