@@ -68,13 +68,28 @@ class HomeCheckReportService
                 ]
             );
 
+            // Build normalised room lookup and overall summary for fallback
+            $roomsFromApi = $aiAnalysis['rooms'] ?? [];
+            $normalisedKeyToData = [];
+            foreach ($roomsFromApi as $apiKey => $roomData) {
+                $norm = strtolower(trim((string) $apiKey));
+                if (!isset($normalisedKeyToData[$norm])) {
+                    $normalisedKeyToData[$norm] = $roomData;
+                }
+            }
+            $overallSummary = isset($aiAnalysis['summary']) && (string) $aiAnalysis['summary'] !== '' ? (string) $aiAnalysis['summary'] : null;
+
             // Update AI analysis in HomecheckData records (only set when we have values, so fallback does not overwrite OpenAI comments)
             foreach ($homecheckData as $index => $data) {
-                if (isset($aiAnalysis['rooms'][$data->room_name])) {
-                    $roomAnalysis = $aiAnalysis['rooms'][$data->room_name];
+                $roomName = $data->room_name;
+                $roomAnalysis = $roomsFromApi[$roomName] ?? $normalisedKeyToData[strtolower(trim($roomName))] ?? null;
+                if ($roomAnalysis !== null) {
                     $comments = $roomAnalysis['comments'] ?? $roomAnalysis['comment'] ?? $roomAnalysis['analysis'] ?? $roomAnalysis['summary'] ?? null;
                     if (is_array($comments)) {
                         $comments = implode(' ', $comments);
+                    }
+                    if (($comments === null || $comments === '') && $overallSummary !== null) {
+                        $comments = $overallSummary;
                     }
                     $updates = [
                         'moisture_reading' => $roomAnalysis['moisture'] ?? $data->moisture_reading,
@@ -84,6 +99,13 @@ class HomeCheckReportService
                     }
                     if ($comments !== null && $comments !== '') {
                         $updates['ai_comments'] = $comments;
+                    }
+                    $data->update($updates);
+                } elseif ($overallSummary !== null) {
+                    // No room match: still set overall summary so AI comment section is not empty
+                    $updates = ['ai_comments' => $overallSummary];
+                    if (isset($aiAnalysis['overall_rating']) && $aiAnalysis['overall_rating'] !== null && $aiAnalysis['overall_rating'] !== '') {
+                        $updates['ai_rating'] = $aiAnalysis['overall_rating'];
                     }
                     $data->update($updates);
                 }

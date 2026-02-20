@@ -2706,21 +2706,41 @@ class AdminController extends Controller
             // Generate AI analysis
             $aiAnalysis = $reportService->generateAIAnalysis($homecheckData, $property);
 
+            // Build normalised room key lookup (API may return "Asdad", DB has "ASDAD")
+            $roomsFromApi = $aiAnalysis['rooms'] ?? [];
+            $normalisedKeyToData = [];
+            foreach ($roomsFromApi as $apiKey => $roomData) {
+                $norm = strtolower(trim((string) $apiKey));
+                if (!isset($normalisedKeyToData[$norm])) {
+                    $normalisedKeyToData[$norm] = $roomData;
+                }
+            }
+
+            $overallSummary = isset($aiAnalysis['summary']) && (string) $aiAnalysis['summary'] !== '' ? (string) $aiAnalysis['summary'] : null;
+
             // Update AI analysis in HomecheckData records (per image)
             foreach ($homecheckData as $data) {
                 $roomName = $data->room_name;
-                if (isset($aiAnalysis['rooms'][$roomName])) {
-                    $roomAnalysis = $aiAnalysis['rooms'][$roomName];
+                $roomAnalysis = $roomsFromApi[$roomName] ?? $normalisedKeyToData[strtolower(trim($roomName))] ?? null;
+                if ($roomAnalysis !== null) {
                     $comments = $roomAnalysis['comments'] ?? $roomAnalysis['comment'] ?? $roomAnalysis['analysis'] ?? $roomAnalysis['summary'] ?? null;
                     if (is_array($comments)) {
                         $comments = implode(' ', $comments);
                     }
-                    // Update each image in the room with AI analysis
+                    if (($comments === null || $comments === '') && $overallSummary !== null) {
+                        $comments = $overallSummary;
+                    }
                     $data->update([
                         'ai_rating' => $roomAnalysis['rating'] ?? null,
-                        'ai_comments' => $comments !== '' ? $comments : null,
-                        // Keep existing moisture reading if set
+                        'ai_comments' => $comments !== '' && $comments !== null ? $comments : null,
                     ]);
+                } elseif ($overallSummary !== null) {
+                    // No room match: still set overall summary and rating so AI section is not empty
+                    $updates = ['ai_comments' => $overallSummary];
+                    if (isset($aiAnalysis['overall_rating']) && $aiAnalysis['overall_rating'] !== null && $aiAnalysis['overall_rating'] !== '') {
+                        $updates['ai_rating'] = $aiAnalysis['overall_rating'];
+                    }
+                    $data->update($updates);
                 }
             }
 
