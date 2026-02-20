@@ -173,6 +173,23 @@
         background: #5a6268;
     }
 
+    .users-page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .page-header-actions {
+        flex-shrink: 0;
+    }
+
+    .add-user-btn {
+        white-space: nowrap;
+    }
+
     .loading-indicator {
         display: none;
         text-align: center;
@@ -203,7 +220,7 @@
             padding: 0 12px;
         }
 
-        .page-header {
+        .users-page-header {
             flex-direction: column;
             align-items: flex-start;
             gap: 10px;
@@ -345,8 +362,8 @@
 
 @section('content')
 <div class="container">
-    <div class="page-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-        <div>
+    <div class="page-header users-page-header">
+        <div class="page-header-left">
             <h2>Users</h2>
             <p class="page-subtitle">View and manage all platform users (Admin Only)</p>
         </div>
@@ -363,6 +380,11 @@
             {{ session('error') }}
         </div>
     @endif
+
+    <!-- Add New User - before filters -->
+    <div style="margin-bottom: 20px;">
+        <a href="{{ route('admin.users.create') }}" style="display: inline-block; padding: 12px 24px; background: #2CB8B4; color: #fff; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px;">+ Add New User</a>
+    </div>
 
     <!-- SEARCH FILTERS -->
     <div class="filter-card">
