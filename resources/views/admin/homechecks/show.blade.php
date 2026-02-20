@@ -453,10 +453,13 @@
         </div>
         <div>
             <a href="{{ route('admin.homechecks.index') }}" class="btn btn-secondary">← Back to List</a>
-            @if($homecheckData && $homecheckData->count() > 0 && !$homecheckReport->report_path)
-                <form action="{{ route('admin.homechecks.process-ai', $homecheckReport->id) }}" method="POST" style="display: inline-block;" onsubmit="return confirm('This will process all images through AI analysis. This may take a few moments. Continue?');">
+            @if($homecheckData && $homecheckData->count() > 0)
+                <form action="{{ route('admin.homechecks.process-ai', $homecheckReport->id) }}" method="POST" style="display: inline-block;" onsubmit="return confirm('This will generate the HomeCheck report using AI (all images will be analysed). It may take a few moments. Continue?');">
                     @csrf
-                    <button type="submit" class="btn" style="background: #28a745; color: #fff;">🤖 Process AI Analysis</button>
+                    <button type="submit" class="btn btn-ai-report" style="background: #28a745; color: #fff; display: inline-flex; align-items: center; gap: 8px;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2L14 8L20 10L14 12L12 18L10 12L4 10L10 8L12 2Z"/></svg>
+                    Generate HomeCheck Report using AI
+                </button>
                 </form>
             @endif
             <a href="{{ route('admin.homechecks.edit', $homecheckReport->id) }}" class="btn btn-main">Edit HomeCheck</a>
