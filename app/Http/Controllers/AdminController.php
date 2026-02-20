@@ -2711,11 +2711,14 @@ class AdminController extends Controller
                 $roomName = $data->room_name;
                 if (isset($aiAnalysis['rooms'][$roomName])) {
                     $roomAnalysis = $aiAnalysis['rooms'][$roomName];
-                    
+                    $comments = $roomAnalysis['comments'] ?? $roomAnalysis['comment'] ?? $roomAnalysis['analysis'] ?? $roomAnalysis['summary'] ?? null;
+                    if (is_array($comments)) {
+                        $comments = implode(' ', $comments);
+                    }
                     // Update each image in the room with AI analysis
                     $data->update([
                         'ai_rating' => $roomAnalysis['rating'] ?? null,
-                        'ai_comments' => $roomAnalysis['comments'] ?? null,
+                        'ai_comments' => $comments !== '' ? $comments : null,
                         // Keep existing moisture reading if set
                     ]);
                 }

@@ -72,9 +72,13 @@ class HomeCheckReportService
             foreach ($homecheckData as $index => $data) {
                 if (isset($aiAnalysis['rooms'][$data->room_name])) {
                     $roomAnalysis = $aiAnalysis['rooms'][$data->room_name];
+                    $comments = $roomAnalysis['comments'] ?? $roomAnalysis['comment'] ?? $roomAnalysis['analysis'] ?? $roomAnalysis['summary'] ?? null;
+                    if (is_array($comments)) {
+                        $comments = implode(' ', $comments);
+                    }
                     $data->update([
                         'ai_rating' => $roomAnalysis['rating'] ?? null,
-                        'ai_comments' => $roomAnalysis['comments'] ?? null,
+                        'ai_comments' => $comments !== '' ? $comments : null,
                         'moisture_reading' => $roomAnalysis['moisture'] ?? null,
                     ]);
                 }
@@ -302,10 +306,26 @@ class HomeCheckReportService
         }
 
         $rawText = $assistantMessage['content'][0]['text']['value'];
-        $decoded = json_decode($rawText, true);
+        // Strip markdown code block if present (e.g. ```json ... ```)
+        $jsonText = preg_replace('/^\s*```(?:json)?\s*\n?/i', '', trim($rawText));
+        $jsonText = preg_replace('/\n?\s*```\s*$/i', '', $jsonText);
+        $decoded = json_decode($jsonText, true);
 
         if (json_last_error() !== JSON_ERROR_NONE || !is_array($decoded)) {
             throw new \RuntimeException('Failed to decode OpenAI assistant JSON response for HomeCheck analysis.');
+        }
+
+        // Normalise room entries so 'comments' always exists (AI may return 'comment', 'analysis', etc.)
+        if (!empty($decoded['rooms']) && is_array($decoded['rooms'])) {
+            foreach ($decoded['rooms'] as $rName => $r) {
+                if (is_array($r)) {
+                    $c = $r['comments'] ?? $r['comment'] ?? $r['analysis'] ?? $r['summary'] ?? null;
+                    if (is_array($c)) {
+                        $c = implode(' ', $c);
+                    }
+                    $decoded['rooms'][$rName]['comments'] = $c !== '' ? $c : null;
+                }
+            }
         }
 
         return $decoded;
