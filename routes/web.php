@@ -173,7 +173,10 @@ Route::middleware(['auth', 'role.web:seller,both'])->prefix('seller')->name('sel
     Route::get('/property/{id}/onboarding', [App\Http\Controllers\SellerController::class, 'showOnboarding'])->name('onboarding'); //signup
     Route::post('/property/{id}/onboarding', [App\Http\Controllers\SellerController::class, 'storeOnboarding'])->name('onboarding.store');
     Route::get('/property/{id}/instruct', [App\Http\Controllers\SellerController::class, 'instruct'])->name('instruct');
+    Route::get('/property/{id}/terms-html', [App\Http\Controllers\SellerController::class, 'showTermsHTML'])->name('terms-html');
+    Route::get('/property/{id}/terms-pdf', [App\Http\Controllers\SellerController::class, 'generateTermsPDF'])->name('terms-pdf');
     Route::post('/property/{id}/instruct', [App\Http\Controllers\SellerController::class, 'storeInstruct'])->name('instruct.store');
+    Route::post('/property/{id}/signature', [App\Http\Controllers\SellerController::class, 'saveSignature'])->name('signature.save');
     Route::get('/instruct', [App\Http\Controllers\SellerController::class, 'instruct'])->name('instruct.general'); // Fallback for non-property-specific
     Route::post('/instruct', [App\Http\Controllers\SellerController::class, 'storeInstruct'])->name('instruct.store.general'); // Fallback
     Route::get('/offer/{id}/decision', [App\Http\Controllers\SellerController::class, 'showOfferDecision'])->name('offer.decision.show');
