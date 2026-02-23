@@ -291,12 +291,12 @@
             opacity: 1;
         }
 
-        /* Prevent text selection on widget blocks */
+        /* Allow text selection and editing on widget blocks */
         .canvas-widget-block {
-            user-select: none;
-            -webkit-user-select: none;
-            -moz-user-select: none;
-            -ms-user-select: none;
+            user-select: auto;
+            -webkit-user-select: auto;
+            -moz-user-select: auto;
+            -ms-user-select: auto;
         }
 
         .canvas-widget-block * {
@@ -304,6 +304,25 @@
             -webkit-user-select: text;
             -moz-user-select: text;
             -ms-user-select: text;
+        }
+        
+        /* Make contenteditable elements clearly editable */
+        [contenteditable="true"] {
+            cursor: text;
+            outline: none;
+            min-height: 1em;
+        }
+        
+        [contenteditable="true"]:focus {
+            outline: 2px solid #32b3ac;
+            outline-offset: 2px;
+            background-color: rgba(50, 179, 172, 0.05);
+            border-radius: 4px;
+        }
+        
+        [contenteditable="true"]:hover {
+            background-color: rgba(50, 179, 172, 0.02);
+            border-radius: 4px;
         }
 
         .variable-placeholder {

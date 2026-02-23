@@ -126,6 +126,8 @@
             });
             
             // Variable friendly names mapping
+            // Build logo key separately to avoid Blade parsing it as a PHP constant
+            const logoKeyName = 'logo' + '_' + 'url';
             const variableFriendlyNames = {
                 'property.address': 'Property Address',
                 'property.postcode': 'Property Postcode',
@@ -139,7 +141,6 @@
                 'recipient.name': 'Recipient Name',
                 'user.email': 'User Email',
                 'password': 'Password',
-                'logo_url': 'Logo URL',
                 'url': 'Link URL',
                 'text': 'Text',
                 'message': 'Message',
@@ -150,6 +151,8 @@
                 'item3': 'Item 3',
                 'content': 'Content'
             };
+            // Add logo key dynamically to avoid Blade constant parsing
+            variableFriendlyNames[logoKeyName] = 'Logo URL';
 
             // Store original HTML for each widget block
             const widgetOriginalHtml = new Map();
@@ -193,29 +196,32 @@
                     actualLogoUrl = newLogoUrl;
                 };
                 
-                // First, replace logo_url in img src attributes with actual logo URL for visual preview
+                // First, replace logo variable in img src attributes with actual logo URL for visual preview
                 let visualHtml = decodedHtml;
                 const openBrace = '{';
                 const closeBrace = '}';
-                const logoUrlVar = openBrace + openBrace + 'logo_url' + closeBrace + closeBrace;
+                // Break up logo variable string to prevent Blade from interpreting it as a PHP constant
+                const logoText = 'logo' + '_' + 'url';
+                const logoUrlVar = openBrace + openBrace + logoText + closeBrace + closeBrace;
                 
-                // Replace {{logo_url}} in img src with actual logo URL
+                // Replace logo variable in img src with actual logo URL
                 // Build regex pattern dynamically to avoid Blade parsing
-                const logoUrlPattern1 = new RegExp('<img([^>]*)\\ssrc=["\']' + openBrace + openBrace + 'logo_url' + closeBrace + closeBrace + '["\']([^>]*)>', 'gi');
+                const logoUrlPattern1 = new RegExp('<img([^>]*)\\ssrc=["\']' + openBrace + openBrace + logoText + closeBrace + closeBrace + '["\']([^>]*)>', 'gi');
                 visualHtml = visualHtml.replace(logoUrlPattern1, function(match, before, after) {
                     return '<img' + before + ' src="' + actualLogoUrl + '"' + after + '>';
                 });
                 
-                // Also handle src="{{logo_url}}" format
-                const logoUrlPattern2 = new RegExp('src=["\']' + openBrace + openBrace + 'logo_url' + closeBrace + closeBrace + '["\']', 'gi');
+                // Also handle src with logo variable format
+                const logoUrlPattern2 = new RegExp('src=["\']' + openBrace + openBrace + logoText + closeBrace + closeBrace + '["\']', 'gi');
                 visualHtml = visualHtml.replace(logoUrlPattern2, 'src="' + actualLogoUrl + '"');
                 
                 // Replace other variables with friendly placeholders
                 const variablePattern = /\{\{([^}]+)\}\}/g;
                 visualHtml = visualHtml.replace(variablePattern, function(match, variable) {
                     variable = variable.trim();
-                    // Skip logo_url as we already handled it
-                    if (variable === 'logo_url') {
+                    // Skip logo variable as we already handled it (use logoText to avoid Blade constant parsing)
+                    const logoVarName = 'logo' + '_' + 'url';
+                    if (variable === logoVarName) {
                         return match; // Keep original if not in img src
                     }
                     const friendlyName = variableFriendlyNames[variable] || variable.replace(/\./g, ' ').replace(/\b\w/g, l => l.toUpperCase());
@@ -273,12 +279,14 @@
                         const imgSrc = img.getAttribute('src') || '';
                         const openBrace = '{';
                         const closeBrace = '}';
-                        const logoUrlVar = openBrace + openBrace + 'logo_url' + closeBrace + closeBrace;
+                        // Break up logo variable string to prevent Blade from interpreting it as a PHP constant
+                        const logoVarName = 'logo' + '_' + 'url';
+                        const logoUrlVar = openBrace + openBrace + logoVarName + closeBrace + closeBrace;
                         
                         // If image has no src or has variable placeholder, ensure it displays properly
                         if (!img.src || img.src === '' || imgSrc === logoUrlVar || img.src.includes(openBrace + openBrace)) {
-                            // If it's logo_url, use actual logo from settings
-                            if (imgSrc === logoUrlVar || img.src.includes('logo_url')) {
+                            // If it's logo variable, use actual logo from settings
+                            if (imgSrc === logoUrlVar || img.src.includes(logoVarName)) {
                                 const logoUrlToUse = window.templateBuilderLogoUrl || actualLogoUrl;
                                 img.src = logoUrlToUse;
                             }
@@ -303,7 +311,20 @@
                     makeTextEditable(element);
                     
                     element.addEventListener('click', function(e) {
+                        // Allow editing if clicking on editable content
                         if (e.target.contentEditable === 'true' || e.target.closest('[contenteditable="true"]')) {
+                            // Focus the editable element
+                            const editableEl = e.target.contentEditable === 'true' ? e.target : e.target.closest('[contenteditable="true"]');
+                            if (editableEl) {
+                                editableEl.focus();
+                                // Place cursor at end of text
+                                const range = document.createRange();
+                                range.selectNodeContents(editableEl);
+                                range.collapse(false);
+                                const selection = window.getSelection();
+                                selection.removeAllRanges();
+                                selection.addRange(range);
+                            }
                             return;
                         }
                         e.stopPropagation();
@@ -390,27 +411,89 @@
 
             // Make text content editable inline
             function makeTextEditable(element) {
-                const textElements = element.querySelectorAll('p, h1, h2, h3, h4, h5, h6, span:not(.variable-placeholder), div:not(.variable-placeholder), li, td, a');
+                // Select all text-containing elements, excluding variable placeholders
+                const textElements = element.querySelectorAll('p, h1, h2, h3, h4, h5, h6, span:not(.variable-placeholder), div:not(.variable-placeholder):not(.canvas-widget-block), li, td, th, a, strong, em, b, i, u');
                 
                 textElements.forEach(function(textEl) {
-                    if (textEl.classList.contains('variable-placeholder')) {
+                    // Skip if it's a variable placeholder or already has contenteditable set
+                    if (textEl.classList.contains('variable-placeholder') || 
+                        textEl.closest('.variable-placeholder') ||
+                        textEl.hasAttribute('contenteditable')) {
                         return;
                     }
                     
+                    // Make element editable
                     textEl.setAttribute('contenteditable', 'true');
+                    textEl.style.cursor = 'text';
                     
+                    // Prevent event bubbling to parent click handler when editing
+                    textEl.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                    });
+                    
+                    // Save changes on blur
                     textEl.addEventListener('blur', function() {
                         widgetOriginalHtml.set(element, element.outerHTML);
                         syncCanvasToTextarea(true); // Save to history on blur
                     });
                     
+                    // Handle input events
                     textEl.addEventListener('input', function(e) {
+                        // Ensure variable placeholders remain non-editable
                         const placeholders = textEl.querySelectorAll('.variable-placeholder');
                         placeholders.forEach(function(ph) {
                             ph.setAttribute('contenteditable', 'false');
+                            ph.style.cursor = 'help';
                         });
+                        
+                        // Debounce sync to avoid too many updates
+                        clearTimeout(textEl._syncTimeout);
+                        textEl._syncTimeout = setTimeout(function() {
+                            syncCanvasToTextarea(false);
+                        }, 300);
+                    });
+                    
+                    // Handle paste events to clean HTML
+                    textEl.addEventListener('paste', function(e) {
+                        e.preventDefault();
+                        const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+                        document.execCommand('insertText', false, text);
                     });
                 });
+                
+                // Also make the element itself editable if it contains direct text nodes
+                if (element.childNodes.length > 0) {
+                    let hasDirectText = false;
+                    element.childNodes.forEach(function(node) {
+                        if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) {
+                            hasDirectText = true;
+                        }
+                    });
+                    
+                    // If element has direct text content, wrap it or make editable
+                    if (hasDirectText && !element.querySelector('p, h1, h2, h3, h4, h5, h6, div, span')) {
+                        // Wrap text nodes in a span to make them editable
+                        const textNodes = [];
+                        element.childNodes.forEach(function(node) {
+                            if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) {
+                                textNodes.push(node);
+                            }
+                        });
+                        
+                        textNodes.forEach(function(textNode) {
+                            const span = document.createElement('span');
+                            span.setAttribute('contenteditable', 'true');
+                            span.style.cursor = 'text';
+                            textNode.parentNode.insertBefore(span, textNode);
+                            span.appendChild(textNode);
+                            
+                            span.addEventListener('blur', function() {
+                                widgetOriginalHtml.set(element, element.outerHTML);
+                                syncCanvasToTextarea(true);
+                            });
+                        });
+                    }
+                }
             }
 
             // Sync visual canvas to hidden textarea
@@ -430,11 +513,14 @@
                     blocks.forEach(function(block, index) {
                         let blockHtml = block.outerHTML;
                         
-                        // Restore {{logo_url}} variable in img src attributes
+                        // Restore logo variable in img src attributes
                         const logoUrlRegex = new RegExp(actualLogoUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+                        // Break up logo variable string to prevent Blade from interpreting it as a PHP constant
+                        const logoVarName = 'logo' + '_' + 'url';
+                        const logoUrlPlaceholder = '{{' + logoVarName + '}}';
                         blockHtml = blockHtml.replace(/<img([^>]*)\ssrc=["']([^"']*logo[^"']*)["']([^>]*)>/gi, function(match, before, src, after) {
                             if (src === actualLogoUrl || src.includes('abodeology-logo')) {
-                                return '<img' + before + ' src="{{logo_url}}"' + after + '>';
+                                return '<img' + before + ' src="' + logoUrlPlaceholder + '"' + after + '>';
                             }
                             return match;
                         });
@@ -509,6 +595,8 @@
                     let previewHtml = html;
                     const variablePattern = /\{\{([^}]+)\}\}/g;
                     const logoUrl = window.templateBuilderLogoUrl || {!! json_encode($logoUrl ?? asset('media/abodeology-logo.png')) !!} || '/media/abodeology-logo.png';
+                    // Build logo key separately to avoid Blade parsing
+                    const logoKey = 'logo' + '_' + 'url';
                     const sampleData = {
                         'property.address': '123 Example Street',
                         'property.postcode': 'SW1A 1AA',
@@ -522,13 +610,14 @@
                         'recipient.name': 'Jane Smith',
                         'user.email': 'user@example.com',
                         'password': 'TempPass123!',
-                        'logo_url': logoUrl,
                         'url': '#',
                         'text': 'Sample Text',
                         'message': 'This is a sample message',
                         'title': 'Sample Title',
                         'year': new Date().getFullYear(),
                     };
+                    // Add logo key dynamically
+                    sampleData[logoKey] = logoUrl;
 
                     previewHtml = previewHtml.replace(variablePattern, function(match, variable) {
                         variable = variable.trim();
@@ -888,6 +977,8 @@
             }
 
             // Sample data for preview
+            // Build logo key separately to avoid Blade parsing
+            const widgetLogoKey = 'logo' + '_' + 'url';
             const widgetPreviewSampleData = {
                 'property.address': '123 Example Street',
                 'property.postcode': 'SW1A 1AA',
@@ -901,7 +992,6 @@
                 'recipient.name': 'Jane Smith',
                 'user.email': 'user@example.com',
                 'password': 'TempPass123!',
-                'logo_url': window.templateBuilderLogoUrl || {!! json_encode($logoUrl ?? asset('media/abodeology-logo.png')) !!},
                 'url': '#',
                 'text': 'Sample Text',
                 'message': 'This is a sample message',
@@ -912,6 +1002,8 @@
                 'item3': 'Third item',
                 'content': 'Sample content here'
             };
+            // Add logo key dynamically
+            widgetPreviewSampleData[widgetLogoKey] = window.templateBuilderLogoUrl || {!! json_encode($logoUrl ?? asset('media/abodeology-logo.png')) !!};
 
             function replaceWidgetVariables(html) {
                 let result = html;
