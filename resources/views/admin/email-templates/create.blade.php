@@ -247,7 +247,7 @@
             </div>
         </div>
 
-        <form method="POST" action="{{ route('admin.email-templates.store') }}" style="padding: 0; margin: 0; margin-top: 80px; display: flex; flex-direction: column; height: calc(100vh - 150px);">
+        <form method="POST" action="{{ route('admin.email-templates.store') }}" style="padding: 0; margin: 0; margin-top:20px; display: flex; flex-direction: column; height: calc(100vh - 150px);">
             @csrf
             <input type="hidden" name="name" id="name-hidden" value="{{ old('name') }}">
             <input type="hidden" name="action" id="action-hidden" value="{{ old('action') }}">
