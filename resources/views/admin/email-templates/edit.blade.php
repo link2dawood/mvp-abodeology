@@ -162,14 +162,16 @@
 
                 <div class="mt-4 d-flex justify-content-between">
                     <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+                </form>
 
-                    <form method="POST" action="{{ route('admin.email-templates.destroy', $template->id) }}" onsubmit="return confirm('Are you sure you want to delete this template?');">
+                <div class="mt-3">
+                    <form method="POST" class="mt-4" action="{{ route('admin.email-templates.destroy', $template->id) }}" onsubmit="return confirm('Are you sure you want to delete this template?');">
                         @csrf
                         @method('DELETE')
                         <button type="submit" class="btn btn-outline-danger">Delete Template</button>
                     </form>
                 </div>
-                </form>
             </div>
         </div>
     </div>

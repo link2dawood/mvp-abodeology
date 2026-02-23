@@ -169,7 +169,7 @@
             overflow-x: hidden;
             background: #f5f5f5;
             padding: 20px;
-            min-height: 400px;
+            /* min-height: 400px; */
             position: relative;
             transition: all 0.2s;
         }
@@ -184,7 +184,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            min-height: 400px;
+            /* min-height: 400px; */
         }
 
         .canvas-email-preview {
