@@ -342,9 +342,6 @@
                         <p style="font-size: 13px; color: #666; margin-bottom: 10px;">
                             <strong>Total Images:</strong> {{ $homecheckData->count() }}
                             <br><strong>Rooms:</strong> {{ $homecheckData->groupBy('room_name')->count() }}
-                            @if($homecheckData->whereNotNull('moisture_reading')->count() > 0)
-                                <br><strong>Rooms with Moisture Readings:</strong> {{ $homecheckData->whereNotNull('moisture_reading')->groupBy('room_name')->count() }}
-                            @endif
                         </p>
                         <details style="margin-top: 10px;">
                             <summary style="cursor: pointer; color: #2CB8B4; font-weight: 600; font-size: 13px;">View Room Details</summary>
@@ -352,11 +349,8 @@
                                 @foreach($homecheckData->groupBy('room_name') as $roomName => $roomImages)
                                     <div style="margin-bottom: 10px; padding: 10px; background: white; border-radius: 4px;">
                                         <strong>{{ $roomName }}</strong>
-                                        <br><span style="font-size: 12px; color: #666;">
+                                        <br>                                        <span style="font-size: 12px; color: #666;">
                                             {{ $roomImages->count() }} image(s)
-                                            @if($roomImages->first()->moisture_reading)
-                                                | Moisture: {{ $roomImages->first()->moisture_reading }}%
-                                            @endif
                                             @if($roomImages->where('is_360', true)->count() > 0)
                                                 | {{ $roomImages->where('is_360', true)->count() }} 360° image(s)
                                             @endif

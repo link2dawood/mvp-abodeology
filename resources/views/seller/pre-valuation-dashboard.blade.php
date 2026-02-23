@@ -251,7 +251,6 @@
         <div class="checklist-item">Tidy key rooms and clear surfaces (kitchen, living room, bathrooms).</div>
         <div class="checklist-item">Open blinds/curtains and switch on lights for brighter 360 photos.</div>
         <div class="checklist-item">Ensure all rooms, cupboards and areas are accessible (no locked spaces).</div>
-        <div class="checklist-item">Move items away from walls where possible for moisture readings.</div>
         <div class="checklist-item">Ensure boiler, fuse board and meter cupboards can be easily opened.</div>
         <div class="checklist-item">Clear floors and walkways to allow smooth 360 image capture.</div>
         <div class="checklist-item">Make sure pets are managed or out of the way during the appointment.</div>
