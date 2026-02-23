@@ -2,9 +2,11 @@
 
 namespace App\Mail;
 
+use App\Constants\EmailActions;
 use App\Models\Offer;
 use App\Models\Property;
 use App\Models\User;
+use App\Services\EmailTemplateService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
@@ -36,12 +38,28 @@ class OfferDecisionNotification extends Mailable
      */
     public function envelope(): Envelope
     {
-        $subject = match($this->decision) {
+        $defaultSubject = match($this->decision) {
             'accepted' => 'Great News! Your Offer Has Been Accepted',
             'declined' => 'Offer Response - ' . $this->property->address,
             'counter' => 'Counter-Offer Discussion Request - ' . $this->property->address,
             default => 'Offer Response - ' . $this->property->address,
         };
+
+        /** @var EmailTemplateService $templateService */
+        $templateService = app(EmailTemplateService::class);
+
+        $data = [
+            'offer' => $this->offer,
+            'property' => $this->property,
+            'buyer' => $this->buyer,
+            'decision' => $this->decision,
+        ];
+
+        $template = $templateService->getTemplateForAction(EmailActions::OFFER_DECISION, $data);
+
+        $subject = $template && $template->subject
+            ? $templateService->renderSubject($template, $data)
+            : $defaultSubject;
 
         return new Envelope(
             subject: $subject,
@@ -53,8 +71,27 @@ class OfferDecisionNotification extends Mailable
      */
     public function content(): Content
     {
+        /** @var EmailTemplateService $templateService */
+        $templateService = app(EmailTemplateService::class);
+
+        $data = [
+            'offer' => $this->offer,
+            'property' => $this->property,
+            'buyer' => $this->buyer,
+            'decision' => $this->decision,
+        ];
+
+        $template = $templateService->getTemplateForAction(EmailActions::OFFER_DECISION, $data);
+
+        if ($template && $template->template_type === 'override') {
+            return new Content(
+                htmlString: $templateService->renderTemplate($template, $data),
+            );
+        }
+
         return new Content(
             view: 'emails.offer-decision-notification',
+            with: $data,
         );
     }
 

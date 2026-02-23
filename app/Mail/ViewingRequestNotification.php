@@ -2,9 +2,11 @@
 
 namespace App\Mail;
 
+use App\Constants\EmailActions;
 use App\Models\Viewing;
 use App\Models\Property;
 use App\Models\User;
+use App\Services\EmailTemplateService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
@@ -34,8 +36,25 @@ class ViewingRequestNotification extends Mailable
      */
     public function envelope(): Envelope
     {
+        $defaultSubject = 'New Viewing Request - ' . $this->property->address;
+
+        /** @var EmailTemplateService $templateService */
+        $templateService = app(EmailTemplateService::class);
+
+        $data = [
+            'viewing' => $this->viewing,
+            'property' => $this->property,
+            'buyer' => $this->buyer,
+        ];
+
+        $template = $templateService->getTemplateForAction(EmailActions::VIEWING_REQUEST, $data);
+
+        $subject = $template && $template->subject
+            ? $templateService->renderSubject($template, $data)
+            : $defaultSubject;
+
         return new Envelope(
-            subject: 'New Viewing Request - ' . $this->property->address,
+            subject: $subject,
         );
     }
 
@@ -44,15 +63,28 @@ class ViewingRequestNotification extends Mailable
      */
     public function content(): Content
     {
+        /** @var EmailTemplateService $templateService */
+        $templateService = app(EmailTemplateService::class);
+
+        $data = [
+            'viewing' => $this->viewing,
+            'property' => $this->property,
+            'buyer' => $this->buyer,
+            'dashboardUrl' => route('pva.viewings.index'),
+            'viewingUrl' => route('pva.viewings.show', $this->viewing->id),
+        ];
+
+        $template = $templateService->getTemplateForAction(EmailActions::VIEWING_REQUEST, $data);
+
+        if ($template && $template->template_type === 'override') {
+            return new Content(
+                htmlString: $templateService->renderTemplate($template, $data),
+            );
+        }
+
         return new Content(
             view: 'emails.viewing-request-notification',
-            with: [
-                'viewing' => $this->viewing,
-                'property' => $this->property,
-                'buyer' => $this->buyer,
-                'dashboardUrl' => route('pva.viewings.index'),
-                'viewingUrl' => route('pva.viewings.show', $this->viewing->id),
-            ],
+            with: $data,
         );
     }
 

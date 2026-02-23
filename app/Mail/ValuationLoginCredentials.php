@@ -2,8 +2,10 @@
 
 namespace App\Mail;
 
+use App\Constants\EmailActions;
 use App\Models\User;
 use App\Models\Valuation;
+use App\Services\EmailTemplateService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
@@ -33,8 +35,24 @@ class ValuationLoginCredentials extends Mailable
      */
     public function envelope(): Envelope
     {
+        $defaultSubject = 'Welcome to Abodeology - Your Login Credentials';
+
+        /** @var EmailTemplateService $templateService */
+        $templateService = app(EmailTemplateService::class);
+
+        $data = [
+            'user' => $this->user,
+            'valuation' => $this->valuation,
+        ];
+
+        $template = $templateService->getTemplateForAction(EmailActions::VALUATION_LOGIN_CREDENTIALS, $data);
+
+        $subject = $template && $template->subject
+            ? $templateService->renderSubject($template, $data)
+            : $defaultSubject;
+
         return new Envelope(
-            subject: 'Welcome to Abodeology - Your Login Credentials',
+            subject: $subject,
         );
     }
 
@@ -43,14 +61,27 @@ class ValuationLoginCredentials extends Mailable
      */
     public function content(): Content
     {
+        /** @var EmailTemplateService $templateService */
+        $templateService = app(EmailTemplateService::class);
+
+        $data = [
+            'user' => $this->user,
+            'password' => $this->password,
+            'valuation' => $this->valuation,
+            'loginUrl' => route('login'),
+        ];
+
+        $template = $templateService->getTemplateForAction(EmailActions::VALUATION_LOGIN_CREDENTIALS, $data);
+
+        if ($template && $template->template_type === 'override') {
+            return new Content(
+                htmlString: $templateService->renderTemplate($template, $data),
+            );
+        }
+
         return new Content(
             view: 'emails.valuation-login-credentials',
-            with: [
-                'user' => $this->user,
-                'password' => $this->password,
-                'valuation' => $this->valuation,
-                'loginUrl' => route('login'),
-            ],
+            with: $data,
         );
     }
 

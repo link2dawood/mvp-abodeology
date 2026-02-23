@@ -84,6 +84,12 @@ class DatabaseSeeder extends Seeder
         $this->command->info('   Both:   both@abodeology.co.uk / password');
         $this->command->info('   PVA:    pva@abodeology.co.uk / password');
         
+        // Seed email widgets first (required for templates)
+        $this->call(EmailWidgetSeeder::class);
+        
+        // Seed email templates (uses widgets)
+        $this->call(EmailTemplateSeeder::class);
+        
         // Seed properties with rooms
         $this->call(PropertyWithRoomsSeeder::class);
     }

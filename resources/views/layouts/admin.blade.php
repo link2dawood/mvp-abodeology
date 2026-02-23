@@ -241,6 +241,7 @@
     </style>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    @yield('styles')
     @stack('styles')
 </head>
 <body>
@@ -264,10 +265,13 @@
             <a href="{{ route('admin.properties.index') }}">Properties</a>
             <a href="{{ route('admin.homechecks.index') }}">HomeChecks</a>
             <a href="{{ route('admin.aml-checks.index') }}">AML Checks</a>
+            @if(auth()->user()->role === 'admin')
+                <a href="{{ route('admin.email-templates.index') }}">Email Templates</a>
+            @endif
             <a href="{{ route('profile.show') }}">Profile</a>
             <a href="{{ route('admin.notifications') }}">Notifications</a>
             @if(auth()->user()->role === 'admin')
-                <a href="#">Settings</a>
+                <a href="{{ route('admin.settings.index') }}">Settings</a>
             @endif
             <form action="{{ route('logout') }}" method="POST" style="display: inline; margin-left: 28px;">
                 @csrf
