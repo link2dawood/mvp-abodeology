@@ -7,13 +7,12 @@ use App\Models\User;
 use App\Models\Valuation;
 use App\Services\EmailTemplateService;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class ValuationLoginCredentials extends Mailable implements ShouldQueue
+class ValuationLoginCredentials extends Mailable
 {
     use Queueable, SerializesModels;
 

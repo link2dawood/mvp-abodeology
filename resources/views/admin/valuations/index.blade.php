@@ -100,22 +100,120 @@
         background: #25A29F;
     }
 
+    .valuations-desktop {
+        display: block;
+    }
+
+    .valuations-mobile {
+        display: none;
+    }
+
     /* RESPONSIVE DESIGN */
     @media (max-width: 768px) {
+        .container {
+            padding: 0 12px;
+        }
+
+        .page-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
         h2 {
             font-size: 24px;
         }
 
         .card {
             padding: 20px;
-            overflow-x: auto;
+        }
+
+        .valuations-desktop {
+            display: none;
+        }
+
+        .valuations-mobile {
+            display: block;
+        }
+
+        .valuation-mobile-card {
+            border: 1px solid var(--line-grey);
+            border-radius: 12px;
+            padding: 14px;
+            margin-bottom: 12px;
+            background: #fff;
+            box-shadow: 0px 2px 10px rgba(0, 0, 0, 0.04);
+        }
+
+        .valuation-mobile-top {
+            margin-bottom: 10px;
+        }
+
+        .valuation-mobile-date {
+            font-size: 12px;
+            color: #6b7280;
+            margin-bottom: 6px;
+        }
+
+        .valuation-mobile-seller {
+            font-weight: 700;
+            font-size: 15px;
+            margin-bottom: 2px;
+            word-break: break-word;
+        }
+
+        .valuation-mobile-address {
+            color: #374151;
+            font-size: 13px;
+            word-break: break-word;
+            overflow-wrap: anywhere;
+        }
+
+        .valuation-mobile-grid {
+            border-top: 1px solid #f1f1f1;
+            margin-top: 10px;
+            padding-top: 8px;
+        }
+
+        .valuation-mobile-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 7px 0;
+            border-bottom: 1px solid #f5f5f5;
+        }
+
+        .valuation-mobile-row:last-child {
+            border-bottom: none;
+        }
+
+        .valuation-mobile-label {
+            color: #4b5563;
+            font-size: 12px;
+            font-weight: 700;
+            flex: 0 0 40%;
+        }
+
+        .valuation-mobile-value {
+            color: #1f2937;
+            font-size: 13px;
+            text-align: right;
+            flex: 1;
+            word-break: break-word;
+            overflow-wrap: anywhere;
+        }
+
+        .valuation-mobile-actions {
+            margin-top: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
         }
 
         .table {
             display: block;
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
-            min-width: 600px;
         }
 
         .table th,
@@ -128,8 +226,10 @@
             padding: 6px 12px;
             font-size: 13px;
             display: block;
-            margin: 5px 0;
+            margin: 0;
             text-align: center;
+            width: 100%;
+            box-sizing: border-box;
         }
 
         .page-subtitle {
@@ -140,6 +240,10 @@
     @media (max-width: 480px) {
         h2 {
             font-size: 20px;
+        }
+
+        .container {
+            padding: 0 10px;
         }
 
         .card {
@@ -162,7 +266,7 @@
 
 @section('content')
 <div class="container">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <div class="page-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
         <div>
             <h2>Valuation Requests</h2>
             <p class="page-subtitle">Manage property valuation requests from sellers</p>
@@ -182,58 +286,115 @@
     @endif
 
     <div class="card">
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Date</th>
-                    <th>Seller</th>
-                    <th>Property Address</th>
-                    <th>Type</th>
-                    <th>Bedrooms</th>
-                    <th>Valuation Date</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse($valuations as $valuation)
+        <div class="valuations-desktop">
+            <table class="table">
+                <thead>
                     <tr>
-                        <td>{{ $valuation->created_at->format('M d, Y') }}</td>
-                        <td>{{ $valuation->seller->name ?? 'N/A' }}</td>
-                        <td>{{ Str::limit($valuation->property_address, 40) }}</td>
-                        <td>{{ $valuation->property_type ? ucfirst(str_replace('_', ' ', $valuation->property_type)) : 'N/A' }}</td>
-                        <td>{{ $valuation->bedrooms ?? 'N/A' }}</td>
-                        <td>
-                            @if($valuation->valuation_date)
-                                {{ \Carbon\Carbon::parse($valuation->valuation_date)->format('M d, Y') }}
-                                @if($valuation->valuation_time)
-                                    <br><small>{{ \Carbon\Carbon::parse($valuation->valuation_time)->format('g:i A') }}</small>
+                        <th>Date</th>
+                        <th>Seller</th>
+                        <th>Property Address</th>
+                        <th>Type</th>
+                        <th>Bedrooms</th>
+                        <th>Valuation Date</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($valuations as $valuation)
+                        <tr>
+                            <td>{{ $valuation->created_at->format('M d, Y') }}</td>
+                            <td>{{ $valuation->seller->name ?? 'N/A' }}</td>
+                            <td>{{ Str::limit($valuation->property_address, 40) }}</td>
+                            <td>{{ $valuation->property_type ? ucfirst(str_replace('_', ' ', $valuation->property_type)) : 'N/A' }}</td>
+                            <td>{{ $valuation->bedrooms ?? 'N/A' }}</td>
+                            <td>
+                                @if($valuation->valuation_date)
+                                    {{ \Carbon\Carbon::parse($valuation->valuation_date)->format('M d, Y') }}
+                                    @if($valuation->valuation_time)
+                                        <br><small>{{ \Carbon\Carbon::parse($valuation->valuation_time)->format('g:i A') }}</small>
+                                    @endif
+                                @else
+                                    Not scheduled
                                 @endif
-                            @else
-                                Not scheduled
-                            @endif
-                        </td>
-                        <td>
-                            <span class="status status-{{ $valuation->status }}">
-                                {{ ucfirst($valuation->status) }}
-                            </span>
-                        </td>
-                        <td>
-                            <a href="{{ route('admin.valuations.show', $valuation->id) }}" class="btn btn-main">View</a>
-                            @if($valuation->status !== 'completed')
-                                <a href="{{ route('admin.valuations.onboarding', $valuation->id) }}" class="btn btn-secondary">Complete Onboarding</a>
-                            @endif
-                        </td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="8" style="text-align: center; color: #999; padding: 40px;">
-                            No valuation requests found
-                        </td>
-                    </tr>
-                @endforelse
-            </tbody>
-        </table>
+                            </td>
+                            <td>
+                                <span class="status status-{{ $valuation->status }}">
+                                    {{ ucfirst($valuation->status) }}
+                                </span>
+                            </td>
+                            <td>
+                                <a href="{{ route('admin.valuations.show', $valuation->id) }}" class="btn btn-main">View</a>
+                                @if($valuation->status !== 'completed')
+                                    <a href="{{ route('admin.valuations.onboarding', $valuation->id) }}" class="btn btn-secondary">Complete Onboarding</a>
+                                @endif
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="8" style="text-align: center; color: #999; padding: 40px;">
+                                No valuation requests found
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+
+        <div class="valuations-mobile">
+            @forelse($valuations as $valuation)
+                <div class="valuation-mobile-card">
+                    <div class="valuation-mobile-top">
+                        <div class="valuation-mobile-date">{{ $valuation->created_at->format('M d, Y') }}</div>
+                        <div class="valuation-mobile-seller">{{ $valuation->seller->name ?? 'N/A' }}</div>
+                        <div class="valuation-mobile-address">{{ $valuation->property_address }}</div>
+                    </div>
+
+                    <div class="valuation-mobile-grid">
+                        <div class="valuation-mobile-row">
+                            <div class="valuation-mobile-label">Type</div>
+                            <div class="valuation-mobile-value">{{ $valuation->property_type ? ucfirst(str_replace('_', ' ', $valuation->property_type)) : 'N/A' }}</div>
+                        </div>
+                        <div class="valuation-mobile-row">
+                            <div class="valuation-mobile-label">Bedrooms</div>
+                            <div class="valuation-mobile-value">{{ $valuation->bedrooms ?? 'N/A' }}</div>
+                        </div>
+                        <div class="valuation-mobile-row">
+                            <div class="valuation-mobile-label">Valuation Date</div>
+                            <div class="valuation-mobile-value">
+                                @if($valuation->valuation_date)
+                                    {{ \Carbon\Carbon::parse($valuation->valuation_date)->format('M d, Y') }}
+                                    @if($valuation->valuation_time)
+                                        <br><small>{{ \Carbon\Carbon::parse($valuation->valuation_time)->format('g:i A') }}</small>
+                                    @endif
+                                @else
+                                    Not scheduled
+                                @endif
+                            </div>
+                        </div>
+                        <div class="valuation-mobile-row">
+                            <div class="valuation-mobile-label">Status</div>
+                            <div class="valuation-mobile-value">
+                                <span class="status status-{{ $valuation->status }}">
+                                    {{ ucfirst($valuation->status) }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="valuation-mobile-actions">
+                        <a href="{{ route('admin.valuations.show', $valuation->id) }}" class="btn btn-main">View</a>
+                        @if($valuation->status !== 'completed')
+                            <a href="{{ route('admin.valuations.onboarding', $valuation->id) }}" class="btn btn-secondary">Complete Onboarding</a>
+                        @endif
+                    </div>
+                </div>
+            @empty
+                <div style="text-align: center; color: #999; padding: 20px 6px;">
+                    No valuation requests found
+                </div>
+            @endforelse
+        </div>
 
         @if($valuations->hasPages())
             <div style="margin-top: 20px;">

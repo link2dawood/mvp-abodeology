@@ -68,15 +68,46 @@ class HomeCheckReportService
                 ]
             );
 
-            // Update AI analysis in HomecheckData records
+            // Build normalised room lookup and overall summary for fallback
+            $roomsFromApi = $aiAnalysis['rooms'] ?? [];
+            $normalisedKeyToData = [];
+            foreach ($roomsFromApi as $apiKey => $roomData) {
+                $norm = strtolower(trim((string) $apiKey));
+                if (!isset($normalisedKeyToData[$norm])) {
+                    $normalisedKeyToData[$norm] = $roomData;
+                }
+            }
+            $overallSummary = isset($aiAnalysis['summary']) && (string) $aiAnalysis['summary'] !== '' ? (string) $aiAnalysis['summary'] : null;
+
+            // Update AI analysis in HomecheckData records (only set when we have values, so fallback does not overwrite OpenAI comments)
             foreach ($homecheckData as $index => $data) {
-                if (isset($aiAnalysis['rooms'][$data->room_name])) {
-                    $roomAnalysis = $aiAnalysis['rooms'][$data->room_name];
-                    $data->update([
-                        'ai_rating' => $roomAnalysis['rating'] ?? null,
-                        'ai_comments' => $roomAnalysis['comments'] ?? null,
-                        'moisture_reading' => $roomAnalysis['moisture'] ?? null,
-                    ]);
+                $roomName = $data->room_name;
+                $roomAnalysis = $roomsFromApi[$roomName] ?? $normalisedKeyToData[strtolower(trim($roomName))] ?? null;
+                if ($roomAnalysis !== null) {
+                    $comments = $roomAnalysis['comments'] ?? $roomAnalysis['comment'] ?? $roomAnalysis['analysis'] ?? $roomAnalysis['summary'] ?? null;
+                    if (is_array($comments)) {
+                        $comments = implode(' ', $comments);
+                    }
+                    if (($comments === null || $comments === '') && $overallSummary !== null) {
+                        $comments = $overallSummary;
+                    }
+                    $updates = [
+                        'moisture_reading' => $roomAnalysis['moisture'] ?? $data->moisture_reading,
+                    ];
+                    if (isset($roomAnalysis['rating']) && $roomAnalysis['rating'] !== null && $roomAnalysis['rating'] !== '') {
+                        $updates['ai_rating'] = $roomAnalysis['rating'];
+                    }
+                    if ($comments !== null && $comments !== '') {
+                        $updates['ai_comments'] = $comments;
+                    }
+                    $data->update($updates);
+                } elseif ($overallSummary !== null) {
+                    // No room match: still set overall summary so AI comment section is not empty
+                    $updates = ['ai_comments' => $overallSummary];
+                    if (isset($aiAnalysis['overall_rating']) && $aiAnalysis['overall_rating'] !== null && $aiAnalysis['overall_rating'] !== '') {
+                        $updates['ai_rating'] = $aiAnalysis['overall_rating'];
+                    }
+                    $data->update($updates);
                 }
             }
 
@@ -302,10 +333,44 @@ class HomeCheckReportService
         }
 
         $rawText = $assistantMessage['content'][0]['text']['value'];
-        $decoded = json_decode($rawText, true);
+        // Strip markdown code block if present (e.g. ```json ... ```)
+        $jsonText = preg_replace('/^\s*```(?:json)?\s*\n?/i', '', trim($rawText));
+        $jsonText = preg_replace('/\n?\s*```\s*$/i', '', $jsonText);
+        $decoded = json_decode($jsonText, true);
 
         if (json_last_error() !== JSON_ERROR_NONE || !is_array($decoded)) {
             throw new \RuntimeException('Failed to decode OpenAI assistant JSON response for HomeCheck analysis.');
+        }
+
+        // Normalise room entries so 'comments' always exists (AI may return 'comment', 'analysis', etc.)
+        if (!empty($decoded['rooms']) && is_array($decoded['rooms'])) {
+            foreach ($decoded['rooms'] as $rName => $r) {
+                if (is_array($r)) {
+                    $c = $r['comments'] ?? $r['comment'] ?? $r['analysis'] ?? $r['summary'] ?? null;
+                    if (is_array($c)) {
+                        $c = implode(' ', $c);
+                    }
+                    $decoded['rooms'][$rName]['comments'] = $c !== '' ? $c : null;
+                }
+            }
+            // Remap room keys to match DB room_name (case/trim): API may return "Asdad", DB has "ASDAD"
+            $dbRoomNames = $grouped->keys();
+            $remapped = [];
+            foreach ($decoded['rooms'] as $apiKey => $roomData) {
+                $norm = strtolower(trim((string) $apiKey));
+                $matched = false;
+                foreach ($dbRoomNames as $dbName) {
+                    if (strtolower(trim($dbName)) === $norm) {
+                        $remapped[$dbName] = $roomData;
+                        $matched = true;
+                        break;
+                    }
+                }
+                if (!$matched) {
+                    $remapped[$apiKey] = $roomData;
+                }
+            }
+            $decoded['rooms'] = $remapped;
         }
 
         return $decoded;
@@ -320,29 +385,14 @@ class HomeCheckReportService
      */
     protected function analyzeRoom(string $roomName, $images): array
     {
-        // Simulate room analysis
-        // In production, this would analyze images through AI
-        
-        $rating = rand(7, 10); // Simulated rating
-        $has360Images = $images->where('is_360', true)->count() > 0;
-
-        $comments = [];
-        if ($has360Images) {
-            $comments[] = '360° images captured successfully.';
-        }
-
-        // Simulate detection based on room type
+        // Fallback when OpenAI is not used: do not set fake 'comments' so AI Comment shows —.
+        $rating = rand(7, 10);
         $roomType = strtolower($roomName);
-        
+
         if (strpos($roomType, 'bathroom') !== false || strpos($roomType, 'kitchen') !== false) {
-            $comments[] = 'Moisture levels within normal range.';
             $moisture = round(rand(40, 60) / 10, 1);
         } else {
             $moisture = round(rand(30, 50) / 10, 1);
-        }
-
-        if (strpos($roomType, 'kitchen') !== false) {
-            $comments[] = 'Appliances appear to be in working order.';
         }
 
         $issues = [];
@@ -352,7 +402,7 @@ class HomeCheckReportService
 
         return [
             'rating' => $rating,
-            'comments' => implode(' ', $comments),
+            'comments' => null,
             'moisture' => $moisture ?? null,
             'images_count' => $images->count(),
             '360_images_count' => $images->where('is_360', true)->count(),

@@ -173,6 +173,23 @@
         background: #5a6268;
     }
 
+    .users-page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .page-header-actions {
+        flex-shrink: 0;
+    }
+
+    .add-user-btn {
+        white-space: nowrap;
+    }
+
     .loading-indicator {
         display: none;
         text-align: center;
@@ -189,15 +206,32 @@
         position: relative;
     }
 
+    .users-desktop {
+        display: block;
+    }
+
+    .users-mobile {
+        display: none;
+    }
+
     /* RESPONSIVE DESIGN */
     @media (max-width: 768px) {
+        .container {
+            padding: 0 12px;
+        }
+
+        .users-page-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
         h2 {
             font-size: 24px;
         }
 
         .card, .filter-card {
             padding: 20px;
-            overflow-x: auto;
         }
 
         .filter-form {
@@ -213,11 +247,79 @@
             text-align: center;
         }
 
+        .users-desktop {
+            display: none;
+        }
+
+        .users-mobile {
+            display: block;
+        }
+
+        .user-mobile-card {
+            border: 1px solid var(--line-grey);
+            border-radius: 12px;
+            padding: 14px;
+            margin-bottom: 12px;
+            background: #fff;
+            box-shadow: 0px 2px 10px rgba(0, 0, 0, 0.04);
+        }
+
+        .user-mobile-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .user-mobile-name {
+            font-size: 15px;
+            font-weight: 700;
+            word-break: break-word;
+        }
+
+        .user-mobile-id {
+            color: #6b7280;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+
+        .user-mobile-email {
+            color: #374151;
+            font-size: 13px;
+            margin-bottom: 8px;
+            word-break: break-word;
+            overflow-wrap: anywhere;
+        }
+
+        .user-mobile-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 7px 0;
+            border-top: 1px solid #f2f2f2;
+        }
+
+        .user-mobile-label {
+            color: #4b5563;
+            font-size: 12px;
+            font-weight: 700;
+            flex: 0 0 38%;
+        }
+
+        .user-mobile-value {
+            color: #1f2937;
+            font-size: 13px;
+            text-align: right;
+            flex: 1;
+            word-break: break-word;
+            overflow-wrap: anywhere;
+        }
+
         .table {
             display: block;
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
-            min-width: 600px;
         }
 
         .table th,
@@ -237,6 +339,10 @@
     }
 
     @media (max-width: 480px) {
+        .container {
+            padding: 0 10px;
+        }
+
         h2 {
             font-size: 20px;
         }
@@ -256,8 +362,8 @@
 
 @section('content')
 <div class="container">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-        <div>
+    <div class="page-header users-page-header">
+        <div class="page-header-left">
             <h2>Users</h2>
             <p class="page-subtitle">View and manage all platform users (Admin Only)</p>
         </div>
@@ -274,6 +380,11 @@
             {{ session('error') }}
         </div>
     @endif
+
+    <!-- Add New User - before filters -->
+    <div style="margin-bottom: 20px;">
+        <a href="{{ route('admin.users.create') }}" style="display: inline-block; padding: 12px 24px; background: #2CB8B4; color: #fff; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px;">+ Add New User</a>
+    </div>
 
     <!-- SEARCH FILTERS -->
     <div class="filter-card">
@@ -316,45 +427,85 @@
     <div class="card users-table-container">
         <div class="loading-indicator" id="loadingIndicator">Loading...</div>
         <div id="usersTableContent">
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Name</th>
-                    <th>Email</th>
-                    <th>Phone</th>
-                    <th>Role</th>
-                    <th>Registered</th>
-                </tr>
-            </thead>
-            <tbody>
+            <div class="users-desktop">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Phone</th>
+                            <th>Role</th>
+                            <th>Registered</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($users as $user)
+                            <tr>
+                                <td>{{ $user->id }}</td>
+                                <td>{{ $user->name }}</td>
+                                <td>{{ $user->email }}</td>
+                                <td>{{ $user->phone ?? 'N/A' }}</td>
+                                <td>
+                                    <span class="role-badge role-{{ $user->role ?? 'null' }}">
+                                        {{ $user->role ? ucfirst($user->role) : 'No Role' }}
+                                    </span>
+                                    @if($user->role === 'both')
+                                        <span style="font-size: 11px; color: #666; display: block; margin-top: 4px;">
+                                            (Appears in both Buyer & Seller pipelines)
+                                        </span>
+                                    @endif
+                                </td>
+                                <td>{{ $user->created_at->format('M d, Y') }}</td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="6" style="text-align: center; color: #999; padding: 40px;">
+                                    No users found
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="users-mobile">
                 @forelse($users as $user)
-                    <tr>
-                        <td>{{ $user->id }}</td>
-                        <td>{{ $user->name }}</td>
-                        <td>{{ $user->email }}</td>
-                        <td>{{ $user->phone ?? 'N/A' }}</td>
-                        <td>
-                            <span class="role-badge role-{{ $user->role ?? 'null' }}">
-                                {{ $user->role ? ucfirst($user->role) : 'No Role' }}
-                            </span>
-                            @if($user->role === 'both')
-                                <span style="font-size: 11px; color: #666; display: block; margin-top: 4px;">
-                                    (Appears in both Buyer & Seller pipelines)
+                    <div class="user-mobile-card">
+                        <div class="user-mobile-top">
+                            <div class="user-mobile-name">{{ $user->name }}</div>
+                            <div class="user-mobile-id">#{{ $user->id }}</div>
+                        </div>
+                        <div class="user-mobile-email">{{ $user->email }}</div>
+
+                        <div class="user-mobile-row">
+                            <div class="user-mobile-label">Phone</div>
+                            <div class="user-mobile-value">{{ $user->phone ?? 'N/A' }}</div>
+                        </div>
+                        <div class="user-mobile-row">
+                            <div class="user-mobile-label">Role</div>
+                            <div class="user-mobile-value">
+                                <span class="role-badge role-{{ $user->role ?? 'null' }}">
+                                    {{ $user->role ? ucfirst($user->role) : 'No Role' }}
                                 </span>
-                            @endif
-                        </td>
-                        <td>{{ $user->created_at->format('M d, Y') }}</td>
-                    </tr>
+                                @if($user->role === 'both')
+                                    <div style="font-size: 11px; color: #666; margin-top: 4px;">
+                                        (Buyer & Seller)
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+                        <div class="user-mobile-row">
+                            <div class="user-mobile-label">Registered</div>
+                            <div class="user-mobile-value">{{ $user->created_at->format('M d, Y') }}</div>
+                        </div>
+                    </div>
                 @empty
-                    <tr>
-                        <td colspan="6" style="text-align: center; color: #999; padding: 40px;">
-                            No users found
-                        </td>
-                    </tr>
+                    <div style="text-align: center; color: #999; padding: 20px 6px;">
+                        No users found
+                    </div>
                 @endforelse
-            </tbody>
-        </table>
+            </div>
 
         @if($users->hasPages())
             <div style="margin-top: 20px;" id="paginationContainer">

@@ -52,11 +52,13 @@ Route::prefix('valuation')->name('valuation.')->group(function () {
 // Admin Routes
 Route::middleware(['auth', 'role.web:admin,agent'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [App\Http\Controllers\AdminController::class, 'dashboard'])->name('dashboard');
+    Route::post('/dashboard/save-positions', [App\Http\Controllers\AdminController::class, 'saveAdminDashboardPositions'])->name('dashboard.save-positions');
     Route::get('/notifications', [App\Http\Controllers\AdminController::class, 'notifications'])->name('notifications');
     
     // Agent Dashboard (separate from admin)
     Route::prefix('agent')->name('agent.')->group(function () {
         Route::get('/dashboard', [App\Http\Controllers\AdminController::class, 'agentDashboard'])->name('dashboard');
+        Route::post('/dashboard/save-positions', [App\Http\Controllers\AdminController::class, 'saveAgentDashboardPositions'])->name('dashboard.save-positions');
         
         // PVA Management Routes (Agents can add PVAs)
         Route::get('/pvas/create', [App\Http\Controllers\AdminController::class, 'createPva'])->name('pvas.create');
@@ -66,6 +68,8 @@ Route::middleware(['auth', 'role.web:admin,agent'])->prefix('admin')->name('admi
     // User Management Routes (Admin Only)
     Route::middleware(['role.web:admin'])->group(function () {
         Route::get('/users', [App\Http\Controllers\AdminController::class, 'users'])->name('users.index');
+        Route::get('/users/create', [App\Http\Controllers\AdminController::class, 'createUser'])->name('users.create');
+        Route::post('/users', [App\Http\Controllers\AdminController::class, 'storeUser'])->name('users.store');
         
         // PVA Management Routes (Admin can manage and assign jobs)
         Route::get('/pvas', [App\Http\Controllers\AdminController::class, 'managePvas'])->name('pvas.index');
@@ -112,6 +116,7 @@ Route::middleware(['auth', 'role.web:admin,agent'])->prefix('admin')->name('admi
     Route::post('/properties/{id}/schedule-homecheck', [App\Http\Controllers\AdminController::class, 'storeScheduleHomeCheck'])->name('properties.schedule-homecheck.store');
     Route::get('/properties/{id}/complete-homecheck', [App\Http\Controllers\AdminController::class, 'showCompleteHomeCheck'])->name('properties.complete-homecheck');
     Route::post('/properties/{id}/complete-homecheck', [App\Http\Controllers\AdminController::class, 'storeCompleteHomeCheck'])->name('properties.complete-homecheck.store');
+    Route::post('/properties/{id}/save-homecheck-room', [App\Http\Controllers\AdminController::class, 'saveHomecheckRoom'])->name('properties.homecheck.save-room');
     
     // Listing Management Routes
     Route::get('/properties/{id}/listing-upload', [App\Http\Controllers\AdminController::class, 'showListingUpload'])->name('properties.listing-upload');
@@ -194,7 +199,10 @@ Route::middleware(['auth', 'role.web:seller,both'])->prefix('seller')->name('sel
     Route::get('/property/{id}/onboarding', [App\Http\Controllers\SellerController::class, 'showOnboarding'])->name('onboarding'); //signup
     Route::post('/property/{id}/onboarding', [App\Http\Controllers\SellerController::class, 'storeOnboarding'])->name('onboarding.store');
     Route::get('/property/{id}/instruct', [App\Http\Controllers\SellerController::class, 'instruct'])->name('instruct');
+    Route::get('/property/{id}/terms-html', [App\Http\Controllers\SellerController::class, 'showTermsHTML'])->name('terms-html');
+    Route::get('/property/{id}/terms-pdf', [App\Http\Controllers\SellerController::class, 'generateTermsPDF'])->name('terms-pdf');
     Route::post('/property/{id}/instruct', [App\Http\Controllers\SellerController::class, 'storeInstruct'])->name('instruct.store');
+    Route::post('/property/{id}/signature', [App\Http\Controllers\SellerController::class, 'saveSignature'])->name('signature.save');
     Route::get('/instruct', [App\Http\Controllers\SellerController::class, 'instruct'])->name('instruct.general'); // Fallback for non-property-specific
     Route::post('/instruct', [App\Http\Controllers\SellerController::class, 'storeInstruct'])->name('instruct.store.general'); // Fallback
     Route::get('/offer/{id}/decision', [App\Http\Controllers\SellerController::class, 'showOfferDecision'])->name('offer.decision.show');

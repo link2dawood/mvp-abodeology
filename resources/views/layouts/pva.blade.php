@@ -29,6 +29,20 @@
             flex-direction: column;
         }
 
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+        }
+
+        img,
+        svg,
+        video,
+        canvas {
+            max-width: 100%;
+            height: auto;
+        }
+
         /* NAVBAR */
         .navbar {
             background: var(--black);
@@ -64,6 +78,7 @@
         /* MAIN CONTENT */
         .main-content {
             flex: 1;
+            overflow-x: hidden;
         }
 
         /* FOOTER */
@@ -93,6 +108,43 @@
 
         /* RESPONSIVE DESIGN */
         @media (max-width: 768px) {
+            .main-content table {
+                display: block;
+                width: 100%;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                white-space: nowrap;
+            }
+
+            .main-content table tbody,
+            .main-content table thead,
+            .main-content table tr {
+                white-space: nowrap;
+            }
+
+            .main-content .btn,
+            .main-content button,
+            .main-content input[type="submit"],
+            .main-content input[type="button"] {
+                max-width: 100%;
+                box-sizing: border-box;
+            }
+
+            .main-content input:not([type="checkbox"]):not([type="radio"]),
+            .main-content select,
+            .main-content textarea {
+                max-width: 100%;
+            }
+
+            .main-content [style*="display: flex"] {
+                flex-wrap: wrap !important;
+                gap: 10px;
+            }
+
+            .main-content [style*="display: flex"] > * {
+                max-width: 100%;
+            }
+
             .navbar {
                 padding: 12px 20px;
                 flex-wrap: wrap;

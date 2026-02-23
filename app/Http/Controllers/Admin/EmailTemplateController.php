@@ -104,11 +104,74 @@ class EmailTemplateController extends Controller
     /**
      * Display the specified email template.
      */
-    public function show(int $id): View
-    {
+    public function show(
+        int $id,
+        EmailTemplateService $templateService,
+        EmailVariableResolver $variableResolver,
+        SettingsService $settingsService
+    ): View {
         $template = EmailTemplate::with(['creator', 'assignments'])->findOrFail($id);
 
-        return view('admin.email-templates.show', compact('template'));
+        // Generate sample data for preview (nested structure for proper variable resolution)
+        $logoUrl = $settingsService->getLogoUrl();
+        // Ensure logo URL is a full URL
+        if (!filter_var($logoUrl, FILTER_VALIDATE_URL) && !str_starts_with($logoUrl, 'http')) {
+            $logoUrl = asset($logoUrl);
+        }
+        
+        $sampleData = [
+            'property' => [
+                'address' => '123 Example Street',
+                'postcode' => 'SW1A 1AA',
+                'asking_price' => '£450,000',
+            ],
+            'buyer' => [
+                'name' => 'John Doe',
+                'email' => 'john.doe@example.com',
+            ],
+            'offer' => [
+                'offer_amount' => '£425,000',
+                'funding_type' => 'Cash',
+                'created_at' => now()->format('Y-m-d H:i'),
+            ],
+            'viewing' => [
+                'viewing_date' => '15th February 2024',
+                'viewing_time' => '2:00 PM',
+                'status' => 'Confirmed',
+            ],
+            'recipient' => [
+                'name' => 'Jane Smith',
+            ],
+            'user' => [
+                'email' => 'user@example.com',
+            ],
+            'valuation' => [
+                'property_address' => '123 Example Street',
+                'postcode' => 'SW1A 1AA',
+                'valuation_date' => '20th February 2024',
+            ],
+            'instruction' => [
+                'signed_at' => now()->format('Y-m-d H:i'),
+                'fee_percentage' => '1.5',
+                'status' => 'Signed',
+            ],
+            'password' => 'TempPass123!',
+            'url' => url('/'),
+            'text' => 'Sample Text',
+            'message' => 'This is a sample message',
+            'title' => 'Sample Title',
+            'year' => date('Y'),
+            'item1' => 'First item',
+            'item2' => 'Second item',
+            'item3' => 'Third item',
+            'logo_url' => $logoUrl,
+        ];
+
+        // Render the template body with sample data (same as preview method)
+        $renderedBody = $templateService->renderTemplate($template, $sampleData);
+        $renderedBody = $variableResolver->resolve($renderedBody, $sampleData);
+
+        return view('admin.email-templates.show', compact('template', 'renderedBody'));
     }
 
     /**

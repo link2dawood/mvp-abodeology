@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   app:
     build:
@@ -57,9 +55,11 @@ services:
       start_period: 10s
 
   phpmyadmin:
-    image: phpmyadmin/phpmyadmin
+    image: phpmyadmin/phpmyadmin:latest
     container_name: phpmyadmin
     restart: unless-stopped
+    profiles:
+      - tools
     ports:
       - "8080:80"
     environment:

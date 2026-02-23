@@ -18,6 +18,20 @@
         :root {
             font-family: Inter, -apple-system, BlinkMacSystemFont, San Francisco, Segoe UI, Roboto, Helvetica Neue, sans-serif;
         }
+
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+        }
+
+        img,
+        svg,
+        video,
+        canvas {
+            max-width: 100%;
+            height: auto;
+        }
         
         .page {
             background: var(--bg-secondary);
@@ -94,6 +108,28 @@
 
         /* RESPONSIVE DESIGN */
         @media (max-width: 768px) {
+            .page table {
+                display: block;
+                width: 100%;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                white-space: nowrap;
+            }
+
+            .page .btn,
+            .page button,
+            .page input[type="submit"],
+            .page input[type="button"] {
+                max-width: 100%;
+                box-sizing: border-box;
+            }
+
+            .page input:not([type="checkbox"]):not([type="radio"]),
+            .page select,
+            .page textarea {
+                max-width: 100%;
+            }
+
             header {
                 padding: 12px 0;
             }

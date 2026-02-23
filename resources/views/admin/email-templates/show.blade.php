@@ -126,9 +126,21 @@
         </div>
     </div>
 
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title mb-3">Email Template Preview</h5>
+            <p class="text-muted mb-3">This preview shows how the email template will look with sample data.</p>
+            
+            <div class="border rounded p-3" style="background-color: #fff; max-width: 680px; margin: 0 auto;">
+                {!! $renderedBody ?? $template->body !!}
+            </div>
+        </div>
+    </div>
+
     <div class="card">
         <div class="card-body">
-            <h5 class="card-title">Preview</h5>
+            <h5 class="card-title">Custom Preview</h5>
+            <p class="text-muted mb-3">Provide custom sample data to preview variable resolution.</p>
             <form method="POST" action="{{ route('admin.email-templates.preview', $template->id) }}" target="_blank">
                 @csrf
                 <div class="mb-3">
@@ -144,7 +156,7 @@
                         Provide sample data in JSON format to preview variable resolution.
                     </small>
                 </div>
-                <button type="submit" class="btn btn-outline-primary">Open Preview</button>
+                <button type="submit" class="btn btn-outline-primary">Open Custom Preview</button>
             </form>
         </div>
     </div>

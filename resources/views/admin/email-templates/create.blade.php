@@ -2,6 +2,10 @@
 
 @section('title', 'Create Email Template')
 
+@section('styles')
+    @include('admin.email-templates.partials.template-builder.styles')
+@endsection
+
 @push('styles')
 <style>
     .template-builder-page .container {

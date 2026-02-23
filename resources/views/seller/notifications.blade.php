@@ -10,11 +10,7 @@
         <div class="card" style="background: white; border-radius: 8px; padding: 25px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
             <ul style="list-style: none; padding: 0; margin: 0;">
                 @foreach($notifications as $notification)
-                    <li style="margin-bottom: 20px; padding: 15px; background: #F9F9F9; border-radius: 6px; border-left: 4px solid 
-                        @if($notification['type'] === 'success') #28a745
-                        @elseif($notification['type'] === 'warning') #ffc107
-                        @else #17a2b8
-                        @endif;">
+                    <li style="margin-bottom: 20px; padding: 15px; background: #F9F9F9; border-radius: 6px;">
                         <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                             <div style="flex: 1;">
                                 <div style="font-size: 13px; color: #666; margin-bottom: 8px;">

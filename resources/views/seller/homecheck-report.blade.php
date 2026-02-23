@@ -284,21 +284,43 @@
     }
 
     .close-modal {
-        position: absolute;
-        top: 20px;
-        right: 30px;
+        position: fixed;
+        top: 16px;
+        right: 16px;
+        z-index: 100002;
         background: var(--white);
-        width: 44px;
-        height: 44px;
+        min-width: 48px;
+        min-height: 48px;
+        width: 48px;
+        height: 48px;
         border-radius: 50%;
         display: flex;
         justify-content: center;
         align-items: center;
         cursor: pointer;
-        font-size: 20px;
+        font-size: 24px;
         font-weight: 700;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+        border: 2px solid rgba(0,0,0,0.1);
     }
+    .modal .close-modal { display: flex; }
+    .modal:not([style*="flex"]) .close-modal { display: none; }
+
+    .modal-close-btn-inner {
+        display: block;
+        width: 100%;
+        padding: 12px 20px;
+        margin-top: 16px;
+        background: #333;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        text-align: center;
+    }
+    .modal-close-btn-inner:hover { background: #111; }
 
     /* RESPONSIVE */
     @media (max-width: 768px) {
@@ -489,7 +511,7 @@
 
     <!-- MODAL -->
     <div id="modal" class="modal" onclick="if(event.target.id === 'modal') closeModal();">
-        <div class="close-modal" onclick="closeModal()">×</div>
+        <button type="button" class="close-modal" onclick="closeModal()" aria-label="Close">×</button>
         <div class="modal-content">
             <div id="modal-image-container" style="width: 50%; position: relative;">
                 <img id="modal-img" class="modal-img" src="" alt="Room Image" style="display: block;" onerror="if(this.src !== '{{ asset('media/placeholder-room.jpg') }}') { this.src = '{{ asset('media/placeholder-room.jpg') }}'; this.onerror = null; }">
@@ -501,6 +523,7 @@
                 <div class="viewer-controls" id="viewer-controls" style="display: none;">
                     <button class="btn-viewer" onclick="toggleViewer()">Toggle 360° Viewer</button>
                 </div>
+                <button type="button" class="modal-close-btn-inner" onclick="closeModal()">Close</button>
             </div>
         </div>
     </div>

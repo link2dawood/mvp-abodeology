@@ -1,7 +1,5 @@
 {{-- Template Builder - Component-based structure --}}
-
-{{-- Include Styles --}}
-@include('admin.email-templates.partials.template-builder.styles')
+{{-- Styles are loaded via @section('styles') in edit/create so they appear in <head> --}}
 
 {{-- Include Scripts --}}
 @include('admin.email-templates.partials.template-builder.scripts')

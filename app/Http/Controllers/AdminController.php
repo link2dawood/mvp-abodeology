@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Schema;
 use App\Models\Valuation;
 use App\Models\Property;
 use App\Models\PropertyMaterialInformation;
@@ -348,40 +349,31 @@ class AdminController extends Controller
                 ->with('error', 'You do not have permission to access the agent dashboard.');
         }
 
-        // Get agent's assigned property IDs
-        $agentPropertyIds = $this->getAgentPropertyIds($user->id);
-        
-        // Get agent's assigned properties
-        $properties = Property::whereIn('id', $agentPropertyIds)
+        // Get agent's assigned properties (where assigned_agent_id equals user id)
+        $properties = Property::where('assigned_agent_id', $user->id)
             ->with('seller')
             ->orderBy('created_at', 'desc')
             ->limit(10)
             ->get();
 
-        // Get valuations for agent's assigned properties
-        $valuations = Valuation::whereHas('seller', function($q) use ($agentPropertyIds) {
-                $q->whereHas('properties', function($query) use ($agentPropertyIds) {
-                    $query->whereIn('properties.id', $agentPropertyIds);
-                });
-            })
+        // Get valuations where agent_id equals user id
+        $valuations = Valuation::where('agent_id', $user->id)
             ->with('seller')
             ->orderBy('created_at', 'desc')
             ->limit(10)
             ->get();
 
         // Get offers for agent's assigned properties
-        $offers = Offer::whereIn('property_id', $agentPropertyIds)
+        $offers = Offer::whereHas('property', function($query) use ($user) {
+                $query->where('assigned_agent_id', $user->id);
+            })
             ->with(['property', 'buyer'])
             ->orderBy('created_at', 'desc')
             ->limit(10)
             ->get();
 
         // Get today's scheduled valuations (appointments) for agent
-        $todaysAppointments = Valuation::whereHas('seller', function($q) use ($agentPropertyIds) {
-                $q->whereHas('properties', function($query) use ($agentPropertyIds) {
-                    $query->whereIn('properties.id', $agentPropertyIds);
-                });
-            })
+        $todaysAppointments = Valuation::where('agent_id', $user->id)
             ->where('status', 'scheduled')
             ->whereDate('valuation_date', today())
             ->with('seller')
@@ -389,14 +381,16 @@ class AdminController extends Controller
             ->get();
 
         // Get viewings for agent's assigned properties
-        $viewings = \App\Models\Viewing::whereIn('property_id', $agentPropertyIds)
+        $viewings = \App\Models\Viewing::whereHas('property', function($query) use ($user) {
+                $query->where('assigned_agent_id', $user->id);
+            })
             ->with(['property', 'buyer', 'pva'])
             ->orderBy('viewing_date', 'asc')
             ->limit(10)
             ->get();
 
         // Get sales (sold properties) for agent's assigned properties
-        $sales = Property::whereIn('id', $agentPropertyIds)
+        $sales = Property::where('assigned_agent_id', $user->id)
             ->where('status', 'sold')
             ->with('seller')
             ->orderBy('updated_at', 'desc')
@@ -405,27 +399,87 @@ class AdminController extends Controller
 
         // Calculate statistics
         $stats = [
-            'assigned_properties' => Property::whereIn('id', $agentPropertyIds)->count(),
-            'active_listings' => Property::whereIn('id', $agentPropertyIds)->where('status', 'live')->count(),
-            'pending_valuations' => Valuation::whereHas('seller', function($q) use ($agentPropertyIds) {
-                    $q->whereHas('properties', function($query) use ($agentPropertyIds) {
-                        $query->whereIn('properties.id', $agentPropertyIds);
-                    });
+            'assigned_properties' => Property::where('assigned_agent_id', $user->id)->count(),
+            'active_listings' => Property::where('assigned_agent_id', $user->id)->where('status', 'live')->count(),
+            'pending_valuations' => Valuation::where('agent_id', $user->id)
+                ->where('status', 'pending')
+                ->count(),
+            'pending_offers' => Offer::whereHas('property', function($query) use ($user) {
+                    $query->where('assigned_agent_id', $user->id);
                 })
                 ->where('status', 'pending')
                 ->count(),
-            'pending_offers' => Offer::whereIn('property_id', $agentPropertyIds)
-                ->where('status', 'pending')
-                ->count(),
-            'upcoming_viewings' => \App\Models\Viewing::whereIn('property_id', $agentPropertyIds)
+            'upcoming_viewings' => \App\Models\Viewing::whereHas('property', function($query) use ($user) {
+                    $query->where('assigned_agent_id', $user->id);
+                })
                 ->where('viewing_date', '>=', now())
                 ->count(),
-            'sales_in_progress' => Property::whereIn('id', $agentPropertyIds)
+            'sales_in_progress' => Property::where('assigned_agent_id', $user->id)
                 ->whereIn('status', ['sold', 'under_offer'])
                 ->count(),
         ];
 
         return view('admin.agent-dashboard', compact('stats', 'properties', 'valuations', 'offers', 'viewings', 'sales', 'todaysAppointments'));
+    }
+
+    /**
+     * Save agent dashboard card positions.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function saveAgentDashboardPositions(Request $request)
+    {
+        $user = auth()->user();
+        
+        // Only agents can save their dashboard positions
+        if ($user->role !== 'agent') {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $validated = $request->validate([
+            'positions' => 'required|array',
+            'positions.kpi' => 'nullable|array',
+            'positions.main' => 'nullable|array',
+            'positions.kpi.*' => 'string',
+            'positions.main.*' => 'string',
+        ]);
+
+        $user->agent_dashboard_card_positions = $validated['positions'];
+        $user->save();
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * Save admin dashboard card positions.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function saveAdminDashboardPositions(Request $request)
+    {
+        $user = auth()->user();
+        
+        // Only admins can save their dashboard positions
+        if ($user->role !== 'admin') {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        $validated = $request->validate([
+            'positions' => 'required|array',
+            'positions.top' => 'nullable|array',
+            'positions.critical' => 'nullable|array',
+            'positions.main' => 'nullable|array',
+            'positions.top.*' => 'string',
+            'positions.critical.*' => 'string',
+            'positions.main.*' => 'string',
+        ]);
+
+        $user->admin_dashboard_card_positions = $validated['positions'];
+        $user->save();
+
+        return response()->json(['success' => true]);
     }
 
     /**
@@ -482,6 +536,78 @@ class AdminController extends Controller
     }
 
     /**
+     * Show the form for creating a new user (any role). Admin only.
+     *
+     * @return \Illuminate\Contracts\Support\Renderable|\Illuminate\Http\RedirectResponse
+     */
+    public function createUser()
+    {
+        $user = auth()->user();
+        if ($user->role !== 'admin') {
+            return redirect()->route($this->getRoleDashboard($user->role))
+                ->with('error', 'You do not have permission to create users.');
+        }
+        return view('admin.users.create');
+    }
+
+    /**
+     * Store a new user (any role). Admin only.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function storeUser(Request $request)
+    {
+        $authUser = auth()->user();
+        if ($authUser->role !== 'admin') {
+            return redirect()->route($this->getRoleDashboard($authUser->role))
+                ->with('error', 'You do not have permission to create users.');
+        }
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
+            'phone' => ['required', 'string', 'max:20'],
+            'role' => ['required', 'string', 'in:admin,agent,seller,buyer,both,pva'],
+        ], [
+            'name.required' => 'Please provide the user name.',
+            'email.required' => 'Please provide the email address.',
+            'email.email' => 'Please provide a valid email address.',
+            'email.unique' => 'This email is already registered.',
+            'phone.required' => 'Please provide the phone number.',
+            'role.required' => 'Please select a role.',
+            'role.in' => 'Please select a valid role.',
+        ]);
+
+        try {
+            $password = Str::random(12);
+
+            $newUser = User::create([
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'phone' => $validated['phone'],
+                'password' => Hash::make($password),
+                'role' => $validated['role'],
+                'email_verified_at' => now(),
+            ]);
+
+            try {
+                Mail::to($newUser->email)->send(new \App\Mail\UserCreated($newUser, $password));
+            } catch (\Exception $e) {
+                \Log::error('Failed to send user creation email: ' . $e->getMessage());
+            }
+
+            return redirect()->route('admin.users.index')
+                ->with('success', 'User created successfully. Login credentials have been sent to ' . $newUser->email);
+        } catch (\Exception $e) {
+            \Log::error('Error creating user: ' . $e->getMessage());
+            return back()
+                ->withInput()
+                ->with('error', 'Failed to create user. Please try again.');
+        }
+    }
+
+    /**
      * List all valuations for agents/admins.
      *
      * @return \Illuminate\Contracts\Support\Renderable
@@ -497,18 +623,9 @@ class AdminController extends Controller
 
         $valuationsQuery = Valuation::with('seller');
         
-        // For agents, only show valuations for their assigned properties
+        // For agents, only show valuations where agent_id equals their user id
         if ($user->role === 'agent') {
-            $agentPropertyIds = $this->getAgentPropertyIds($user->id);
-            if (empty($agentPropertyIds)) {
-                $valuations = collect([]);
-            } else {
-                $valuationsQuery->whereHas('seller', function($q) use ($agentPropertyIds) {
-                    $q->whereHas('properties', function($query) use ($agentPropertyIds) {
-                        $query->whereIn('properties.id', $agentPropertyIds);
-                    });
-                });
-            }
+            $valuationsQuery->where('agent_id', $user->id);
         }
         
         $valuations = $valuationsQuery->orderBy('created_at', 'desc')->paginate(20);
@@ -544,11 +661,9 @@ class AdminController extends Controller
             ->where('address', $valuation->property_address)
             ->first();
         
-        // For agents, verify they have access to this valuation's property
+        // For agents, verify they have access to this valuation (check agent_id)
         if ($user->role === 'agent') {
-            $agentPropertyIds = $this->getAgentPropertyIds($user->id);
-            
-            if (!$property || !in_array($property->id, $agentPropertyIds)) {
+            if ($valuation->agent_id !== $user->id) {
                 return redirect()->route('admin.valuations.index')
                     ->with('error', 'You do not have permission to view this valuation.');
             }
@@ -574,10 +689,14 @@ class AdminController extends Controller
                 ->first();
         }
 
-        // Get all PVA users for the assignment dropdown (only show for admin/agent)
+        // Get all Agent users for the assignment dropdown (only show for admin/agent)
+        // Use TRIM/LOWER to handle case/whitespace differences across DBs (e.g. Postgres).
         $agents = null;
         if (in_array($user->role, ['admin', 'agent'])) {
-            $agents = User::where('role', 'pva')->orderBy('name')->get();
+            $agents = User::query()
+                ->whereRaw('LOWER(TRIM(role)) = ?', ['agent'])
+                ->orderBy('name')
+                ->get();
         }
 
         return view('admin.valuations.show', compact('valuation', 'agents', 'property', 'completedHomeCheck', 'activeHomeCheck'));
@@ -599,7 +718,12 @@ class AdminController extends Controller
                 ->with('error', 'You do not have permission to update valuation schedules.');
         }
 
-        $valuation = Valuation::with('seller')->findOrFail($id);
+        $valuation = Valuation::with(['seller', 'agent'])->findOrFail($id);
+
+        // Capture previous schedule details so we can decide whether to notify the vendor
+        $previousDate = $valuation->valuation_date ? $valuation->valuation_date->format('Y-m-d') : null;
+        $previousTime = $valuation->valuation_time ? \Carbon\Carbon::parse($valuation->valuation_time)->format('H:i') : null;
+        $previousAgentId = $valuation->agent_id;
 
         $validated = $request->validate([
             'valuation_date' => ['nullable', 'date'],
@@ -607,13 +731,28 @@ class AdminController extends Controller
             'agent_id' => ['nullable', 'exists:users,id'],
         ]);
 
-        // Ensure agent_id (if provided) belongs to a PVA user
+        // Normalize valuation_time to 30-minute increments (server-side safety)
+        if (!empty($validated['valuation_time'])) {
+            try {
+                [$hh, $mm] = array_map('intval', explode(':', $validated['valuation_time']));
+                $total = ($hh * 60) + $mm;
+                $snapped = (int) round($total / 30) * 30;
+                $snappedH = (int) floor(($snapped % 1440) / 60);
+                $snappedM = (int) ($snapped % 60);
+                $validated['valuation_time'] = sprintf('%02d:%02d', $snappedH, $snappedM);
+            } catch (\Throwable $e) {
+                // If anything goes wrong, keep the original validated value
+            }
+        }
+
+        // Ensure agent_id (if provided) belongs to an Agent user
         if (!empty($validated['agent_id'])) {
-            $assignedPva = User::find($validated['agent_id']);
-            if (!$assignedPva || $assignedPva->role !== 'pva') {
+            $assignedAgent = User::find($validated['agent_id']);
+            $assignedRole = strtolower(trim((string) ($assignedAgent->role ?? '')));
+            if (!$assignedAgent || $assignedRole !== 'agent') {
                 return redirect()
                     ->route('admin.valuations.show', $valuation->id)
-                    ->with('error', 'Invalid PVA selected. Only PVA users can be assigned.');
+                    ->with('error', 'Invalid agent selected. Only Agent users can be assigned.');
             }
         }
 
@@ -632,9 +771,44 @@ class AdminController extends Controller
 
         $valuation->save();
 
-        return redirect()
+        // Notify vendor when a valuation is scheduled or rescheduled (date/time/agent changed)
+        $vendorEmailWarning = null;
+        try {
+            // Refresh relations after possible agent_id change
+            $valuation->loadMissing(['seller', 'agent']);
+
+            $seller = $valuation->seller;
+            $hasDateTime = !empty($valuation->valuation_date) && !empty($valuation->valuation_time);
+
+            $currentDate = $valuation->valuation_date ? $valuation->valuation_date->format('Y-m-d') : null;
+            $currentTime = $valuation->valuation_time ? \Carbon\Carbon::parse($valuation->valuation_time)->format('H:i') : null;
+            $currentAgentId = $valuation->agent_id;
+
+            $scheduleChanged = $hasDateTime && (
+                $previousDate !== $currentDate ||
+                $previousTime !== $currentTime ||
+                (string) $previousAgentId !== (string) $currentAgentId
+            );
+
+            if ($seller && !empty($seller->email) && $scheduleChanged) {
+                Mail::to($seller->email)->send(
+                    new \App\Mail\ValuationScheduledNotification($valuation)
+                );
+            }
+        } catch (\Exception $e) {
+            \Log::error('Failed to send valuation scheduled email: ' . $e->getMessage());
+            $vendorEmailWarning = 'Valuation was scheduled, but the vendor email could not be sent. Please check mail/queue configuration and logs.';
+        }
+
+        $redirect = redirect()
             ->route('admin.valuations.show', $valuation->id)
             ->with('success', 'Valuation schedule updated successfully.');
+
+        if ($vendorEmailWarning) {
+            $redirect->with('warning', $vendorEmailWarning);
+        }
+
+        return $redirect;
     }
 
     /**
@@ -715,7 +889,8 @@ class AdminController extends Controller
             'reception_rooms' => $existingProperty->reception_rooms ?? null,
             'outbuildings' => $existingProperty->outbuildings ?? null,
             'garden_details' => $existingProperty->garden_details ?? null,
-            'parking' => null,
+            'parking' => $existingProperty->parking ?? null,
+            'parking_options' => $existingProperty->parking_options ?? null,
             'tenure' => null,
             'lease_years' => null,
             'ground_rent' => null,
@@ -780,7 +955,8 @@ class AdminController extends Controller
             'reception_rooms' => ['nullable', 'integer', 'min:0'],
             'outbuildings' => ['nullable', 'string', 'max:500'],
             'garden_details' => ['nullable', 'string', 'max:2000'],
-            'parking' => ['nullable', 'string', 'in:none,on_street,driveway,garage,allocated,permit'],
+            'parking' => ['nullable', 'array'],
+            'parking.*' => ['string', 'in:none,on_street,driveway,garage,allocated,permit'],
             'tenure' => ['required', 'string', 'in:freehold,leasehold,share_freehold,unknown'],
             'lease_years_remaining' => ['nullable', 'integer', 'min:0'],
             'ground_rent' => ['nullable', 'numeric', 'min:0'],
@@ -826,29 +1002,37 @@ class AdminController extends Controller
             \DB::beginTransaction();
 
             // Create or update property from valuation
+            $propertyData = [
+                'postcode' => $validated['postcode'] ?? $valuation->postcode,
+                'property_type' => $validated['property_type'],
+                'bedrooms' => $validated['bedrooms'],
+                'bathrooms' => $validated['bathrooms'],
+                'reception_rooms' => $validated['reception_rooms'] ?? null,
+                'outbuildings' => $validated['outbuildings'] ?? null,
+                'garden_details' => $validated['garden_details'] ?? null,
+                // Keep legacy single parking field for backwards compatibility.
+                'parking' => !empty($validated['parking']) ? $validated['parking'][0] : null,
+                'tenure' => $validated['tenure'],
+                'lease_years_remaining' => $validated['lease_years_remaining'] ?? null,
+                'ground_rent' => $validated['ground_rent'] ?? null,
+                'service_charge' => $validated['service_charge'] ?? null,
+                'managing_agent' => $validated['managing_agent'] ?? null,
+                'asking_price' => $validated['asking_price'] ?? null,
+                'pricing_notes' => $validated['pricing_notes'] ?? null,
+                'status' => 'property_details_captured', // Set status after Valuation Form completion
+            ];
+
+            // Persist all selected parking options if the new column exists.
+            if (Schema::hasColumn('properties', 'parking_options')) {
+                $propertyData['parking_options'] = !empty($validated['parking']) ? array_values($validated['parking']) : null;
+            }
+
             $property = Property::updateOrCreate(
                 [
                     'seller_id' => $valuation->seller_id,
                     'address' => $validated['property_address'],
                 ],
-                [
-                    'postcode' => $validated['postcode'] ?? $valuation->postcode,
-                    'property_type' => $validated['property_type'],
-                    'bedrooms' => $validated['bedrooms'],
-                    'bathrooms' => $validated['bathrooms'],
-                    'reception_rooms' => $validated['reception_rooms'] ?? null,
-                    'outbuildings' => $validated['outbuildings'] ?? null,
-                    'garden_details' => $validated['garden_details'] ?? null,
-                    'parking' => $validated['parking'] ?? null,
-                    'tenure' => $validated['tenure'],
-                    'lease_years_remaining' => $validated['lease_years_remaining'] ?? null,
-                    'ground_rent' => $validated['ground_rent'] ?? null,
-                    'service_charge' => $validated['service_charge'] ?? null,
-                    'managing_agent' => $validated['managing_agent'] ?? null,
-                    'asking_price' => $validated['asking_price'] ?? null,
-                    'pricing_notes' => $validated['pricing_notes'] ?? null,
-                    'status' => 'property_details_captured', // Set status after Valuation Form completion
-                ]
+                $propertyData
             );
 
             // Create or update material information
@@ -948,14 +1132,9 @@ class AdminController extends Controller
             $propertiesQuery->where('status', $request->status);
         }
         
-        // For agents, only show their assigned properties
+        // For agents, only show properties where assigned_agent_id equals their user id
         if ($user->role === 'agent') {
-            $agentPropertyIds = $this->getAgentPropertyIds($user->id);
-            if (empty($agentPropertyIds)) {
-                $properties = collect([]);
-            } else {
-                $propertiesQuery->whereIn('id', $agentPropertyIds);
-            }
+            $propertiesQuery->where('assigned_agent_id', $user->id);
         }
         
         $properties = $propertiesQuery->orderBy('created_at', 'desc')->paginate(20);
@@ -980,10 +1159,9 @@ class AdminController extends Controller
 
         $property = Property::with(['seller', 'instruction', 'materialInformation', 'homecheckReports', 'homecheckData', 'photos', 'documents', 'offers.buyer', 'offers.latestDecision'])->findOrFail($id);
         
-        // For agents, verify they have access to this property
+        // For agents, verify they have access to this property (check assigned_agent_id)
         if ($user->role === 'agent') {
-            $agentPropertyIds = $this->getAgentPropertyIds($user->id);
-            if (!in_array($property->id, $agentPropertyIds)) {
+            if ($property->assigned_agent_id !== $user->id) {
                 return redirect()->route('admin.properties.index')
                     ->with('error', 'You do not have permission to view this property.');
             }
@@ -1249,11 +1427,18 @@ class AdminController extends Controller
                 ->with('error', 'No scheduled HomeCheck found. Please schedule a HomeCheck first.');
         }
 
-        // Get existing homecheck data
+        // Get existing homecheck data with pre-generated image URLs
+        $isS3 = $this->isS3Configured();
         $homecheckData = \App\Models\HomecheckData::where('property_id', $property->id)
             ->orderBy('room_name')
             ->orderBy('created_at')
-            ->get();
+            ->get()
+            ->map(function ($item) use ($isS3) {
+                $item->image_url = $isS3
+                    ? \Storage::disk('s3')->temporaryUrl($item->image_path, now()->addMinutes(60))
+                    : \Storage::disk('public')->url($item->image_path);
+                return $item;
+            });
 
         return view('admin.properties.complete-homecheck', compact('property', 'homecheckReport', 'homecheckData'));
     }
@@ -1400,6 +1585,83 @@ class AdminController extends Controller
     }
 
     /**
+     * Save a single room's images for a HomeCheck (AJAX).
+     */
+    public function saveHomecheckRoom(Request $request, $id)
+    {
+        $user = auth()->user();
+
+        if (!in_array($user->role, ['admin', 'agent'])) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        $property = Property::findOrFail($id);
+
+        if ($user->role === 'agent') {
+            $agentPropertyIds = $this->getAgentPropertyIds($user->id);
+            if (!in_array($property->id, $agentPropertyIds)) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+            }
+        }
+
+        $homecheckReport = \App\Models\HomecheckReport::where('property_id', $property->id)
+            ->whereIn('status', ['pending', 'scheduled', 'in_progress'])
+            ->first();
+
+        if (!$homecheckReport) {
+            return response()->json(['success' => false, 'message' => 'No scheduled HomeCheck found.'], 404);
+        }
+
+        $validated = $request->validate([
+            'room_name' => ['required', 'string', 'max:255'],
+            'images'    => ['required', 'array', 'min:1'],
+            'images.*'  => ['required', 'image', 'mimes:jpeg,png,jpg,webp'],
+            'is_360'    => ['nullable', 'boolean'],
+        ]);
+
+        try {
+            if ($homecheckReport->status !== 'in_progress') {
+                $homecheckReport->update(['status' => 'in_progress']);
+            }
+
+            $roomName = $validated['room_name'];
+            $is360    = !empty($validated['is_360']);
+            $disk     = $this->getStorageDisk();
+            $saved    = 0;
+
+            foreach ($validated['images'] as $image) {
+                $ext       = $image->getClientOriginalExtension();
+                $fileName  = uniqid() . '.' . $ext;
+                $imagePath = 'homechecks/' . $property->id . '/rooms/' . $roomName . '/' . ($is360 ? '360' : 'photos') . '/' . $fileName;
+
+                Storage::disk($disk)->put($imagePath, file_get_contents($image->getRealPath()));
+
+                $homecheckData = \App\Models\HomecheckData::create([
+                    'property_id'         => $property->id,
+                    'homecheck_report_id' => $homecheckReport->id,
+                    'room_name'           => $roomName,
+                    'image_path'          => $imagePath,
+                    'is_360'              => $is360,
+                    'moisture_reading'    => null,
+                    'created_at'          => now(),
+                ]);
+
+                $this->processImageCompression($imagePath, $disk, $homecheckData->id, 1920, 85);
+                $saved++;
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => "Room \"{$roomName}\" saved — {$saved} image(s) uploaded.",
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('saveHomecheckRoom error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'An error occurred while saving the room.'], 500);
+        }
+    }
+
+    /**
      * List all HomeCheck reports.
      *
      * @param  \Illuminate\Http\Request  $request
@@ -1426,7 +1688,8 @@ class AdminController extends Controller
             if (empty($agentPropertyIds)) {
                 // Agent has no assigned properties, return empty result
                 $homechecks = \App\Models\HomecheckReport::whereRaw('1 = 0')->paginate(20);
-                return view('admin.homechecks.index', compact('homechecks'));
+                $aiConfigured = !empty(config('services.openai.api_key')) && !empty(config('services.openai.assistant_id'));
+                return view('admin.homechecks.index', compact('homechecks', 'aiConfigured'));
             }
             $query->whereIn('property_id', $agentPropertyIds);
         }
@@ -1442,7 +1705,8 @@ class AdminController extends Controller
         // Paginate results
         $homechecks = $query->paginate(20)->withQueryString();
 
-        return view('admin.homechecks.index', compact('homechecks'));
+        $aiConfigured = !empty(config('services.openai.api_key')) && !empty(config('services.openai.assistant_id'));
+        return view('admin.homechecks.index', compact('homechecks', 'aiConfigured'));
     }
 
     /**
@@ -1508,7 +1772,10 @@ class AdminController extends Controller
                 }
             }
 
-            return view('admin.homechecks.show', compact('homecheckReport', 'property', 'roomsData', 'homecheckData', 'aiAnalysis'));
+            // AI status: whether OpenAI is configured (real AI) or fallback will be used
+            $aiConfigured = !empty(config('services.openai.api_key')) && !empty(config('services.openai.assistant_id'));
+
+            return view('admin.homechecks.show', compact('homecheckReport', 'property', 'roomsData', 'homecheckData', 'aiAnalysis', 'aiConfigured'));
             
         } catch (\Exception $e) {
             \Log::error('Error loading HomeCheck show page: ' . $e->getMessage(), [
@@ -2439,18 +2706,41 @@ class AdminController extends Controller
             // Generate AI analysis
             $aiAnalysis = $reportService->generateAIAnalysis($homecheckData, $property);
 
+            // Build normalised room key lookup (API may return "Asdad", DB has "ASDAD")
+            $roomsFromApi = $aiAnalysis['rooms'] ?? [];
+            $normalisedKeyToData = [];
+            foreach ($roomsFromApi as $apiKey => $roomData) {
+                $norm = strtolower(trim((string) $apiKey));
+                if (!isset($normalisedKeyToData[$norm])) {
+                    $normalisedKeyToData[$norm] = $roomData;
+                }
+            }
+
+            $overallSummary = isset($aiAnalysis['summary']) && (string) $aiAnalysis['summary'] !== '' ? (string) $aiAnalysis['summary'] : null;
+
             // Update AI analysis in HomecheckData records (per image)
             foreach ($homecheckData as $data) {
                 $roomName = $data->room_name;
-                if (isset($aiAnalysis['rooms'][$roomName])) {
-                    $roomAnalysis = $aiAnalysis['rooms'][$roomName];
-                    
-                    // Update each image in the room with AI analysis
+                $roomAnalysis = $roomsFromApi[$roomName] ?? $normalisedKeyToData[strtolower(trim($roomName))] ?? null;
+                if ($roomAnalysis !== null) {
+                    $comments = $roomAnalysis['comments'] ?? $roomAnalysis['comment'] ?? $roomAnalysis['analysis'] ?? $roomAnalysis['summary'] ?? null;
+                    if (is_array($comments)) {
+                        $comments = implode(' ', $comments);
+                    }
+                    if (($comments === null || $comments === '') && $overallSummary !== null) {
+                        $comments = $overallSummary;
+                    }
                     $data->update([
                         'ai_rating' => $roomAnalysis['rating'] ?? null,
-                        'ai_comments' => $roomAnalysis['comments'] ?? null,
-                        // Keep existing moisture reading if set
+                        'ai_comments' => $comments !== '' && $comments !== null ? $comments : null,
                     ]);
+                } elseif ($overallSummary !== null) {
+                    // No room match: still set overall summary and rating so AI section is not empty
+                    $updates = ['ai_comments' => $overallSummary];
+                    if (isset($aiAnalysis['overall_rating']) && $aiAnalysis['overall_rating'] !== null && $aiAnalysis['overall_rating'] !== '') {
+                        $updates['ai_rating'] = $aiAnalysis['overall_rating'];
+                    }
+                    $data->update($updates);
                 }
             }
 

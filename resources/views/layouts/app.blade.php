@@ -18,6 +18,39 @@
 
     <!-- Styles -->
     <link href="{{ mix('css/app.css') }}" rel="stylesheet">
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+        }
+
+        img,
+        svg,
+        video,
+        canvas {
+            max-width: 100%;
+            height: auto;
+        }
+
+        @media (max-width: 768px) {
+            main table {
+                display: block;
+                width: 100%;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                white-space: nowrap;
+            }
+
+            main .btn,
+            main button,
+            main input[type="submit"],
+            main input[type="button"] {
+                max-width: 100%;
+                box-sizing: border-box;
+            }
+        }
+    </style>
 </head>
 <body>
     <div id="app">

@@ -68,14 +68,39 @@
     .btn {
         padding: 10px 20px;
         border-radius: 6px;
-        display: inline-block;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
         text-decoration: none;
         font-weight: 600;
         font-size: 14px;
-        margin-right: 10px;
+        min-height: 42px;
+        min-width: 140px;
+        box-sizing: border-box;
         transition: background 0.3s ease;
         border: none;
         cursor: pointer;
+        white-space: nowrap;
+    }
+
+    .homecheck-header-actions {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .homecheck-header-actions .btn,
+    .homecheck-header-actions button.btn {
+        margin: 0;
+    }
+
+    .homecheck-header-actions form {
+        display: inline-flex;
+    }
+
+    .homecheck-header-actions form .btn {
+        width: 100%;
     }
 
     .btn-main {
@@ -86,6 +111,10 @@
     .btn-secondary {
         background: #666;
         color: #fff;
+    }
+
+    .btn-ai-report {
+        gap: 8px;
     }
 
     .room-section {
@@ -142,6 +171,40 @@
         opacity: 0;
         margin: 0;
         padding: 0;
+    }
+
+    .ai-report-card {
+        background: #f3fdfa;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+    .ai-report-card h3 {
+        margin-top: 0;
+        margin-bottom: 15px;
+    }
+    .ai-report-room {
+        padding: 12px 0;
+        border-bottom: 1px solid rgba(0,0,0,0.06);
+    }
+    .ai-report-room:last-child {
+        border-bottom: none;
+    }
+    .ai-report-room-name {
+        font-weight: 600;
+        color: var(--dark-text);
+        margin-bottom: 6px;
+    }
+    .ai-report-room-meta {
+        font-size: 13px;
+        color: #666;
+        margin-bottom: 4px;
+    }
+    .ai-report-room-comments {
+        font-size: 14px;
+        color: #333;
+        line-height: 1.5;
+        margin-top: 6px;
     }
 
     .room-controls {
@@ -223,6 +286,17 @@
         background: #fff;
         font-size: 12px;
         color: #666;
+    }
+    .image-info-comment {
+        margin-top: 6px;
+        padding: 8px;
+        background: #f5f5f5;
+        border-radius: 4px;
+        font-size: 11px;
+        color: #333;
+        text-align: left;
+        max-height: 80px;
+        overflow-y: auto;
     }
 
     .modal {
@@ -316,13 +390,16 @@
     }
 
     .close-modal {
-        position: absolute;
-        top: 15px;
-        right: 15px;
-        background: rgba(0,0,0,0.8);
+        position: fixed;
+        top: 16px;
+        right: 16px;
+        z-index: 100002;
+        background: rgba(0,0,0,0.85);
         color: #fff;
-        width: 45px;
-        height: 45px;
+        min-width: 48px;
+        min-height: 48px;
+        width: 48px;
+        height: 48px;
         border-radius: 50%;
         display: flex;
         justify-content: center;
@@ -330,15 +407,30 @@
         cursor: pointer;
         font-size: 28px;
         font-weight: 700;
-        z-index: 100;
         transition: background 0.3s ease, transform 0.2s ease;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+        border: none;
     }
 
     .close-modal:hover {
         background: rgba(220, 53, 69, 0.9);
         transform: scale(1.1);
     }
+
+    .modal-close-btn-inner {
+        display: block;
+        width: 100%;
+        padding: 12px 20px;
+        margin-top: 16px;
+        background: #333;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+    .modal-close-btn-inner:hover { background: #111; }
 
     .modal-header {
         position: relative;
@@ -373,19 +465,48 @@
         color: #666;
         margin-top: 5px;
     }
+
+    .ai-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        margin-left: 12px;
+    }
+    .ai-status.connected {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+    .ai-status.fallback {
+        background: #fff3cd;
+        color: #856404;
+        border: 1px solid #ffeeba;
+    }
 </style>
 @endpush
 
 @section('content')
 <div class="container">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-        <h2>HomeCheck Report Details</h2>
-        <div>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+        <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px;">
+            <h2 style="margin: 0;">HomeCheck Report Details</h2>
+            <span class="ai-status {{ ($aiConfigured ?? false) ? 'connected' : 'fallback' }}" title="{{ ($aiConfigured ?? false) ? 'OpenAI API is configured. Analysis will use real AI.' : 'OpenAI not configured. Analysis will use fallback (simulated).' }}">
+                {{ ($aiConfigured ?? false) ? '✓ AI connected' : '○ AI fallback' }}
+            </span>
+        </div>
+        <div class="homecheck-header-actions">
             <a href="{{ route('admin.homechecks.index') }}" class="btn btn-secondary">← Back to List</a>
-            @if($homecheckData && $homecheckData->count() > 0 && !$homecheckReport->report_path)
-                <form action="{{ route('admin.homechecks.process-ai', $homecheckReport->id) }}" method="POST" style="display: inline-block;" onsubmit="return confirm('This will process all images through AI analysis. This may take a few moments. Continue?');">
+            @if($homecheckData && $homecheckData->count() > 0)
+                <form action="{{ route('admin.homechecks.process-ai', $homecheckReport->id) }}" method="POST" onsubmit="return confirm('This will generate the HomeCheck report using AI (all images will be analysed). It may take a few moments. Continue?');">
                     @csrf
-                    <button type="submit" class="btn" style="background: #28a745; color: #fff;">🤖 Process AI Analysis</button>
+                    <button type="submit" class="btn btn-ai-report" style="background: #28a745; color: #fff;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2L14 8L20 10L14 12L12 18L10 12L4 10L10 8L12 2Z"/></svg>
+                        <span>Generate HomeCheck Report using AI</span>
+                    </button>
                 </form>
             @endif
             <a href="{{ route('admin.homechecks.edit', $homecheckReport->id) }}" class="btn btn-main">Edit HomeCheck</a>
@@ -471,11 +592,36 @@
                 <div class="stat-number">{{ $homecheckData->where('is_360', true)->count() }}</div>
                 <div class="stat-label">360° Images</div>
             </div>
-            <div class="stat-box">
-                <div class="stat-number">{{ $homecheckData->whereNotNull('moisture_reading')->count() }}</div>
-                <div class="stat-label">Moisture Readings</div>
-            </div>
         </div>
+    </div>
+    @endif
+
+    <!-- AI Report & Comments -->
+    @if($homecheckReport->report_path && isset($aiAnalysis) && !empty($aiAnalysis['rooms']))
+    <div class="card ai-report-card">
+        <h3>AI Report & Analysis</h3>
+        @if(isset($aiAnalysis['overall_rating']) && $aiAnalysis['overall_rating'] !== null)
+            <div style="margin-bottom: 16px; padding: 12px; background: rgba(44, 184, 180, 0.1); border-radius: 6px;">
+                <strong style="color: var(--abodeology-teal);">Overall rating:</strong> {{ $aiAnalysis['overall_rating'] }}/10
+            </div>
+        @endif
+        @if(isset($aiAnalysis['summary']) && $aiAnalysis['summary'])
+            <div style="margin-bottom: 16px; line-height: 1.6;">{{ $aiAnalysis['summary'] }}</div>
+        @endif
+        @foreach($aiAnalysis['rooms'] ?? [] as $roomName => $roomData)
+            <div class="ai-report-room">
+                <div class="ai-report-room-name">{{ ucfirst($roomName) }}</div>
+                @if(!empty($roomData['rating']))
+                    <div class="ai-report-room-meta">Rating: {{ $roomData['rating'] }}/10</div>
+                @endif
+                @if(!empty($roomData['moisture']))
+                    <div class="ai-report-room-meta">Moisture: {{ $roomData['moisture'] }}%</div>
+                @endif
+                @if(!empty($roomData['comments']))
+                    <div class="ai-report-room-comments">{{ $roomData['comments'] }}</div>
+                @endif
+            </div>
+        @endforeach
     </div>
     @endif
 
@@ -516,12 +662,6 @@
                     <div class="info-value">{{ $roomImages->where('is_360', true)->count() }}</div>
                 </div>
                 @endif
-                @if($moistureReading)
-                <div class="info-row" style="border: none; padding: 5px 0;">
-                    <div class="info-label">Moisture Reading:</div>
-                    <div class="info-value">{{ $moistureReading }}%</div>
-                </div>
-                @endif
                 @if($aiRating)
                 <div class="info-row" style="border: none; padding: 5px 0;">
                     <div class="info-label">AI Rating:</div>
@@ -550,26 +690,19 @@
                                     $modalUrl = url('/admin/homecheck-image/' . $image->id);
                                 }
                             @endphp
-                            <div class="image-item" onclick="openImageModal('{{ $modalUrl }}', '{{ $roomName }}', {{ $image->is_360 ? 'true' : 'false' }}, {{ $image->id }}, '{{ addslashes($image->ai_comments ?? '') }}', '{{ addslashes($image->moisture_reading ?? '') }}', '{{ addslashes($image->ai_rating ?? '') }}')">
+                            <div class="image-item" onclick="openImageModal('{{ $modalUrl }}', '{{ $roomName }}', {{ $image->is_360 ? 'true' : 'false' }}, {{ $image->id }}, '{{ addslashes($image->ai_comments ?? '') }}', '{{ addslashes($image->ai_rating ?? '') }}')">
                                 <img src="{{ $thumbnailUrl }}" alt="{{ $roomName }} Image" loading="lazy" decoding="async">
                                 @if($image->is_360)
                                     <div class="image-badge">360°</div>
                                 @endif
                                 <div class="image-info">
-                                    @if($image->moisture_reading)
-                                        <strong>Moisture:</strong> {{ $image->moisture_reading }}%<br>
-                                    @endif
-                                    @if($image->ai_rating)
-                                        <strong>AI Rating:</strong> {{ $image->ai_rating }}/10<br>
-                                    @endif
-                                    @if($image->ai_comments)
-                                        <div style="margin-top: 8px; padding: 8px; background: #f0f0f0; border-radius: 4px; font-size: 11px; color: #333; text-align: left; max-height: 80px; overflow-y: auto;">
-                                            <strong>AI Notes:</strong><br>
-                                            {{ \Illuminate\Support\Str::limit($image->ai_comments ?? '', 150) }}
-                                        </div>
-                                    @endif
+                                    <strong>AI Rating:</strong> {{ $image->ai_rating ? $image->ai_rating . '/10' : '—' }}<br>
+                                    <div class="image-info-comment">
+                                        <strong>AI Comment:</strong><br>
+                                        {{ $image->ai_comments ? \Illuminate\Support\Str::limit($image->ai_comments, 150) : '—' }}
+                                    </div>
                                     @if($image->created_at)
-                                        <br><small style="color: #999;">{{ $image->created_at->format('M j, Y g:i A') }}</small>
+                                        <small style="color: #999;">{{ $image->created_at->format('M j, Y g:i A') }}</small>
                                     @endif
                                 </div>
                             </div>
@@ -590,8 +723,8 @@
 
     <!-- Image Modal -->
     <div id="imageModal" class="modal">
+        <button type="button" class="close-modal" onclick="closeModal()" aria-label="Close">×</button>
         <div class="modal-content">
-            <div class="close-modal" onclick="closeModal()">×</div>
             <div class="modal-image-container">
                 <img id="modalImage" class="modal-img" src="" alt="HomeCheck Image" style="display: block;">
                 <div id="pano-viewer"></div>
@@ -602,6 +735,7 @@
                 <div class="viewer-controls" id="viewer-controls" style="display: none;">
                     <button class="btn-viewer" onclick="toggleViewer()">Toggle 360° Viewer</button>
                 </div>
+                <button type="button" class="modal-close-btn-inner" onclick="closeModal()">Close</button>
             </div>
         </div>
     </div>
@@ -625,7 +759,7 @@
         modal.classList.add('active');
     }
 
-    function openImageModal(imageUrl, roomName, is360, imageId, aiComments, moistureReading, aiRating) {
+    function openImageModal(imageUrl, roomName, is360, imageId, aiComments, aiRating) {
         const modal = document.getElementById('imageModal');
         const modalImage = document.getElementById('modalImage');
         const panoViewer = document.getElementById('pano-viewer');
@@ -634,8 +768,7 @@
         const modalTitle = document.getElementById('modalTitle');
         
         // All images now use the proxy endpoint (already passed from server)
-        // This ensures proper caching, CORS headers, and ETag support
-        currentImageUrl = imageUrl; // imageUrl is already the proxy URL from server
+        currentImageUrl = imageUrl;
         is360Image = is360;
         
         modalTitle.innerText = roomName;
@@ -643,16 +776,13 @@
         // Build modal body content
         let bodyContent = '';
         
-        if (moistureReading && moistureReading.trim() !== '') {
-            bodyContent += '<div style="margin-bottom: 15px;"><strong style="color: var(--abodeology-teal);">Moisture Reading:</strong> <span style="color: #333;">' + moistureReading + '%</span></div>';
-        }
-        
         if (aiRating && aiRating.trim() !== '') {
             bodyContent += '<div style="margin-bottom: 15px;"><strong style="color: var(--abodeology-teal);">AI Rating:</strong> <span style="color: #333;">' + aiRating + '/10</span></div>';
         }
         
         if (aiComments && aiComments.trim() !== '') {
-            bodyContent += '<div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd;"><h4 style="margin-bottom: 8px; color: var(--abodeology-teal); font-size: 16px;">AI Analysis</h4><p style="line-height: 1.6; color: #333;">' + aiComments.replace(/\n/g, '<br>') + '</p></div>';
+            var escaped = aiComments.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g, '<br>');
+            bodyContent += '<div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd;"><h4 style="margin-bottom: 8px; color: var(--abodeology-teal); font-size: 16px;">AI Analysis</h4><p style="line-height: 1.6; color: #333;">' + escaped + '</p></div>';
         }
         
         if (!bodyContent) {

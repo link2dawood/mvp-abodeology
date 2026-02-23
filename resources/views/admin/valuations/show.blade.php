@@ -61,6 +61,38 @@
         box-shadow: 0 0 0 2px rgba(44, 184, 180, 0.15);
     }
 
+    /* Time dropdown styled like native time input (clock icon) */
+    .schedule-form .time-field {
+        position: relative;
+        max-width: 280px;
+    }
+
+    .schedule-form .time-field .form-control {
+        max-width: 100%;
+        padding-right: 40px; /* room for clock icon */
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        background-color: #fff;
+    }
+
+    .schedule-form .time-field::after {
+        content: '';
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        width: 16px;
+        height: 16px;
+        transform: translateY(-50%);
+        pointer-events: none;
+        opacity: 0.65;
+        background-repeat: no-repeat;
+        background-position: center;
+        background-size: 16px 16px;
+        /* inline SVG clock icon */
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 7v5l3 2'/%3E%3C/svg%3E");
+    }
+
     .schedule-form .form-note {
         font-size: 12px;
         color: #888;
@@ -196,6 +228,12 @@
         </div>
     @endif
 
+    @if(session('warning'))
+        <div style="background: #fff3cd; border: 1px solid #ffeeba; color: #856404; padding: 12px 20px; border-radius: 4px; margin-bottom: 20px;">
+            {{ session('warning') }}
+        </div>
+    @endif
+
     {{-- Client details and Valuation information at top, side by side --}}
     <div class="top-cards">
         <div class="card">
@@ -260,7 +298,7 @@
             @if($valuation->valuation_time)
             <div class="info-row">
                 <div class="info-label">Preferred Time:</div>
-                <div class="info-value">{{ \Carbon\Carbon::parse($valuation->valuation_time)->format('g:i A') }}</div>
+                <div class="info-value">{{ \Carbon\Carbon::parse($valuation->valuation_time)->format('H:i') }}</div>
             </div>
             @endif
             @if($valuation->estimated_value)
@@ -304,13 +342,25 @@
             </div>
             <div class="form-group">
                 <label for="valuation_time">Valuation Time (optional)</label>
-                <input
-                    type="time"
-                    id="valuation_time"
-                    name="valuation_time"
-                    class="form-control"
-                    value="{{ old('valuation_time', $valuation->valuation_time ? \Carbon\Carbon::parse($valuation->valuation_time)->format('H:i') : '') }}"
-                >
+                @php
+                    $selectedValuationTime = old(
+                        'valuation_time',
+                        $valuation->valuation_time ? \Carbon\Carbon::parse($valuation->valuation_time)->format('H:i') : ''
+                    );
+                @endphp
+                <div class="time-field">
+                    <select id="valuation_time" name="valuation_time" class="form-control">
+                        <option value="">-- No time selected --</option>
+                        @for ($h = 0; $h < 24; $h++)
+                            @foreach (['00', '30'] as $m)
+                                @php $timeValue = sprintf('%02d:%s', $h, $m); @endphp
+                                <option value="{{ $timeValue }}" {{ $selectedValuationTime === $timeValue ? 'selected' : '' }}>
+                                    {{ $timeValue }}
+                                </option>
+                            @endforeach
+                        @endfor
+                    </select>
+                </div>
             </div>
             @if($agents)
             <div class="form-group">
@@ -444,7 +494,7 @@
         @endif
     </div>
     @elseif($valuation->status === 'completed')
-    <div class="card" style="background: #F9F9F9; border-left: 4px solid #ffc107;">
+    <div class="card" style="background: #F9F9F9;">
         <h3 style="color: #856404; margin-top: 0;">HomeCheck Status</h3>
         <p style="font-size: 14px; color: #666; margin-bottom: 10px;">
             Property must be created first before scheduling a HomeCheck. Complete the Valuation Form to create the property.
