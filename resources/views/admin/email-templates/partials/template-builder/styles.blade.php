@@ -1,7 +1,6 @@
-@push('styles')
-    {{-- Summernote CSS (free, CDN-hosted) --}}
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/summernote/0.8.20/summernote-lite.min.css" rel="stylesheet">
-    <style>
+{{-- Template builder styles: include in @section('styles') so they render in <head> --}}
+<link href="https://cdnjs.cloudflare.com/ajax/libs/summernote/0.8.20/summernote-lite.min.css" rel="stylesheet">
+<style>
         .template-builder-page {
             padding: 0 !important;
             margin: 0 !important;
@@ -775,5 +774,4 @@
             font-size: 12px;
         }
     </style>
-@endpush
 
