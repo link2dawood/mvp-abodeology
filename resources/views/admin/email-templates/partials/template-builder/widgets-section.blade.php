@@ -11,8 +11,8 @@
                     @foreach($categoryWidgets as $widget)
                         <div 
                             class="widget-item" 
-                            data-widget-html="{{ addslashes($widget->html) }}"
-                            data-widget-name="{{ addslashes($widget->name) }}"
+                            data-widget-html="{{ htmlspecialchars($widget->html, ENT_QUOTES, 'UTF-8') }}"
+                            data-widget-name="{{ htmlspecialchars($widget->name, ENT_QUOTES, 'UTF-8') }}"
                         >
                             <div class="widget-drag-handle" title="Drag to editor"></div>
                             <div class="widget-item-header">

@@ -774,8 +774,4 @@
             font-size: 12px;
         }
     </style>
-<<<<<<< HEAD
-@endpush
-=======
->>>>>>> aadf09550e57acce5715b8359a5a64d5d2e5db63
 

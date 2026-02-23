@@ -39,10 +39,8 @@
     }
 
     .template-builder-header {
-        position: absolute;
+        /* position: absolute; */
         top: 70px;
-        left: 0;
-        right: 0;
         left: 0;
         right: 0;
         background: #ffffff;
@@ -208,46 +206,6 @@
         font-family: 'Courier New', monospace;
     }
 
-    .template-builder-grid {
-        display: grid;
-        grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
-        gap: 20px;
-        margin-bottom: 20px;
-    }
-
-    @media (max-width: 992px) {
-        .template-builder-grid {
-            grid-template-columns: minmax(0, 1fr);
-        }
-    }
-
-    .variable-list {
-        max-height: 260px;
-        overflow: auto;
-        border: 1px solid var(--line-grey);
-        border-radius: 8px;
-        padding: 10px 12px;
-        background: #fafafa;
-        font-size: 13px;
-        margin-top: 10px;
-    }
-
-    .variable-list code {
-        background: #eee;
-        padding: 2px 5px;
-        border-radius: 4px;
-        font-size: 12px;
-    }
-
-    .variable-list ul {
-        margin: 10px 0;
-        padding-left: 20px;
-    }
-
-    .variable-list li {
-        margin: 5px 0;
-    }
-
     .mb-1 {
         margin-bottom: 5px;
     }
@@ -259,7 +217,7 @@
 @endpush
 
 @section('content')
-    <div class="container-fluid template-builder-page">
+    <div class="container">
         <div class="template-builder-header">
             <div style="max-width: 100%; margin: 0 auto; display: flex; justify-content: space-between; align-items: center;">
                 <div>
@@ -289,7 +247,7 @@
             </div>
         </div>
 
-        <form method="POST" action="{{ route('admin.email-templates.store') }}" style="padding: 0; margin: 0; margin-top: 80px; display: flex; flex-direction: column; height: calc(100vh - 70px);">
+        <form method="POST" action="{{ route('admin.email-templates.store') }}" style="padding: 0; margin: 0; margin-top: 80px; display: flex; flex-direction: column; height: calc(100vh - 150px);">
             @csrf
             <input type="hidden" name="name" id="name-hidden" value="{{ old('name') }}">
             <input type="hidden" name="action" id="action-hidden" value="{{ old('action') }}">
@@ -396,7 +354,7 @@
             </script>
             @endpush
 
-            <div style="position: fixed; bottom: 0; left: 0; right: 0; background: #ffffff; padding: 15px 20px; border-top: 1px solid #e0e0e0; z-index: 1000; box-shadow: 0 -2px 10px rgba(0,0,0,0.1);">
+            <div style="bottom: 0; left: 0; right: 0; background: #ffffff; padding: 15px 20px; border-top: 1px solid #e0e0e0; z-index: 1000; box-shadow: 0 -2px 10px rgba(0,0,0,0.1);">
                 <div style="max-width: 100%; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; padding: 0 20px;">
                     <a href="{{ route('admin.email-templates.index') }}" class="btn btn-outline-secondary">Cancel</a>
                     <div style="display: flex; gap: 10px;">

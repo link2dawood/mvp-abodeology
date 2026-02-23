@@ -22,7 +22,7 @@ class SecurityHeaders
         if ($request->routeIs('seller.terms-pdf') || $request->routeIs('seller.terms-html')) {
             $response->headers->set('X-Frame-Options', 'SAMEORIGIN');
         } else {
-            $response->headers->set('X-Frame-Options', 'DENY');
+        $response->headers->set('X-Frame-Options', 'DENY');
         }
         
         $response->headers->set('X-XSS-Protection', '1; mode=block');

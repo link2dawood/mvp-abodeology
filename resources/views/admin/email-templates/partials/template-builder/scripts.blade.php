@@ -8,6 +8,7 @@
             const canvasEmptyState = document.getElementById('canvas-empty-state');
             let draggedWidget = null;
             let selectedWidget = null;
+            let isDropping = false; // Flag to prevent double insertion
             
             // Undo/Redo History Management
             const historyStack = {
@@ -885,12 +886,26 @@
                             draggedWidget = this;
                             this.classList.add('dragging');
                             e.dataTransfer.effectAllowed = 'move';
-                            const widgetHtml = this.dataset.widgetHtml || '';
-                            console.log('Widget HTML length:', widgetHtml.length);
+                            
+                            // Get widget HTML from data attribute (browser automatically decodes HTML entities)
+                            let widgetHtml = this.dataset.widgetHtml || '';
+                            
+                            // If dataset doesn't have it, try getting from the insert button
+                            if (!widgetHtml || widgetHtml.trim() === '') {
+                                const insertButton = this.querySelector('.btn-insert-widget');
+                                if (insertButton && insertButton.dataset.widgetHtml) {
+                                    widgetHtml = insertButton.dataset.widgetHtml;
+                                }
+                            }
+                            
+                            console.log('Widget HTML length:', widgetHtml ? widgetHtml.length : 0);
                             
                             try {
+                                // Store the widget HTML in dataTransfer
                                 e.dataTransfer.setData('text/html', widgetHtml);
                                 e.dataTransfer.setData('text/plain', widgetHtml);
+                                // Also store it in a custom format for better compatibility
+                                e.dataTransfer.setData('application/x-widget-html', widgetHtml);
                             } catch(err) {
                                 console.error('Error setting drag data:', err);
                             }
@@ -899,7 +914,13 @@
                         widget.addEventListener('dragend', function(e) {
                             console.log('Drag ended');
                             this.classList.remove('dragging');
-                            draggedWidget = null;
+                            
+                            // Reset dropping flag if drag was cancelled
+                            setTimeout(function() {
+                                isDropping = false;
+                                draggedWidget = null;
+                            }, 100);
+                            
                             document.querySelectorAll('.drag-over').forEach(function(el) {
                                 el.classList.remove('drag-over');
                             });
@@ -913,7 +934,14 @@
                         return;
                     }
 
+                    // Check if drop zone is already set up
+                    if (element.dataset.dropZoneSetup === 'true') {
+                        console.log('Drop zone already set up, skipping');
+                        return;
+                    }
+
                     console.log('Setting up drop zone on:', element);
+                    element.dataset.dropZoneSetup = 'true';
 
                     element.addEventListener('dragover', function(e) {
                         e.preventDefault();
@@ -939,14 +967,38 @@
                         e.stopPropagation();
                         console.log('Drop event triggered on visual canvas');
                         
+                        // Prevent double insertion
+                        if (isDropping) {
+                            console.log('Drop already in progress, ignoring duplicate drop event');
+                            return;
+                        }
+                        
+                        isDropping = true;
                         element.classList.remove('drag-over');
 
                         let widgetHtml = '';
-                        if (draggedWidget && draggedWidget.dataset.widgetHtml) {
-                            widgetHtml = draggedWidget.dataset.widgetHtml;
-                            console.log('Got widget HTML from draggedWidget, length:', widgetHtml.length);
-                        } else {
-                            widgetHtml = e.dataTransfer.getData('text/html') || 
+                        
+                        // Try multiple methods to get the widget HTML
+                        if (draggedWidget) {
+                            // First, try from the dragged widget's data attribute
+                            widgetHtml = draggedWidget.dataset.widgetHtml || '';
+                            
+                            // If not found, try from the insert button inside the widget
+                            if (!widgetHtml || widgetHtml.trim() === '') {
+                                const insertButton = draggedWidget.querySelector('.btn-insert-widget');
+                                if (insertButton && insertButton.dataset.widgetHtml) {
+                                    widgetHtml = insertButton.dataset.widgetHtml;
+                                    console.log('Got widget HTML from insert button, length:', widgetHtml.length);
+                                }
+                            } else {
+                                console.log('Got widget HTML from draggedWidget, length:', widgetHtml.length);
+                            }
+                        }
+                        
+                        // If still not found, try from dataTransfer
+                        if (!widgetHtml || widgetHtml.trim() === '') {
+                            widgetHtml = e.dataTransfer.getData('application/x-widget-html') ||
+                                        e.dataTransfer.getData('text/html') || 
                                         e.dataTransfer.getData('text/plain');
                             console.log('Got widget HTML from dataTransfer, length:', widgetHtml ? widgetHtml.length : 0);
                         }
@@ -954,13 +1006,21 @@
                         if (widgetHtml && widgetHtml.trim() !== '') {
                             console.log('Inserting widget via drag-drop...');
                             if (window.insertWidget) {
+                                // The insertWidget function will handle HTML entity decoding
                                 window.insertWidget(widgetHtml);
+                                
+                                // Reset flag after a short delay to allow insertion to complete
+                                setTimeout(function() {
+                                    isDropping = false;
+                                }, 500);
                             } else {
                                 console.error('insertWidget function not found');
+                                isDropping = false;
                                 alert('Error: Insert function not available. Please refresh the page.');
                             }
                         } else {
                             console.error('No widget HTML found');
+                            isDropping = false;
                             alert('No widget data found. Please try again.');
                         }
                     }, false);
