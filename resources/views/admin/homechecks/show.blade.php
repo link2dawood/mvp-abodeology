@@ -390,13 +390,16 @@
     }
 
     .close-modal {
-        position: absolute;
-        top: 15px;
-        right: 15px;
-        background: rgba(0,0,0,0.8);
+        position: fixed;
+        top: 16px;
+        right: 16px;
+        z-index: 100002;
+        background: rgba(0,0,0,0.85);
         color: #fff;
-        width: 45px;
-        height: 45px;
+        min-width: 48px;
+        min-height: 48px;
+        width: 48px;
+        height: 48px;
         border-radius: 50%;
         display: flex;
         justify-content: center;
@@ -404,15 +407,30 @@
         cursor: pointer;
         font-size: 28px;
         font-weight: 700;
-        z-index: 100;
         transition: background 0.3s ease, transform 0.2s ease;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+        border: none;
     }
 
     .close-modal:hover {
         background: rgba(220, 53, 69, 0.9);
         transform: scale(1.1);
     }
+
+    .modal-close-btn-inner {
+        display: block;
+        width: 100%;
+        padding: 12px 20px;
+        margin-top: 16px;
+        background: #333;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+    .modal-close-btn-inner:hover { background: #111; }
 
     .modal-header {
         position: relative;
@@ -574,10 +592,6 @@
                 <div class="stat-number">{{ $homecheckData->where('is_360', true)->count() }}</div>
                 <div class="stat-label">360° Images</div>
             </div>
-            <div class="stat-box">
-                <div class="stat-number">{{ $homecheckData->whereNotNull('moisture_reading')->count() }}</div>
-                <div class="stat-label">Moisture Readings</div>
-            </div>
         </div>
     </div>
     @endif
@@ -648,12 +662,6 @@
                     <div class="info-value">{{ $roomImages->where('is_360', true)->count() }}</div>
                 </div>
                 @endif
-                @if($moistureReading)
-                <div class="info-row" style="border: none; padding: 5px 0;">
-                    <div class="info-label">Moisture Reading:</div>
-                    <div class="info-value">{{ $moistureReading }}%</div>
-                </div>
-                @endif
                 @if($aiRating)
                 <div class="info-row" style="border: none; padding: 5px 0;">
                     <div class="info-label">AI Rating:</div>
@@ -682,15 +690,12 @@
                                     $modalUrl = url('/admin/homecheck-image/' . $image->id);
                                 }
                             @endphp
-                            <div class="image-item" onclick="openImageModal('{{ $modalUrl }}', '{{ $roomName }}', {{ $image->is_360 ? 'true' : 'false' }}, {{ $image->id }}, '{{ addslashes($image->ai_comments ?? '') }}', '{{ addslashes($image->moisture_reading ?? '') }}', '{{ addslashes($image->ai_rating ?? '') }}')">
+                            <div class="image-item" onclick="openImageModal('{{ $modalUrl }}', '{{ $roomName }}', {{ $image->is_360 ? 'true' : 'false' }}, {{ $image->id }}, '{{ addslashes($image->ai_comments ?? '') }}', '{{ addslashes($image->ai_rating ?? '') }}')">
                                 <img src="{{ $thumbnailUrl }}" alt="{{ $roomName }} Image" loading="lazy" decoding="async">
                                 @if($image->is_360)
                                     <div class="image-badge">360°</div>
                                 @endif
                                 <div class="image-info">
-                                    @if($image->moisture_reading)
-                                        <strong>Moisture:</strong> {{ $image->moisture_reading }}%<br>
-                                    @endif
                                     <strong>AI Rating:</strong> {{ $image->ai_rating ? $image->ai_rating . '/10' : '—' }}<br>
                                     <div class="image-info-comment">
                                         <strong>AI Comment:</strong><br>
@@ -718,8 +723,8 @@
 
     <!-- Image Modal -->
     <div id="imageModal" class="modal">
+        <button type="button" class="close-modal" onclick="closeModal()" aria-label="Close">×</button>
         <div class="modal-content">
-            <div class="close-modal" onclick="closeModal()">×</div>
             <div class="modal-image-container">
                 <img id="modalImage" class="modal-img" src="" alt="HomeCheck Image" style="display: block;">
                 <div id="pano-viewer"></div>
@@ -730,6 +735,7 @@
                 <div class="viewer-controls" id="viewer-controls" style="display: none;">
                     <button class="btn-viewer" onclick="toggleViewer()">Toggle 360° Viewer</button>
                 </div>
+                <button type="button" class="modal-close-btn-inner" onclick="closeModal()">Close</button>
             </div>
         </div>
     </div>
@@ -753,7 +759,7 @@
         modal.classList.add('active');
     }
 
-    function openImageModal(imageUrl, roomName, is360, imageId, aiComments, moistureReading, aiRating) {
+    function openImageModal(imageUrl, roomName, is360, imageId, aiComments, aiRating) {
         const modal = document.getElementById('imageModal');
         const modalImage = document.getElementById('modalImage');
         const panoViewer = document.getElementById('pano-viewer');
@@ -762,18 +768,13 @@
         const modalTitle = document.getElementById('modalTitle');
         
         // All images now use the proxy endpoint (already passed from server)
-        // This ensures proper caching, CORS headers, and ETag support
-        currentImageUrl = imageUrl; // imageUrl is already the proxy URL from server
+        currentImageUrl = imageUrl;
         is360Image = is360;
         
         modalTitle.innerText = roomName;
         
         // Build modal body content
         let bodyContent = '';
-        
-        if (moistureReading && moistureReading.trim() !== '') {
-            bodyContent += '<div style="margin-bottom: 15px;"><strong style="color: var(--abodeology-teal);">Moisture Reading:</strong> <span style="color: #333;">' + moistureReading + '%</span></div>';
-        }
         
         if (aiRating && aiRating.trim() !== '') {
             bodyContent += '<div style="margin-bottom: 15px;"><strong style="color: var(--abodeology-teal);">AI Rating:</strong> <span style="color: #333;">' + aiRating + '/10</span></div>';

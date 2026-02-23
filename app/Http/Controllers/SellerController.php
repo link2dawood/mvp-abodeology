@@ -578,6 +578,141 @@ class SellerController extends Controller
     }
 
     /**
+     * Show HTML preview of Terms & Conditions for a property.
+     *
+     * @param  int  $propertyId
+     * @return \Illuminate\Contracts\Support\Renderable
+     */
+    public function showTermsHTML($propertyId)
+    {
+        $user = auth()->user();
+        
+        $property = \App\Models\Property::where('seller_id', $user->id)
+            ->where('id', $propertyId)
+            ->firstOrFail();
+        
+        $instruction = \App\Models\PropertyInstruction::where('property_id', $property->id)->first();
+        
+        if (!$instruction) {
+            // Create default instruction if doesn't exist
+            $instruction = (object)[
+                'property_address' => $property->address,
+                'seller_names' => $user->name,
+                'fee_percentage' => 1.5,
+            ];
+        }
+        
+        return view('seller.terms-and-conditions', compact('property', 'instruction'));
+    }
+
+    /**
+     * Generate and serve the Terms & Conditions PDF for a property.
+     *
+     * @param  int  $propertyId
+     * @return \Illuminate\Http\Response
+     */
+    public function generateTermsPDF($propertyId)
+    {
+        $user = auth()->user();
+        
+        $property = \App\Models\Property::where('seller_id', $user->id)
+            ->where('id', $propertyId)
+            ->firstOrFail();
+        
+        $instruction = \App\Models\PropertyInstruction::where('property_id', $property->id)->first();
+        
+        if (!$instruction) {
+            // Create default instruction if doesn't exist
+            $instruction = (object)[
+                'property_address' => $property->address,
+                'seller_names' => $user->name,
+                'fee_percentage' => 1.5,
+            ];
+        }
+        
+        try {
+            $pdfService = new \App\Services\TermsAndConditionsPDFService();
+            $filePath = $pdfService->generatePDFFromHTML($property, $instruction);
+            
+            $disk = config('filesystems.default') === 's3' ? 's3' : 'public';
+            
+            // If S3, get temporary URL
+            if ($disk === 's3') {
+                $pdfUrl = \Illuminate\Support\Facades\Storage::disk($disk)->temporaryUrl($filePath, now()->addHours(1));
+                return redirect($pdfUrl);
+            }
+            
+            // For local storage, serve the file directly
+            $fullPath = \Illuminate\Support\Facades\Storage::disk($disk)->path($filePath);
+            
+            if (!file_exists($fullPath)) {
+                throw new \Exception('PDF file not found at: ' . $fullPath);
+            }
+            
+            $response = response()->file($fullPath, [
+                'Content-Type' => 'application/pdf',
+            ]);
+            
+            $response->headers->set('X-Frame-Options', 'SAMEORIGIN');
+            
+            return $response;
+            
+        } catch (\Exception $e) {
+            \Log::error('Terms PDF generation error: ' . $e->getMessage());
+            return back()->with('error', 'Failed to generate PDF. Please try again.');
+        }
+    }
+
+    /**
+     * Save signature fields only.
+     *
+     * @param  int  $propertyId
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function saveSignature($propertyId)
+    {
+        $user = auth()->user();
+        
+        $property = \App\Models\Property::where('seller_id', $user->id)
+            ->where('id', $propertyId)
+            ->firstOrFail();
+        
+        $validated = request()->validate([
+            'seller1_name' => 'required|string|max:255',
+            'seller1_signature' => 'required|string|max:255',
+            'seller1_date' => 'required|date',
+            'seller2_name' => 'nullable|string|max:255',
+            'seller2_signature' => 'nullable|string|max:255',
+            'seller2_date' => 'nullable|date',
+        ]);
+        
+        try {
+            // Update or create instruction with only signature fields
+            $instruction = \App\Models\PropertyInstruction::updateOrCreate(
+                ['property_id' => $property->id],
+                [
+                    'seller_id' => $user->id,
+                    'seller1_name' => $validated['seller1_name'],
+                    'seller1_signature' => $validated['seller1_signature'],
+                    'seller1_date' => $validated['seller1_date'],
+                    'seller2_name' => $validated['seller2_name'] ?? null,
+                    'seller2_signature' => $validated['seller2_signature'] ?? null,
+                    'seller2_date' => $validated['seller2_date'] ?? null,
+                ]
+            );
+            
+            return redirect()->route('seller.instruct', $property->id)
+                ->with('success', 'Signature saved successfully.');
+                
+        } catch (\Exception $e) {
+            \Log::error('Signature save error: ' . $e->getMessage());
+            return redirect()->route('seller.instruct', $property->id)
+                ->with('error', 'Failed to save signature. Please try again.')
+                ->withInput();
+        }
+    }
+
+    /**
      * Store the instruction agreement.
      *
      * @param  \Illuminate\Http\Request  $request

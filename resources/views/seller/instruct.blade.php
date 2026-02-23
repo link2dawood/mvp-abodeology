@@ -237,25 +237,35 @@
                     ⚠️ You must read and understand the Terms & Conditions before proceeding with your signature.
                 </p>
                 
-                <!-- PDF Viewer -->
+                <!-- PDF Preview -->
+                @php
+                    if (isset($property) && $property) {
+                        $htmlUrl = route('seller.terms-html', $property->id);
+                        $pdfUrl = route('seller.terms-pdf', $property->id);
+                    } else {
+                        $htmlUrl = request()->getSchemeAndHttpHost() . '/terms-and-conditions.pdf';
+                        $pdfUrl = request()->getSchemeAndHttpHost() . '/terms-and-conditions.pdf';
+                    }
+                @endphp
                 <div style="border: 2px solid var(--line-grey); border-radius: 8px; padding: 15px; background: #f9f9f9; margin-bottom: 20px;">
                     <iframe 
-                        src="{{ asset('terms-and-conditions.pdf') }}" 
+                        src="{{ $pdfUrl }}" 
                         width="100%" 
                         height="600px" 
                         style="border: 1px solid #ddd; border-radius: 4px;"
-                        title="Terms and Conditions PDF">
+                        title="Terms and Conditions Preview"
+                        type="application/pdf">
                         <p style="padding: 20px; text-align: center;">
-                            Your browser does not support PDFs. 
-                            <a href="{{ asset('terms-and-conditions.pdf') }}" target="_blank" style="color: var(--abodeology-teal); text-decoration: underline;">
-                                Click here to download the Terms & Conditions PDF
+                            Your browser does not support iframes. 
+                            <a href="{{ $pdfUrl }}" target="_blank" style="color: var(--abodeology-teal); text-decoration: underline;">
+                                Click here to view the Terms & Conditions
                             </a>
                         </p>
                     </iframe>
                 </div>
                 
                 <div style="text-align: center; margin-top: 15px;">
-                    <a href="{{ asset('terms-and-conditions.pdf') }}" target="_blank" class="btn" style="background: var(--abodeology-teal);">
+                    <a href="{{ $pdfUrl }}" target="_blank" rel="noopener noreferrer" class="btn" style="background: var(--abodeology-teal);">
                         Open PDF in New Window
                     </a>
                 </div>
@@ -348,7 +358,7 @@
             <input type="text" 
                    name="seller1_name" 
                    placeholder="Seller 1 Full Name" 
-                   value="{{ old('seller1_name', auth()->user()->name ?? '') }}"
+                   value="{{ @$instruction->seller1_name ?? '' }}"
                    required
                    class="{{ $errors->has('seller1_name') ? 'error' : '' }}">
             @error('seller1_name')
@@ -358,7 +368,7 @@
             <input type="text" 
                    name="seller1_signature" 
                    placeholder="Digital Signature (type your full name)" 
-                   value="{{ old('seller1_signature') }}"
+                   value="{{ @$instruction->seller1_signature ?? '' }}"
                    required
                    class="{{ $errors->has('seller1_signature') ? 'error' : '' }}">
             @error('seller1_signature')
@@ -379,7 +389,7 @@
             <input type="text" 
                    name="seller2_name" 
                    placeholder="Seller 2 Full Name (optional)" 
-                   value="{{ old('seller2_name') }}"
+                   value="{{ @$instruction->seller2_name ?? '' }}"
                    class="{{ $errors->has('seller2_name') ? 'error' : '' }}">
             @error('seller2_name')
                 <div class="error-message">{{ $message }}</div>
@@ -388,7 +398,7 @@
             <input type="text" 
                    name="seller2_signature" 
                    placeholder="Digital Signature (type your full name)" 
-                   value="{{ old('seller2_signature') }}"
+                   value="{{@$instruction->seller2_signature ?? '' }}"
                    class="{{ $errors->has('seller2_signature') ? 'error' : '' }}">
             @error('seller2_signature')
                 <div class="error-message">{{ $message }}</div>
@@ -401,7 +411,16 @@
             @error('seller2_date')
                 <div class="error-message">{{ $message }}</div>
             @enderror
+            
+            @if(isset($property) && $property)
+            <div style="margin-top: 20px; text-align: center;">
+                <button type="button" class="btn" id="saveSignatureBtn" style="background: var(--abodeology-teal);">
+                    Save
+                </button>
+            </div>
+            @endif
         </div>
+       
 
         <!-- HIDDEN PROPERTY ID -->
         @if(isset($property) && $property)
@@ -411,6 +430,19 @@
         <!-- SUBMIT -->
         <button type="submit" class="btn" id="submitBtn">Sign Up Now</button>
     </form>
+    
+    <!-- Hidden form for saving signatures only (outside main form) -->
+    @if(isset($property) && $property)
+    <form id="signatureForm" action="{{ route('seller.signature.save', $property->id) }}" method="POST" style="display: none;">
+        @csrf
+        <input type="hidden" name="seller1_name" id="signature_seller1_name" value="">
+        <input type="hidden" name="seller1_signature" id="signature_seller1_signature" value="">
+        <input type="hidden" name="seller1_date" id="signature_seller1_date" value="">
+        <input type="hidden" name="seller2_name" id="signature_seller2_name" value="">
+        <input type="hidden" name="seller2_signature" id="signature_seller2_signature" value="">
+        <input type="hidden" name="seller2_date" id="signature_seller2_date" value="">
+    </form>
+    @endif
 </div>
 
 @push('scripts')
@@ -476,6 +508,86 @@
             e.preventDefault();
             return false;
         }
+    });
+    
+    // Save signature button handler
+    document.addEventListener('DOMContentLoaded', function() {
+        const saveSignatureBtn = document.getElementById('saveSignatureBtn');
+        const signatureForm = document.getElementById('signatureForm');
+        
+        if (!saveSignatureBtn) {
+            return; // Button doesn't exist, exit
+        }
+        
+        if (!signatureForm) {
+            console.error('Signature form not found in DOM');
+            saveSignatureBtn.style.display = 'none'; // Hide button if form doesn't exist
+            return;
+        }
+        
+        saveSignatureBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Use setTimeout to prevent blocking the UI
+            setTimeout(function() {
+                const form = document.getElementById('signatureForm');
+                if (!form) {
+                    alert('Error: Signature form not found. Please refresh the page and try again.');
+                    return;
+                }
+                
+                // Get values from main form
+                const seller1NameInput = document.querySelector('input[name="seller1_name"]');
+                const seller1SignatureInput = document.querySelector('input[name="seller1_signature"]');
+                const seller1DateInput = document.querySelector('input[name="seller1_date"]');
+                const seller2NameInput = document.querySelector('input[name="seller2_name"]');
+                const seller2SignatureInput = document.querySelector('input[name="seller2_signature"]');
+                const seller2DateInput = document.querySelector('input[name="seller2_date"]');
+                
+                const seller1Name = seller1NameInput ? seller1NameInput.value.trim() : '';
+                const seller1Signature = seller1SignatureInput ? seller1SignatureInput.value.trim() : '';
+                const seller1Date = seller1DateInput ? seller1DateInput.value : '';
+                const seller2Name = seller2NameInput ? seller2NameInput.value.trim() : '';
+                const seller2Signature = seller2SignatureInput ? seller2SignatureInput.value.trim() : '';
+                const seller2Date = seller2DateInput ? seller2DateInput.value : '';
+                
+                // Validate required fields
+                if (!seller1Name || !seller1Signature || !seller1Date) {
+                    alert('Please fill in all required signature fields for Seller 1.');
+                    return;
+                }
+                
+                // Get hidden form inputs
+                const hiddenSeller1Name = document.getElementById('signature_seller1_name');
+                const hiddenSeller1Signature = document.getElementById('signature_seller1_signature');
+                const hiddenSeller1Date = document.getElementById('signature_seller1_date');
+                const hiddenSeller2Name = document.getElementById('signature_seller2_name');
+                const hiddenSeller2Signature = document.getElementById('signature_seller2_signature');
+                const hiddenSeller2Date = document.getElementById('signature_seller2_date');
+                
+                // Check if all hidden inputs exist
+                if (!hiddenSeller1Name || !hiddenSeller1Signature || !hiddenSeller1Date || 
+                    !hiddenSeller2Name || !hiddenSeller2Signature || !hiddenSeller2Date) {
+                    alert('Error: Signature form fields not found. Please refresh the page and try again.');
+                    return;
+                }
+                
+                // Disable button to prevent double submission
+                saveSignatureBtn.disabled = true;
+                saveSignatureBtn.textContent = 'Saving...';
+                
+                // Set values in hidden form
+                hiddenSeller1Name.value = seller1Name;
+                hiddenSeller1Signature.value = seller1Signature;
+                hiddenSeller1Date.value = seller1Date;
+                hiddenSeller2Name.value = seller2Name;
+                hiddenSeller2Signature.value = seller2Signature;
+                hiddenSeller2Date.value = seller2Date;
+                
+                // Submit the signature form
+                form.submit();
+            }, 0);
+        });
     });
 </script>
 @endpush
