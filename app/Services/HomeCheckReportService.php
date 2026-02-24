@@ -137,6 +137,7 @@ class HomeCheckReportService
 
         // If OpenAI credentials are configured, try real AI analysis first
         if (!empty($apiKey) && !empty($assistantId)) {
+            Log::info('HomeCheck AI: Using OpenAI Assistant', ['property_id' => $property->id, 'assistant_id' => $assistantId]);
             try {
                 $analysis = $this->generateAIAnalysisWithOpenAI($homecheckData, $property, $apiKey, $assistantId);
 
@@ -154,6 +155,12 @@ class HomeCheckReportService
                     'error' => $e->getMessage(),
                 ]);
             }
+        } else {
+            Log::warning('HomeCheck AI: OpenAI not used (missing OPENAI_API_KEY or OPENAI_ASSISTANT_ID). Using fallback.', [
+                'property_id' => $property->id,
+                'has_api_key' => !empty($apiKey),
+                'has_assistant_id' => !empty($assistantId),
+            ]);
         }
 
         // Fallback: existing simulated analysis
