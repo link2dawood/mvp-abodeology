@@ -31,187 +31,229 @@
 
     .template-builder-page .form-control,
     .template-builder-page .form-select {
-        border-radius: 4px;
+        border-radius: 6px;
+        transition: all 0.2s ease;
     }
 
     .template-builder-page .btn {
-        border-radius: 4px;
+        border-radius: 6px;
+        transition: all 0.2s ease;
     }
 
     .template-builder-header {
-        /* position: absolute; */
-        top: 70px;
-        left: 0;
-        right: 0;
-        background: #ffffff;
-        padding: 15px 20px;
+        background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+        padding: 20px 30px;
         border-bottom: 1px solid #e0e0e0;
         z-index: 999;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        position: relative;
     }
 
-    h2 {
-        font-size: 28px;
-        margin-bottom: 8px;
+    .template-builder-header::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, #e0e0e0 50%, transparent);
     }
 
-    .page-subtitle {
-        color: #666;
-        margin-bottom: 25px;
-    }
-
-    .page-header {
-        margin-bottom: 30px;
-    }
-
-    .card {
-        background: var(--white);
-        padding: 25px;
-        border-radius: 12px;
-        border: 1px solid var(--line-grey);
-        box-shadow: 0px 3px 12px rgba(0,0,0,0.05);
+    .header-title-section {
+        display: flex;
+        align-items: center;
+        gap: 12px;
         margin-bottom: 20px;
     }
 
-    .card-body {
-        padding: 25px;
+    .header-title-section h2 {
+        margin: 0;
+        font-size: 24px;
+        font-weight: 700;
+        color: #212529;
+        letter-spacing: -0.3px;
     }
 
-    .form-label {
-        display: block;
+    .header-title-section .title-icon {
+        width: 32px;
+        height: 32px;
+        background: linear-gradient(135deg, var(--abodeology-teal), #1a9a96);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 16px;
+        box-shadow: 0 2px 8px rgba(44, 184, 180, 0.25);
+    }
+
+    .header-form-section {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+        align-items: end;
+    }
+
+    .form-field-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .form-field-group label {
+        font-size: 12px;
         font-weight: 600;
-        margin-bottom: 8px;
-        color: #333;
-        font-size: 14px;
+        color: #495057;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin: 0;
     }
 
-    .form-control,
-    .form-select {
-        width: 100%;
-        padding: 10px 12px;
-        border: 1px solid var(--line-grey);
+    .form-field-group .form-control,
+    .form-field-group .form-select {
+        padding: 10px 14px;
+        border: 1.5px solid #e0e0e0;
         border-radius: 6px;
         font-size: 14px;
-        box-sizing: border-box;
+        transition: all 0.2s ease;
+        background: #ffffff;
     }
 
-    .form-control-sm {
-        padding: 6px 10px;
-        font-size: 13px;
-    }
-
-    .form-control:focus,
-    .form-select:focus {
+    .form-field-group .form-control:focus,
+    .form-field-group .form-select:focus {
         outline: none;
         border-color: var(--abodeology-teal);
         box-shadow: 0 0 0 3px rgba(44, 184, 180, 0.1);
+        background: #ffffff;
     }
 
-    .form-control.is-invalid,
-    .form-select.is-invalid {
-        border-color: #dc3545;
+    .form-field-group .form-control:hover,
+    .form-field-group .form-select:hover {
+        border-color: #c0c0c0;
     }
 
-    .invalid-feedback {
-        display: block;
-        color: #dc3545;
-        font-size: 13px;
-        margin-top: 5px;
+    .template-builder-footer {
+        background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+        padding: 18px 30px;
+        border-top: 1px solid #e0e0e0;
+        z-index: 1000;
+        box-shadow: 0 -2px 8px rgba(0,0,0,0.04);
+        position: relative;
     }
 
-    .form-check {
+    .template-builder-footer::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, #e0e0e0 50%, transparent);
+    }
+
+    .footer-actions {
         display: flex;
+        justify-content: space-between;
         align-items: center;
-        margin-bottom: 20px;
-    }
-
-    .form-check-input {
-        margin-right: 8px;
-        width: 20px;
-        height: 20px;
-        cursor: pointer;
-    }
-
-    .form-check-label {
-        margin: 0;
-        cursor: pointer;
-        font-size: 14px;
+        max-width: 100%;
+        margin: 0 auto;
     }
 
     .btn {
-        padding: 10px 20px;
+        padding: 10px 24px;
         border-radius: 6px;
-        display: inline-block;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
         text-decoration: none;
         font-weight: 600;
         font-size: 14px;
-        transition: background 0.3s ease;
+        transition: all 0.2s ease;
         border: none;
         cursor: pointer;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.08);
     }
 
     .btn-primary {
-        background: var(--abodeology-teal);
+        background: linear-gradient(135deg, var(--abodeology-teal), #1a9a96);
         color: var(--white);
+        box-shadow: 0 4px 12px rgba(44, 184, 180, 0.3);
     }
 
     .btn-primary:hover {
-        background: #25A29F;
+        background: linear-gradient(135deg, #1a9a96, var(--abodeology-teal));
+        box-shadow: 0 6px 16px rgba(44, 184, 180, 0.4);
+        transform: translateY(-1px);
     }
 
     .btn-outline-secondary {
-        background: transparent;
-        color: #666;
-        border: 1px solid #ddd;
+        background: #ffffff;
+        color: #495057;
+        border: 1.5px solid #dee2e6;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
 
     .btn-outline-secondary:hover {
-        background: #f5f5f5;
+        background: #f8f9fa;
+        border-color: #adb5bd;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
     }
 
-    .mb-3 {
-        margin-bottom: 20px;
+    .btn-outline-primary {
+        background: #ffffff;
+        color: var(--abodeology-teal);
+        border: 1.5px solid var(--abodeology-teal);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
 
-    .mt-4 {
-        margin-top: 20px;
+    .btn-outline-primary:hover {
+        background: rgba(44, 184, 180, 0.05);
+        border-color: var(--abodeology-teal);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(44, 184, 180, 0.15);
     }
 
-    .mb-2 {
-        margin-bottom: 10px;
-    }
-
-    .d-flex {
+    .action-buttons {
         display: flex;
+        gap: 12px;
+        align-items: center;
     }
 
-    .me-2 {
-        margin-right: 10px;
+    @media (max-width: 1200px) {
+        .header-form-section {
+            grid-template-columns: 1fr;
+        }
+        
+        .footer-actions {
+            flex-direction: column;
+            gap: 15px;
+            align-items: stretch;
+        }
+        
+        .action-buttons {
+            width: 100%;
+            justify-content: flex-end;
+        }
     }
 
-    .btn-sm {
-        padding: 6px 12px;
-        font-size: 13px;
-    }
-
-    .text-muted {
-        color: #666;
-    }
-
-    code {
-        background: #f4f4f4;
-        padding: 2px 6px;
-        border-radius: 4px;
-        font-size: 12px;
-        font-family: 'Courier New', monospace;
-    }
-
-    .mb-1 {
-        margin-bottom: 5px;
-    }
-
-    .mb-0 {
-        margin-bottom: 0;
+    @media (max-width: 768px) {
+        .template-builder-header {
+            padding: 15px 20px;
+        }
+        
+        .template-builder-footer {
+            padding: 15px 20px;
+        }
+        
+        .action-buttons {
+            flex-direction: column;
+        }
+        
+        .action-buttons .btn {
+            width: 100%;
+            justify-content: center;
+        }
     }
 </style>
 @endpush
@@ -219,30 +261,27 @@
 @section('content')
     <div class="container">
         <div class="template-builder-header">
-            <div style="max-width: 100%; margin: 0 auto; display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <h2 style="margin: 0; font-size: 20px; font-weight: 600;">Create Email Template</h2>
+            <div class="header-title-section">
+                <div class="title-icon">✉️</div>
+                <h2>Create Email Template</h2>
+            </div>
+            <div class="header-form-section">
+                <div class="form-field-group">
+                    <label for="name">Template Name</label>
+                    <input type="text" id="name" name="name" class="form-control" value="{{ old('name') }}" placeholder="Enter template name" required>
                 </div>
-                <div style="display: flex; gap: 15px; align-items: center;">
-                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                        <label for="name" style="margin: 0; display: flex; align-items: center; gap: 8px;">
-                            <span style="font-size: 13px; color: #666;">Name:</span>
-                            <input type="text" id="name" name="name" class="form-control form-control-sm" value="{{ old('name') }}" placeholder="Template name" required style="width: 200px; display: inline-block;">
-                        </label>
-                        <label for="action" style="margin: 0; display: flex; align-items: center; gap: 8px;">
-                            <span style="font-size: 13px; color: #666;">Action:</span>
-                            <select id="action" name="action" class="form-select form-select-sm" required style="width: 200px; display: inline-block;">
-                                <option value="" disabled {{ old('action') ? '' : 'selected' }}>Select action...</option>
-                                @foreach($actions as $value => $label)
-                                    <option value="{{ $value }}" {{ old('action') === $value ? 'selected' : '' }}>{{ $label }}</option>
-                                @endforeach
-                            </select>
-                        </label>
-                        <label for="subject" style="margin: 0; display: flex; align-items: center; gap: 8px;">
-                            <span style="font-size: 13px; color: #666;">Subject:</span>
-                            <input type="text" id="subject" name="subject" class="form-control form-control-sm" value="{{ old('subject') }}" placeholder="Email subject" required style="width: 200px; display: inline-block;">
-                        </label>
-                    </div>
+                <div class="form-field-group">
+                    <label for="action">Email Action</label>
+                    <select id="action" name="action" class="form-select" required>
+                        <option value="" disabled {{ old('action') ? '' : 'selected' }}>Select an action...</option>
+                        @foreach($actions as $value => $label)
+                            <option value="{{ $value }}" {{ old('action') === $value ? 'selected' : '' }}>{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="form-field-group">
+                    <label for="subject">Email Subject</label>
+                    <input type="text" id="subject" name="subject" class="form-control" value="{{ old('subject') }}" placeholder="Enter email subject" required>
                 </div>
             </div>
         </div>
@@ -354,12 +393,18 @@
             </script>
             @endpush
 
-            <div style="bottom: 0; left: 0; right: 0; background: #ffffff; padding: 15px 20px; border-top: 1px solid #e0e0e0; z-index: 1000; box-shadow: 0 -2px 10px rgba(0,0,0,0.1);">
-                <div style="max-width: 100%; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; padding: 0 20px;">
-                    <a href="{{ route('admin.email-templates.index') }}" class="btn btn-outline-secondary">Cancel</a>
-                    <div style="display: flex; gap: 10px;">
-                        <button type="button" class="btn btn-outline-primary" onclick="previewTemplate()">👁️ Test Preview</button>
-                        <button type="submit" class="btn btn-primary">💾 Save Template</button>
+            <div class="template-builder-footer">
+                <div class="footer-actions">
+                    <a href="{{ route('admin.email-templates.index') }}" class="btn btn-outline-secondary">
+                        <span>←</span> Cancel
+                    </a>
+                    <div class="action-buttons">
+                        <button type="button" class="btn btn-outline-primary" onclick="previewTemplate()">
+                            <span>👁️</span> Test Preview
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            <span>💾</span> Save Template
+                        </button>
                     </div>
                 </div>
             </div>

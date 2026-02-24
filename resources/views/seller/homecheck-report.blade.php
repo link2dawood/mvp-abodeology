@@ -262,6 +262,7 @@
         overflow: hidden;
         box-shadow: 0 15px 50px rgba(0,0,0,0.4);
         animation: fadeIn 0.25s ease-out;
+        position: relative;
     }
 
     @keyframes fadeIn {
@@ -284,7 +285,7 @@
     }
 
     .close-modal {
-        position: fixed;
+        position: absolute;
         top: 16px;
         right: 16px;
         z-index: 100002;
@@ -510,9 +511,9 @@
     @endif
 
     <!-- MODAL -->
-    <div id="modal" class="modal" onclick="if(event.target.id === 'modal') closeModal();">
-        <button type="button" class="close-modal" onclick="closeModal()" aria-label="Close">×</button>
+    <div id="modal" class="modal">
         <div class="modal-content">
+            <button type="button" class="close-modal" onclick="closeModal()" aria-label="Close">×</button>
             <div id="modal-image-container" style="width: 50%; position: relative;">
                 <img id="modal-img" class="modal-img" src="" alt="Room Image" style="display: block;" onerror="if(this.src !== '{{ asset('media/placeholder-room.jpg') }}') { this.src = '{{ asset('media/placeholder-room.jpg') }}'; this.onerror = null; }">
                 <div id="pano-viewer"></div>
