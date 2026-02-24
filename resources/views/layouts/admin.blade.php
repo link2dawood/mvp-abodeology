@@ -43,8 +43,11 @@
             height: auto;
         }
 
-        /* NAVBAR */
+        /* NAVBAR - sticky so always in view */
         .navbar {
+            position: sticky;
+            top: 0;
+            z-index: 1030;
             background: var(--black);
             padding: 15px 35px;
             display: flex;

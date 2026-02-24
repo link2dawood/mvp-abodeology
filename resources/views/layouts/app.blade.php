@@ -33,6 +33,13 @@
             height: auto;
         }
 
+        /* Sticky header so always in view */
+        .navbar {
+            position: sticky;
+            top: 0;
+            z-index: 1030;
+        }
+
         @media (max-width: 768px) {
             main table {
                 display: block;

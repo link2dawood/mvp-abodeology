@@ -2744,8 +2744,14 @@ class AdminController extends Controller
                 }
             }
 
-            // Generate and save the full report
+            // Generate and save the full report (uses room-level analysis for report content)
             $reportGenerated = $reportService->processAndGenerateReport($homecheckReport);
+
+            // Optional: per-image analysis with Vision API (different AI response per image).
+            // Run after report generation so each image gets its own rating/comments for display.
+            if (config('services.openai.analyze_per_image')) {
+                $reportService->updatePerImageAnalysis($homecheckData, $property);
+            }
             
             if ($reportGenerated) {
                 \Log::info('AI analysis processed successfully for HomeCheck ID: ' . $homecheckReport->id);

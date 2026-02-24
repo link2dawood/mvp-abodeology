@@ -140,13 +140,12 @@ class HomeCheckReportService
             try {
                 $analysis = $this->generateAIAnalysisWithOpenAI($homecheckData, $property, $apiKey, $assistantId);
 
-                // Basic sanity check on structure before returning
-                if (is_array($analysis)
-                    && isset($analysis['overall_rating'], $analysis['summary'], $analysis['rooms'])) {
+                // Basic sanity check: need at least rooms (and usually overall_rating/summary)
+                if (is_array($analysis) && !empty($analysis['rooms']) && is_array($analysis['rooms'])) {
                     return $analysis;
                 }
 
-                Log::warning('HomeCheck OpenAI analysis returned unexpected structure. Falling back to simulated analysis.', [
+                Log::warning('HomeCheck OpenAI analysis returned unexpected structure (missing or invalid rooms). Falling back to simulated analysis.', [
                     'property_id' => $property->id,
                 ]);
             } catch (\Throwable $e) {
@@ -196,7 +195,19 @@ class HomeCheckReportService
     }
 
     /**
-     * Real AI analysis via OpenAI Assistants API using a pre-configured Assistant.
+     * Real AI analysis via OpenAI Assistants API using your pre-configured Assistant.
+     *
+     * Where the AI output comes from:
+     * - Your OpenAI Assistant (OPENAI_ASSISTANT_ID in .env) is run via the Assistants API.
+     * - The app creates a thread, posts one user message (instructions + property/rooms JSON),
+     *   runs the assistant, then reads the first assistant message and parses it as JSON.
+     * - Your assistant's reply (full text) is taken from: thread → messages → first message
+     *   where role=assistant → content[0].text.value.
+     *
+     * Expected minimum JSON shape (extra keys are preserved and may be shown in the report):
+     * - overall_rating (number), summary (string), rooms (object)
+     * - rooms["Room Name"]: rating, comments, moisture (optional), issues (optional array)
+     * - recommendations (array), issues_found (array) optional but used in report
      *
      * @param \Illuminate\Support\Collection $homecheckData
      * @param Property $property
@@ -377,6 +388,120 @@ class HomeCheckReportService
     }
 
     /**
+     * Run per-image AI analysis using OpenAI Vision and update each HomecheckData record.
+     * Use when you want a different AI response for each image instead of one per room.
+     * Requires OPENAI_ANALYZE_PER_IMAGE=true and OPENAI_API_KEY.
+     *
+     * @param \Illuminate\Support\Collection $homecheckData
+     * @param Property $property
+     * @return void
+     */
+    public function updatePerImageAnalysis($homecheckData, Property $property): void
+    {
+        $apiKey = config('services.openai.api_key');
+        $model = config('services.openai.vision_model', 'gpt-4o-mini');
+        if (empty($apiKey)) {
+            Log::warning('HomeCheck per-image analysis skipped: OPENAI_API_KEY not set.');
+            return;
+        }
+
+        foreach ($homecheckData as $data) {
+            if (empty($data->image_path)) {
+                continue;
+            }
+            $imageUrl = $data->image_url ?? null;
+            if (empty($imageUrl)) {
+                try {
+                    $imageUrl = $data->getImageUrlAttribute();
+                } catch (\Throwable $e) {
+                    Log::warning('HomeCheck per-image: could not get image URL for homecheck_data ' . $data->id, ['error' => $e->getMessage()]);
+                    continue;
+                }
+            }
+            if (empty($imageUrl)) {
+                continue;
+            }
+
+            try {
+                $result = $this->analyzeSingleImageWithVision($data, $property, $apiKey, $model);
+                if ($result !== null) {
+                    $data->update([
+                        'ai_rating' => $result['rating'] ?? null,
+                        'ai_comments' => $result['comments'] ?? null,
+                    ]);
+                }
+            } catch (\Throwable $e) {
+                Log::warning('HomeCheck per-image analysis failed for homecheck_data ' . $data->id, [
+                    'error' => $e->getMessage(),
+                    'room' => $data->room_name,
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Call OpenAI Vision (Chat Completions) to analyse one property room image.
+     *
+     * @param HomecheckData $data
+     * @param Property $property
+     * @param string $apiKey
+     * @param string $model
+     * @return array|null ['rating' => int, 'comments' => string] or null on failure
+     */
+    protected function analyzeSingleImageWithVision(HomecheckData $data, Property $property, string $apiKey, string $model): ?array
+    {
+        $imageUrl = $data->getImageUrlAttribute();
+        if (empty($imageUrl)) {
+            return null;
+        }
+
+        $prompt = "You are the Abodeology HomeCheck AI. Analyse this single property room image. "
+            . "Property: {$property->address}, room: {$data->room_name}. "
+            . "Respond with ONLY a JSON object in this exact format, no other text: {\"rating\": number 1-10, \"comments\": \"short analysis paragraph\"}. "
+            . "Consider condition, presentation, and any visible issues. JSON only.";
+
+        $response = Http::withToken($apiKey)
+            ->timeout(60)
+            ->post('https://api.openai.com/v1/chat/completions', [
+                'model' => $model,
+                'messages' => [
+                    [
+                        'role' => 'user',
+                        'content' => [
+                            ['type' => 'text', 'text' => $prompt],
+                            ['type' => 'image_url', 'image_url' => ['url' => $imageUrl]],
+                        ],
+                    ],
+                ],
+                'max_tokens' => 300,
+            ])
+            ->json();
+
+        $text = $response['choices'][0]['message']['content'] ?? null;
+        if (empty($text)) {
+            return null;
+        }
+
+        $jsonText = preg_replace('/^\s*```(?:json)?\s*\n?/i', '', trim($text));
+        $jsonText = preg_replace('/\n?\s*```\s*$/i', '', $jsonText);
+        $decoded = json_decode($jsonText, true);
+        if (json_last_error() !== JSON_ERROR_NONE || !is_array($decoded)) {
+            return null;
+        }
+
+        $rating = isset($decoded['rating']) ? (int) $decoded['rating'] : null;
+        $comments = isset($decoded['comments']) ? trim((string) $decoded['comments']) : null;
+        if ($rating === null && $comments === null) {
+            return null;
+        }
+
+        return [
+            'rating' => $rating >= 1 && $rating <= 10 ? $rating : null,
+            'comments' => $comments !== '' ? $comments : null,
+        ];
+    }
+
+    /**
      * Analyze a single room.
      *
      * @param string $roomName
@@ -437,6 +562,57 @@ class HomeCheckReportService
     }
 
     /**
+     * Render any top-level AI keys not already shown (so advanced assistant output is visible).
+     *
+     * @param array $aiAnalysis Full decoded assistant response
+     * @param string[] $skipKeys Keys we already render elsewhere
+     * @return string HTML fragment
+     */
+    protected function renderExtraTopLevelFields(array $aiAnalysis, array $skipKeys): string
+    {
+        $known = array_flip($skipKeys);
+        $out = [];
+        foreach ($aiAnalysis as $key => $value) {
+            if (isset($known[$key]) || !is_scalar($value) && !is_array($value)) {
+                continue;
+            }
+            if (is_array($value)) {
+                $value = json_encode($value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+            }
+            $label = ucfirst(str_replace('_', ' ', $key));
+            $out[] = '<p><strong>' . e($label) . ':</strong> ' . e((string) $value) . '</p>';
+        }
+        return implode('', $out);
+    }
+
+    /**
+     * Render any room-level AI keys not already shown (rating, comments, moisture, issues, images_count, etc.).
+     *
+     * @param array $roomAnalysis Single room from assistant rooms[]
+     * @return string HTML fragment
+     */
+    protected function renderExtraRoomFields(array $roomAnalysis): string
+    {
+        $known = ['rating', 'comments', 'comment', 'analysis', 'summary', 'moisture', 'issues', 'images_count', '360_images_count', 'regular_images_count'];
+        $knownFlip = array_flip($known);
+        $out = [];
+        foreach ($roomAnalysis as $key => $value) {
+            if (isset($knownFlip[$key])) {
+                continue;
+            }
+            if (is_array($value)) {
+                $value = is_string(implode('', $value)) ? implode(', ', $value) : json_encode($value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+            }
+            if (!is_scalar($value)) {
+                continue;
+            }
+            $label = ucfirst(str_replace('_', ' ', $key));
+            $out[] = '<p><strong>' . e($label) . ':</strong> ' . e((string) $value) . '</p>';
+        }
+        return implode('', $out);
+    }
+
+    /**
      * Generate report content (HTML).
      *
      * @param Property $property
@@ -484,8 +660,9 @@ class HomeCheckReportService
 
     <div class="section">
         <h2>Executive Summary</h2>
-        <p><strong>Overall Rating:</strong> <span class="rating">' . $aiAnalysis['overall_rating'] . '/10</span></p>
-        <p>' . e($aiAnalysis['summary']) . '</p>
+        <p><strong>Overall Rating:</strong> <span class="rating">' . ($aiAnalysis['overall_rating'] ?? 'N/A') . '/10</span></p>
+        <p>' . e($aiAnalysis['summary'] ?? '') . '</p>
+        ' . $this->renderExtraTopLevelFields($aiAnalysis, ['overall_rating', 'summary', 'rooms', 'recommendations', 'issues_found']) . '
     </div>
 
     <div class="section">
@@ -507,6 +684,7 @@ class HomeCheckReportService
                 $html .= '</p>
             ' . (isset($roomAnalysis['comments']) && $roomAnalysis['comments'] ? '<p><strong>Analysis:</strong> ' . e($roomAnalysis['comments']) . '</p>' : '') . '
             ' . (!empty($roomAnalysis['issues']) ? '<p><strong>Issues:</strong> ' . e(implode(', ', $roomAnalysis['issues'])) . '</p>' : '') . '
+            ' . $this->renderExtraRoomFields($roomAnalysis) . '
         </div>';
             }
         }

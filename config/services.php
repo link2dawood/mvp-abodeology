@@ -38,6 +38,10 @@ return [
     'openai' => [
         'api_key' => env('OPENAI_API_KEY'),
         'assistant_id' => env('OPENAI_ASSISTANT_ID'),
+        // When true, each image is analysed separately with Vision API (different AI response per image).
+        // When false, one room-level analysis is applied to all images in that room (same response per image).
+        'analyze_per_image' => env('OPENAI_ANALYZE_PER_IMAGE', false),
+        'vision_model' => env('OPENAI_VISION_MODEL', 'gpt-4o-mini'),
     ],
 
     'google' => [

@@ -33,6 +33,12 @@
             height: auto;
         }
         
+        body > header {
+            position: sticky;
+            top: 0;
+            z-index: 1030;
+        }
+
         .page {
             background: var(--bg-secondary);
             min-height: 100vh;
