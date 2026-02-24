@@ -4,7 +4,7 @@
 
 @push('styles')
 <style>
-    .main-content .container { max-width: 1180px; margin: 35px auto; padding: 0 22px; }
+    .main-content .container {  margin: 35px auto; padding: 0 22px; }
     h2 { font-size: 28px; margin-bottom: 8px; color: var(--dark-text); }
     .page-header { margin-bottom: 30px; display: flex; flex-wrap: wrap; align-items: center; gap: 15px; }
     .page-subtitle { color: #666; margin-bottom: 0; flex-basis: 100%; font-size: 15px; }

@@ -15,7 +15,7 @@
         <span>➖</span> Divider
     </button>
     <button type="button" class="block-button" data-block="spacer" title="Add Spacer">
-        <span>↕️</span> Spacer
+        <span class="spacer-icon">↓</span> Spacer
     </button>
     
     <div class="toolbar-divider"></div>

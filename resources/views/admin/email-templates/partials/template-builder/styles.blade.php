@@ -59,7 +59,7 @@
             
             .variables-section {
                 min-width: 280px;
-                max-width: 280px;
+                /* max-width: 280px; */
             }
         }
 
@@ -84,7 +84,7 @@
             overflow-x: hidden;
             border: none;
             border-radius: 0;
-            padding: 15px;
+            padding: 20px;
             background: #ffffff;
             font-size: 13px;
             min-height: 0;
@@ -121,18 +121,31 @@
         }
 
         .variables-section {
-            min-width: 320px;
+            /* min-width: 320px; */
             max-width: 320px;
         }
 
         .variables-section .mb-2,
         .widgets-section .text-muted {
-            padding: 0 15px;
+            padding: 0 20px;
             margin-bottom: 10px;
         }
 
         .variables-section .mb-2 {
-            padding: 0 15px;
+            padding: 0 20px;
+        }
+
+        .variables-section > .form-label {
+            padding: 15px 20px;
+        }
+
+        .variables-section .text-muted {
+            padding: 0 20px;
+            margin-bottom: 15px;
+        }
+
+        .variables-section .variable-list {
+            padding: 15px 20px 20px 20px;
         }
 
         .widgets-section .text-muted {
@@ -488,6 +501,20 @@
             background: #007bff;
             color: #ffffff;
             border-color: #007bff;
+        }
+
+        .spacer-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            background: #dc3545;
+            border-radius: 50%;
+            color: #ffffff;
+            font-size: 12px;
+            font-weight: bold;
+            line-height: 1;
         }
 
         .block-templates {
