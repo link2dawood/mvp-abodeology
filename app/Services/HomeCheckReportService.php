@@ -274,8 +274,10 @@ class HomeCheckReportService
             . "Here is the data to analyse:\n"
             . json_encode($payload);
 
-        // 1) Create a thread with the user message
-        $threadResponse = Http::withToken($apiKey)
+        // 1) Create a thread with the user message (OpenAI-Beta header required for Assistants API)
+        $threadHttpResponse = Http::withToken($apiKey)
+            ->withHeaders(['OpenAI-Beta' => 'assistants=v2'])
+            ->timeout(60)
             ->post('https://api.openai.com/v1/threads', [
                 'messages' => [
                     [
@@ -288,17 +290,27 @@ class HomeCheckReportService
                         ],
                     ],
                 ],
-            ])
-            ->json();
+            ]);
+
+        $threadResponse = $threadHttpResponse->json();
 
         if (empty($threadResponse['id'])) {
-            throw new \RuntimeException('Failed to create OpenAI thread for HomeCheck analysis.');
+            $status = $threadHttpResponse->status();
+            $body = $threadHttpResponse->body();
+            $errorMessage = isset($threadResponse['error']['message']) ? $threadResponse['error']['message'] : (strlen($body) > 500 ? substr($body, 0, 500) . '...' : $body);
+            Log::error('HomeCheck OpenAI thread creation failed', [
+                'property_id' => $property->id,
+                'http_status' => $status,
+                'openai_error' => $errorMessage,
+            ]);
+            throw new \RuntimeException('Failed to create OpenAI thread for HomeCheck analysis. HTTP ' . $status . ': ' . $errorMessage);
         }
 
         $threadId = $threadResponse['id'];
 
         // 2) Run the assistant on the thread
         $runResponse = Http::withToken($apiKey)
+            ->withHeaders(['OpenAI-Beta' => 'assistants=v2'])
             ->post("https://api.openai.com/v1/threads/{$threadId}/runs", [
                 'assistant_id' => $assistantId,
             ])
@@ -319,6 +331,7 @@ class HomeCheckReportService
             sleep(2);
 
             $runStatusResponse = Http::withToken($apiKey)
+                ->withHeaders(['OpenAI-Beta' => 'assistants=v2'])
                 ->get("https://api.openai.com/v1/threads/{$threadId}/runs/{$runId}")
                 ->json();
 
@@ -332,6 +345,7 @@ class HomeCheckReportService
 
         // 4) Fetch the latest assistant message
         $messagesResponse = Http::withToken($apiKey)
+            ->withHeaders(['OpenAI-Beta' => 'assistants=v2'])
             ->get("https://api.openai.com/v1/threads/{$threadId}/messages", [
                 'limit' => 10,
             ])
