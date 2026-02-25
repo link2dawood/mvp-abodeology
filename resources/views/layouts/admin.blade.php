@@ -96,7 +96,7 @@
             color: var(--white);
             padding: 25px 35px;
             text-align: center;
-            margin-top: 50px;
+            margin-top: 10px;
             flex-shrink: 0;
         }
 

@@ -3,9 +3,14 @@
         // Decode HTML entities (e.g. from data-widget-html) so preview renders as UI, not code
         function decodeHtmlEntities(str) {
             if (!str) return '';
-            var el = document.createElement('div');
-            el.innerHTML = str;
-            return el.innerHTML;
+            // Create a temporary element to decode HTML entities
+            var textarea = document.createElement('textarea');
+            textarea.innerHTML = str;
+            var decoded = textarea.value;
+            // Also handle double-encoded entities
+            textarea.innerHTML = decoded;
+            decoded = textarea.value;
+            return decoded;
         }
         console.log('🚀 Template builder script loading...');
         document.addEventListener('DOMContentLoaded', function () {
@@ -1118,8 +1123,14 @@
             function showWidgetPreview(html, name) {
                 console.log('🔍 showWidgetPreview called for:', name);
                 try {
+                    // Decode HTML entities properly
                     var decodedHtml = decodeHtmlEntities(html);
+                    console.log('Decoded HTML length:', decodedHtml.length);
+                    
+                    // Replace variables with sample data
                     var previewHtml = replaceWidgetVariables(decodedHtml);
+                    console.log('Preview HTML after variable replacement length:', previewHtml.length);
+                    
                     var displayName = (typeof name === 'string' ? name : 'Widget').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
                     var wrapperStart = '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>body{font-family:Arial,sans-serif;margin:0;padding:20px;background:#f5f5f5}.email-wrapper{max-width:600px;margin:0 auto;background:white;padding:20px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.1)}</style></head><body><div class="email-wrapper">';
@@ -1148,10 +1159,21 @@
 
                     var iframe = document.getElementById('widgetPreviewFrame');
                     if (iframe) {
-                        var doc = iframe.contentDocument || iframe.contentWindow.document;
-                        doc.open();
-                        doc.write(wrapperStart + previewHtml + wrapperEnd);
-                        doc.close();
+                        // Use srcdoc to ensure HTML is rendered, not displayed as text
+                        var fullHtml = wrapperStart + previewHtml + wrapperEnd;
+                        iframe.srcdoc = fullHtml;
+                        
+                        // Also try doc.write as fallback for older browsers
+                        try {
+                            var doc = iframe.contentDocument || iframe.contentWindow.document;
+                            if (doc && doc.readyState === 'complete') {
+                                doc.open();
+                                doc.write(fullHtml);
+                                doc.close();
+                            }
+                        } catch (e) {
+                            console.warn('doc.write fallback failed, using srcdoc:', e);
+                        }
                     }
                     modal.classList.add('show');
                     console.log('✅ Widget preview modal shown');
