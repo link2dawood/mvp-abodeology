@@ -236,6 +236,16 @@
                 const logoUrlPattern2 = new RegExp('src=["\']' + openBrace + openBrace + logoText + closeBrace + closeBrace + '["\']', 'gi');
                 visualHtml = visualHtml.replace(logoUrlPattern2, 'src="' + actualLogoUrl + '"');
                 
+                // First, clean up any JavaScript code patterns that might be in the HTML
+                // Replace patterns like "+ varName.trim() +" or "+ extractedVar +" with proper variable syntax
+                const openBraceClean = '{';
+                const closeBraceClean = '}';
+                const recipientNameVar = openBraceClean + openBraceClean + 'recipient.name' + closeBraceClean + closeBraceClean;
+                visualHtml = visualHtml.replace(/\+\s*varName\.trim\(\)\s*\+/gi, recipientNameVar);
+                visualHtml = visualHtml.replace(/\+\s*varName\s*\+/gi, recipientNameVar);
+                visualHtml = visualHtml.replace(/\+\s*extractedVar\s*\+/gi, recipientNameVar);
+                visualHtml = visualHtml.replace(/\+\s*extractedVar\.trim\(\)\s*\+/gi, recipientNameVar);
+                
                 // Replace other variables with friendly placeholders
                 const variablePattern = /\{\{([^}]+)\}\}/g;
                 visualHtml = visualHtml.replace(variablePattern, function(match, variable) {
@@ -246,7 +256,11 @@
                         return match; // Keep original if not in img src
                     }
                     const friendlyName = variableFriendlyNames[variable] || variable.replace(/\./g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-                    return '<span class="variable-placeholder" title="Variable: {{' + variable + '}}">' + friendlyName + '</span>';
+                    // Construct title with variable using string concatenation to avoid Blade parsing
+                    const openBraceTitle = '{';
+                    const closeBraceTitle = '}';
+                    const titleVar = openBraceTitle + openBraceTitle + variable + closeBraceTitle + closeBraceTitle;
+                    return '<span class="variable-placeholder" title="Variable: ' + titleVar + '">' + friendlyName + '</span>';
                 });
 
                 // Wrap in email preview container
@@ -546,13 +560,37 @@
                             return match;
                         });
                         
-                        blockHtml = blockHtml.replace(/<span class="variable-placeholder"[^>]*>([^<]+)<\/span>/g, function(match, friendlyName) {
+                        // Extract variables from placeholders - use title attribute (most reliable)
+                        // Title format: "Variable: {variableName}" (with double braces)
+                        const openBrace = '{';
+                        const closeBrace = '}';
+                        
+                        // Process all variable placeholders that have a title attribute
+                        // This should be all of them since we set title when creating placeholders
+                        const titlePattern = new RegExp('<span[^>]*class=["\']variable-placeholder["\'][^>]*title=["\']Variable:\\s*' + 
+                            openBrace + openBrace + '([^\\' + closeBrace + ']+)' + closeBrace + closeBrace + 
+                            '["\'][^>]*>([^<]+)<\\/span>', 'gi');
+                        
+                        // First, replace all placeholders with title attributes
+                        blockHtml = blockHtml.replace(titlePattern, function(match, varName, friendlyName) {
+                            const extractedVar = varName.trim();
+                            // Return the original variable format
+                            return '{{' + extractedVar + '}}';
+                        });
+                        
+                        // Fallback: Process any remaining placeholders that don't have title attribute
+                        // Check if placeholder still exists (wasn't replaced by title pattern)
+                        blockHtml = blockHtml.replace(/<span[^>]*class=["']variable-placeholder["'][^>]*>([^<]+)<\/span>/gi, function(match, friendlyName) {
+                            // This placeholder wasn't processed by title pattern, so it likely doesn't have a title
+                            const trimmedFriendly = friendlyName.trim();
+                            // Try to find variable by friendly name (exact match only)
                             for (let varName in variableFriendlyNames) {
-                                if (variableFriendlyNames[varName] === friendlyName) {
+                                if (variableFriendlyNames[varName] === trimmedFriendly) {
                                     return '{{' + varName + '}}';
                                 }
                             }
-                            const varName = friendlyName.toLowerCase().replace(/\s+/g, '.');
+                            // Last resort: convert friendly name back to variable format
+                            const varName = trimmedFriendly.toLowerCase().replace(/\s+/g, '.');
                             return '{{' + varName + '}}';
                         });
                         
@@ -685,9 +723,13 @@
             // Block insertion function
             function insertBlock(html) {
                 try {
+                    // CRITICAL: Sync canvas to textarea FIRST to preserve all existing variables
+                    syncCanvasToTextarea(false);
+                    
                     // Save state before insertion
                     saveToHistory();
                     
+                    // Get current HTML from textarea (which now has all variables preserved)
                     const currentHtml = hiddenTextarea.value || '';
                     const hasContent = currentHtml.trim().length > 0;
                     const spacing = hasContent ? '\n' : '';
@@ -738,6 +780,9 @@
                 }
                 
                 try {
+                    // CRITICAL: Sync canvas to textarea FIRST to preserve all existing variables
+                    syncCanvasToTextarea(false);
+                    
                     // Save state before insertion
                     saveToHistory();
                     
@@ -748,6 +793,7 @@
                         .replace(/&quot;/g, '"')
                         .replace(/&#039;/g, "'");
                     
+                    // Get current HTML from textarea (which now has all variables preserved)
                     const currentHtml = hiddenTextarea.value || '';
                     const hasContent = currentHtml.trim().length > 0;
                     const spacing = hasContent ? '\n\n' : '';
