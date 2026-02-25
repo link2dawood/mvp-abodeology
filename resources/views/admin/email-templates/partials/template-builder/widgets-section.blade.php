@@ -46,7 +46,7 @@
             @endforeach
         @else
             <div class="widget-empty-state">
-                <div class="widget-empty-state-icon">📦</div>
+                <div class="widget-empty-state-icon"><i class="fa fa-cube"></i></div>
                 <p class="text-muted mb-0" style="font-size: 12px;">
                     No widgets available.<br>Please run the seeder to populate widgets.
                 </p>

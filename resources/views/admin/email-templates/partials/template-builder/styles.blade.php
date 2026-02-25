@@ -278,7 +278,7 @@
         }
 
         .canvas-widget-block::before {
-            content: '✏️ Edit';
+            content: 'Edit';
             position: absolute;
             top: 5px;
             right: 5px;
@@ -350,7 +350,7 @@
         }
 
         .variable-placeholder::before {
-            content: '📋 ';
+            content: '';
         }
 
         .widget-properties-panel {

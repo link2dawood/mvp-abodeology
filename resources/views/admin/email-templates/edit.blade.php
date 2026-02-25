@@ -2,179 +2,389 @@
 
 @section('title', 'Edit Email Template')
 
-@push('styles')
-<style>
-    .main-content .container {  margin: 35px auto; padding: 0 22px; }
-    h2 { font-size: 28px; margin-bottom: 8px; color: var(--dark-text); }
-    .page-header { margin-bottom: 30px; display: flex; flex-wrap: wrap; align-items: center; gap: 15px; }
-    .page-subtitle { color: #666; margin-bottom: 0; flex-basis: 100%; font-size: 15px; }
-    .card {
-        background: var(--white);
-        padding: 25px;
-        border-radius: 12px;
-        border: 1px solid var(--line-grey);
-        box-shadow: 0 3px 12px rgba(0,0,0,0.05);
-        margin-bottom: 20px;
-    }
-    .card-body { padding: 0; }
-    .form-label { display: block; font-weight: 600; margin-bottom: 8px; color: #333; font-size: 14px; }
-    .form-control, .form-select {
-        width: 100%;
-        padding: 10px 12px;
-        border: 1px solid var(--line-grey);
-        border-radius: 6px;
-        font-size: 14px;
-        box-sizing: border-box;
-    }
-    .form-control:focus, .form-select:focus {
-        outline: none;
-        border-color: var(--abodeology-teal);
-        box-shadow: 0 0 0 3px rgba(44, 184, 180, 0.1);
-    }
-    .form-control.is-invalid, .form-select.is-invalid { border-color: #dc3545; }
-    .invalid-feedback { display: block; color: #dc3545; font-size: 13px; margin-top: 5px; }
-    .form-check { display: flex; align-items: center; margin-bottom: 20px; }
-    .form-check-input { margin-right: 10px; width: 20px; height: 20px; cursor: pointer; accent-color: var(--abodeology-teal); }
-    .form-check.form-switch .form-check-input { width: 2.5em; height: 1.25em; border-radius: 2em; }
-    .form-check-label { margin: 0; cursor: pointer; font-size: 14px; }
-    .btn {
-        padding: 10px 20px;
-        border-radius: 6px;
-        display: inline-block;
-        text-decoration: none;
-        font-weight: 600;
-        font-size: 14px;
-        transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
-        border: 1px solid transparent;
-        cursor: pointer;
-    }
-    .btn-primary { background: var(--abodeology-teal); color: var(--white); }
-    .btn-primary:hover { background: #25A29F; color: var(--white); }
-    .btn-outline-secondary { background: transparent; color: #666; border-color: #ddd; }
-    .btn-outline-secondary:hover { background: #f5f5f5; color: #333; }
-    .btn-outline-danger { background: transparent; color: var(--danger); border-color: var(--danger); }
-    .btn-outline-danger:hover { background: var(--danger); color: var(--white); }
-    .mb-3 { margin-bottom: 20px; }
-    .mt-4 { margin-top: 24px; }
-    .d-flex { display: flex; }
-    .justify-content-between { justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
-</style>
-@endpush
-
 @section('styles')
     @include('admin.email-templates.partials.template-builder.styles')
 @endsection
 
+@push('styles')
+<style>
+    .template-builder-page .container {
+        max-width: 100%;
+        margin: 0;
+        padding: 0;
+    }
+
+    .template-builder-page .page-header {
+        display: none;
+    }
+
+    .template-builder-page .card {
+        border: none;
+        box-shadow: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    .template-builder-page .card-body {
+        padding: 0;
+    }
+
+    .template-builder-page .form-control,
+    .template-builder-page .form-select {
+        border-radius: 6px;
+        transition: all 0.2s ease;
+    }
+
+    .template-builder-page .btn {
+        border-radius: 6px;
+        transition: all 0.2s ease;
+    }
+
+    .template-builder-header {
+        background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+        padding: 20px 30px;
+        border-bottom: 1px solid #e0e0e0;
+        z-index: 999;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        position: relative;
+    }
+
+    .template-builder-header::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, #e0e0e0 50%, transparent);
+    }
+
+    .header-title-section {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+
+    .header-title-section h2 {
+        margin: 0;
+        font-size: 24px;
+        font-weight: 700;
+        color: #212529;
+        letter-spacing: -0.3px;
+    }
+
+    .header-title-section .title-icon {
+        width: 32px;
+        height: 32px;
+        background: linear-gradient(135deg, var(--abodeology-teal), #1a9a96);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 16px;
+        box-shadow: 0 2px 8px rgba(44, 184, 180, 0.25);
+    }
+
+    .header-form-section {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+        align-items: end;
+    }
+
+    .form-field-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .form-field-group label {
+        font-size: 12px;
+        font-weight: 600;
+        color: #495057;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin: 0;
+    }
+
+    .form-field-group .form-control,
+    .form-field-group .form-select {
+        padding: 10px 14px;
+        border: 1.5px solid #e0e0e0;
+        border-radius: 6px;
+        font-size: 14px;
+        transition: all 0.2s ease;
+        background: #ffffff;
+    }
+
+    .form-field-group .form-control:focus,
+    .form-field-group .form-select:focus {
+        outline: none;
+        border-color: var(--abodeology-teal);
+        box-shadow: 0 0 0 3px rgba(44, 184, 180, 0.1);
+        background: #ffffff;
+    }
+
+    .form-field-group .form-control:hover,
+    .form-field-group .form-select:hover {
+        border-color: #c0c0c0;
+    }
+
+    .template-builder-footer {
+        background: transparent;
+        padding: 18px 30px;
+        margin-bottom: 10px;
+        border-top: 1px solid rgba(0,0,0,0.06);
+        z-index: 1000;
+        box-shadow: none;
+        position: relative;
+        flex-shrink: 0;
+    }
+
+    .template-builder-footer::before {
+        display: none;
+    }
+
+    .footer-actions {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        max-width: 100%;
+        margin: 0 auto;
+    }
+
+    .btn {
+        padding: 10px 24px;
+        border-radius: 6px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 14px;
+        transition: all 0.2s ease;
+        border: none;
+        cursor: pointer;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, var(--abodeology-teal), #1a9a96);
+        color: var(--white);
+        box-shadow: 0 4px 12px rgba(44, 184, 180, 0.3);
+    }
+
+    .btn-primary:hover {
+        background: linear-gradient(135deg, #1a9a96, var(--abodeology-teal));
+        box-shadow: 0 6px 16px rgba(44, 184, 180, 0.4);
+        transform: translateY(-1px);
+    }
+
+    .btn-outline-secondary {
+        background: #ffffff;
+        color: #495057;
+        border: 1.5px solid #dee2e6;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    .btn-outline-secondary:hover {
+        background: #f8f9fa;
+        border-color: #adb5bd;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+
+    .btn-outline-primary {
+        background: #ffffff;
+        color: var(--abodeology-teal);
+        border: 1.5px solid var(--abodeology-teal);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    .btn-outline-primary:hover {
+        background: rgba(44, 184, 180, 0.05);
+        border-color: var(--abodeology-teal);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(44, 184, 180, 0.15);
+    }
+
+    .btn-outline-danger {
+        background: #ffffff;
+        color: var(--danger);
+        border: 1.5px solid var(--danger);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    .btn-outline-danger:hover {
+        background: rgba(225, 79, 79, 0.05);
+        border-color: var(--danger);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(225, 79, 79, 0.15);
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+    }
+
+    .form-check {
+        display: flex;
+        align-items: center;
+        margin-bottom: 0;
+    }
+
+    .form-check-input {
+        margin-right: 8px;
+        accent-color: var(--abodeology-teal);
+    }
+
+    .form-check.form-switch .form-check-input {
+        width: 2.5em;
+        height: 1.25em;
+        border-radius: 2em;
+    }
+
+    @media (max-width: 1200px) {
+        .header-form-section {
+            grid-template-columns: 1fr;
+        }
+
+        .footer-actions {
+            flex-direction: column;
+            gap: 15px;
+            align-items: stretch;
+        }
+
+        .action-buttons {
+            width: 100%;
+            justify-content: flex-end;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .template-builder-header {
+            padding: 15px 20px;
+        }
+
+        .template-builder-footer {
+            padding: 15px 20px;
+        }
+
+        .action-buttons {
+            flex-direction: column;
+        }
+
+        .action-buttons .btn {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+</style>
+@endpush
+
 @section('content')
+    <div class="template-builder-page">
     <div class="container">
-        <div class="page-header">
-            <h2>Edit Email Template</h2>
-            <p class="page-subtitle">Update the content and settings for this email template.</p>
-            <a href="{{ route('admin.email-templates.index') }}" class="btn btn-outline-secondary">Back to list</a>
-        </div>
-
-        <div class="card">
-            <div class="card-body">
-                <form method="POST" action="{{ route('admin.email-templates.update', $template->id) }}">
-                @csrf
-                @method('PUT')
-
-                <div class="mb-3">
-                    <label for="name" class="form-label">Name</label>
-                    <input
-                        type="text"
-                        id="name"
-                        name="name"
-                        class="form-control @error('name') is-invalid @enderror"
-                        value="{{ old('name', $template->name) }}"
-                        required
-                    >
-                    @error('name')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
+        <div class="template-builder-header">
+            <div class="header-title-section">
+                <div class="title-icon"><i class="fa fa-envelope"></i></div>
+                <h2>Edit Email Template</h2>
+            </div>
+            <div class="header-form-section">
+                <div class="form-field-group">
+                    <label for="name">Template Name</label>
+                    <input type="text" id="name" name="name" class="form-control" value="{{ old('name', $template->name) }}" placeholder="Enter template name" required>
                 </div>
-
-                <div class="mb-3">
-                    <label for="action" class="form-label">Action</label>
-                    <select
-                        id="action"
-                        name="action"
-                        class="form-select @error('action') is-invalid @enderror"
-                        required
-                    >
+                <div class="form-field-group">
+                    <label for="action">Email Action</label>
+                    <select id="action" name="action" class="form-select" required>
                         @foreach($actions as $value => $label)
-                            <option value="{{ $value }}" {{ old('action', $template->action) === $value ? 'selected' : '' }}>
-                                {{ $label }} ({{ $value }})
-                            </option>
+                            <option value="{{ $value }}" {{ old('action', $template->action) === $value ? 'selected' : '' }}>{{ $label }}</option>
                         @endforeach
                     </select>
-                    @error('action')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
                 </div>
-
-                <div class="mb-3">
-                    <label for="subject" class="form-label">Subject</label>
-                    <input
-                        type="text"
-                        id="subject"
-                        name="subject"
-                        class="form-control @error('subject') is-invalid @enderror"
-                        value="{{ old('subject', $template->subject) }}"
-                        required
-                    >
-                    @error('subject')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
+                <div class="form-field-group">
+                    <label for="subject">Email Subject</label>
+                    <input type="text" id="subject" name="subject" class="form-control" value="{{ old('subject', $template->subject) }}" placeholder="Enter email subject" required>
                 </div>
-
-                <div class="mb-3">
-                    <label for="template_type" class="form-label">Template Type</label>
-                    <select
-                        id="template_type"
-                        name="template_type"
-                        class="form-select @error('template_type') is-invalid @enderror"
-                        required
-                    >
+                <div class="form-field-group">
+                    <label for="template_type">Template Type</label>
+                    <select id="template_type" name="template_type" class="form-select" required>
                         <option value="override" {{ old('template_type', $template->template_type) === 'override' ? 'selected' : '' }}>Override default</option>
                         <option value="default" {{ old('template_type', $template->template_type) === 'default' ? 'selected' : '' }}>Use as default</option>
                     </select>
-                    @error('template_type')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
                 </div>
-
-                <div class="form-check form-switch mb-3">
-                    <input
-                        class="form-check-input"
-                        type="checkbox"
-                        role="switch"
-                        id="is_active"
-                        name="is_active"
-                        value="1"
-                        {{ old('is_active', $template->is_active) ? 'checked' : '' }}
-                    >
+                <div class="form-field-group form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="is_active" name="is_active" value="1" {{ old('is_active', $template->is_active) ? 'checked' : '' }}>
                     <label class="form-check-label" for="is_active">Active</label>
-                </div>
-
-                @php($templateContext = $template)
-                @include('admin.email-templates.partials.template-builder', ['template' => $templateContext])
-
-                <div class="mt-4 d-flex justify-content-between">
-                    <button type="submit" class="btn btn-primary">Save Changes</button>
-                </div>
-                </form>
-
-                <div class="mt-3">
-                    <form method="POST" class="mt-4" action="{{ route('admin.email-templates.destroy', $template->id) }}" onsubmit="return confirm('Are you sure you want to delete this template?');">
-                        @csrf
-                        @method('DELETE')
-                        <button type="submit" class="btn btn-outline-danger">Delete Template</button>
-                    </form>
                 </div>
             </div>
         </div>
+
+        <form method="POST" action="{{ route('admin.email-templates.update', $template->id) }}" style="padding: 0; margin: 0; margin-top: 20px; display: flex; flex-direction: column; height: calc(100vh - 150px);">
+            @csrf
+            @method('PUT')
+            <input type="hidden" name="name" id="name-hidden" value="{{ old('name', $template->name) }}">
+            <input type="hidden" name="action" id="action-hidden" value="{{ old('action', $template->action) }}">
+            <input type="hidden" name="subject" id="subject-hidden" value="{{ old('subject', $template->subject) }}">
+            <input type="hidden" name="template_type" id="template_type-hidden" value="{{ old('template_type', $template->template_type) }}">
+            <input type="hidden" name="is_active" id="is_active-hidden" value="{{ old('is_active', $template->is_active) ? '1' : '0' }}">
+
+            @php($templateContext = $template)
+            @include('admin.email-templates.partials.template-builder', ['template' => $templateContext])
+
+            <div class="template-builder-footer">
+                <div class="footer-actions">
+                    <a href="{{ route('admin.email-templates.index') }}" class="btn btn-outline-secondary">
+                        <i class="fa fa-arrow-left"></i> Cancel
+                    </a>
+                    <div class="action-buttons">
+                        <button type="button" class="btn btn-outline-primary" onclick="previewTemplate()">
+                            <i class="fa fa-eye"></i> Test Preview
+                        </button>
+                        <a href="{{ route('admin.email-templates.destroy', $template->id) }}" class="btn btn-outline-danger" onclick="event.preventDefault(); if(confirm('Are you sure you want to delete this template?')) { document.getElementById('form-delete-template').submit(); }">Delete</a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fa fa-save"></i> Save Changes
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </form>
+
+        <form id="form-delete-template" method="POST" action="{{ route('admin.email-templates.destroy', $template->id) }}" class="d-none">
+            @csrf
+            @method('DELETE')
+        </form>
     </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const nameInput = document.getElementById('name');
+            const actionSelect = document.getElementById('action');
+            const subjectInput = document.getElementById('subject');
+            const templateTypeSelect = document.getElementById('template_type');
+            const isActiveInput = document.getElementById('is_active');
+            const nameHidden = document.getElementById('name-hidden');
+            const actionHidden = document.getElementById('action-hidden');
+            const subjectHidden = document.getElementById('subject-hidden');
+            const templateTypeHidden = document.getElementById('template_type-hidden');
+            const isActiveHidden = document.getElementById('is_active-hidden');
+            function syncInputs() {
+                if (nameInput) nameHidden.value = nameInput.value;
+                if (actionSelect) actionHidden.value = actionSelect.value;
+                if (subjectInput) subjectHidden.value = subjectInput.value;
+                if (templateTypeSelect) templateTypeHidden.value = templateTypeSelect.value;
+                if (isActiveInput) isActiveHidden.value = isActiveInput.checked ? '1' : '0';
+            }
+            if (nameInput) nameInput.addEventListener('input', syncInputs);
+            if (subjectInput) subjectInput.addEventListener('input', syncInputs);
+            if (actionSelect) actionSelect.addEventListener('change', syncInputs);
+            if (templateTypeSelect) templateTypeSelect.addEventListener('change', syncInputs);
+            if (isActiveInput) isActiveInput.addEventListener('change', syncInputs);
+        });
+    </script>
 @endsection
-
-

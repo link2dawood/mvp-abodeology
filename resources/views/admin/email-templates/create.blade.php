@@ -133,22 +133,18 @@
     }
 
     .template-builder-footer {
-        background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+        background: transparent;
         padding: 18px 30px;
-        border-top: 1px solid #e0e0e0;
+        margin-bottom: 10px;
+        border-top: 1px solid rgba(0,0,0,0.06);
         z-index: 1000;
-        box-shadow: 0 -2px 8px rgba(0,0,0,0.04);
+        box-shadow: none;
         position: relative;
+        flex-shrink: 0;
     }
 
     .template-builder-footer::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 1px;
-        background: linear-gradient(90deg, transparent, #e0e0e0 50%, transparent);
+        display: none;
     }
 
     .footer-actions {
@@ -259,10 +255,11 @@
 @endpush
 
 @section('content')
+    <div class="template-builder-page">
     <div class="container">
         <div class="template-builder-header">
             <div class="header-title-section">
-                <div class="title-icon">✉️</div>
+                <div class="title-icon"><i class="fa fa-envelope"></i></div>
                 <h2>Create Email Template</h2>
             </div>
             <div class="header-form-section">
@@ -396,19 +393,20 @@
             <div class="template-builder-footer">
                 <div class="footer-actions">
                     <a href="{{ route('admin.email-templates.index') }}" class="btn btn-outline-secondary">
-                        <span>←</span> Cancel
+                        <i class="fa fa-arrow-left"></i> Cancel
                     </a>
                     <div class="action-buttons">
                         <button type="button" class="btn btn-outline-primary" onclick="previewTemplate()">
-                            <span>👁️</span> Test Preview
+                            <i class="fa fa-eye"></i> Test Preview
                         </button>
                         <button type="submit" class="btn btn-primary">
-                            <span>💾</span> Save Template
+                            <i class="fa fa-save"></i> Save Template
                         </button>
                     </div>
                 </div>
             </div>
         </form>
+    </div>
     </div>
 
     <script>

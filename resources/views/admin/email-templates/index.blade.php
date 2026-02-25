@@ -240,7 +240,7 @@
 
         @if(!empty($activeTemplatesByAction))
             <div class="alert alert-warning">
-                <strong>⚠️ Warning:</strong> Multiple active templates exist for the following actions:
+                <strong><i class="fa fa-exclamation-triangle"></i> Warning:</strong> Multiple active templates exist for the following actions:
                 <ul style="margin: 10px 0 0 20px; padding: 0;">
                     @foreach($activeTemplatesByAction as $action => $count)
                         <li><strong>{{ $action }}:</strong> {{ $count }} active template(s). Only the latest one is being used.</li>
@@ -292,12 +292,12 @@
                                 {{ $template->name }}
                                 @if($hasMultipleActive && $template->is_active)
                                     <span class="badge badge-warning" title="Multiple active templates exist for this action. Only the latest one is being used.">
-                                        ⚠️ Multiple Active
+                                        <i class="fa fa-exclamation-triangle"></i> Multiple Active
                                     </span>
                                 @endif
                                 @if($isCurrentlyUsed && $template->is_active)
                                     <span class="badge badge-info" title="This template is currently being used for this action">
-                                        ✓ In Use
+                                        <i class="fa fa-check"></i> In Use
                                     </span>
                                 @endif
                             </td>

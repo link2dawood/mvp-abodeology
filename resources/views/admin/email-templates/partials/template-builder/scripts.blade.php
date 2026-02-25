@@ -1,5 +1,12 @@
 @push('scripts')
     <script>
+        // Decode HTML entities (e.g. from data-widget-html) so preview renders as UI, not code
+        function decodeHtmlEntities(str) {
+            if (!str) return '';
+            var el = document.createElement('div');
+            el.innerHTML = str;
+            return el.innerHTML;
+        }
         console.log('🚀 Template builder script loading...');
         document.addEventListener('DOMContentLoaded', function () {
             console.log('✅ DOM Content Loaded');
@@ -645,14 +652,9 @@
                         return sampleData[variable] || '[Sample ' + variable + ']';
                     });
 
-                    const escapedHtml = previewHtml
-                        .replace(/\\/g, '\\\\')
-                        .replace(/`/g, '\\`')
-                        .replace(/\${/g, '\\${');
-
                     const modal = document.createElement('div');
                     modal.className = 'widget-preview-modal show';
-                    modal.innerHTML = 
+                    modal.innerHTML =
                         '<div class="widget-preview-modal-content">' +
                             '<div class="widget-preview-modal-header">' +
                                 '<h5>Email Preview</h5>' +
@@ -662,12 +664,12 @@
                                 '<div class="widget-preview-note">' +
                                     '<strong>Note:</strong> This is a preview with sample data. Variables are replaced with example values.' +
                                 '</div>' +
-                                '<div style="max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">' +
-                                    escapedHtml +
-                                '</div>' +
+                                '<div id="email-preview-content" style="max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);"></div>' +
                             '</div>' +
                         '</div>';
                     document.body.appendChild(modal);
+                    var contentDiv = document.getElementById('email-preview-content');
+                    if (contentDiv) contentDiv.innerHTML = previewHtml;
                     console.log('✅ Preview modal created');
                 } catch (error) {
                     console.error('❌ Error in previewTemplate:', error);
@@ -1116,59 +1118,40 @@
             function showWidgetPreview(html, name) {
                 console.log('🔍 showWidgetPreview called for:', name);
                 try {
-                    const previewHtml = replaceWidgetVariables(html);
-                    
-                    const escapedPreviewHtml = previewHtml
-                        .replace(/\\/g, '\\\\')
-                        .replace(/`/g, '\\`')
-                        .replace(/\${/g, '\\${');
-                    
-                    const escapedName = String(name || 'Widget')
-                        .replace(/\\/g, '\\\\')
-                        .replace(/`/g, '\\`')
-                        .replace(/\${/g, '\\${');
-                    
-                    const fullHtml = '<!DOCTYPE html>' +
-                        '<html>' +
-                        '<head>' +
-                            '<meta charset="utf-8">' +
-                            '<meta name="viewport" content="width=device-width, initial-scale=1.0">' +
-                            '<style>' +
-                                'body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }' +
-                                '.email-wrapper { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }' +
-                            '</style>' +
-                        '</head>' +
-                        '<body>' +
-                            '<div class="email-wrapper">' +
-                                escapedPreviewHtml +
-                            '</div>' +
-                        '</body>' +
-                        '</html>';
-                    
-                    let modal = document.getElementById('widgetPreviewModal');
+                    var decodedHtml = decodeHtmlEntities(html);
+                    var previewHtml = replaceWidgetVariables(decodedHtml);
+                    var displayName = (typeof name === 'string' ? name : 'Widget').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+                    var wrapperStart = '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><style>body{font-family:Arial,sans-serif;margin:0;padding:20px;background:#f5f5f5}.email-wrapper{max-width:600px;margin:0 auto;background:white;padding:20px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.1)}</style></head><body><div class="email-wrapper">';
+                    var wrapperEnd = '</div></body></html>';
+
+                    var modal = document.getElementById('widgetPreviewModal');
                     if (!modal) {
                         modal = document.createElement('div');
                         modal.id = 'widgetPreviewModal';
                         modal.className = 'widget-preview-modal';
-                        modal.innerHTML = 
+                        modal.innerHTML =
                             '<div class="widget-preview-modal-content">' +
                                 '<div class="widget-preview-modal-header">' +
-                                    '<h5>Preview: ' + escapedName + '</h5>' +
+                                    '<h5>Preview: ' + displayName + '</h5>' +
                                     '<button type="button" class="widget-preview-close" onclick="closeWidgetPreview()">&times;</button>' +
                                 '</div>' +
                                 '<div class="widget-preview-modal-body">' +
                                     '<div class="widget-preview-note">' +
                                         '<strong>Note:</strong> This is a preview with sample data. Variables are replaced with example values.' +
                                     '</div>' +
-                                    '<iframe id="widgetPreviewFrame" style="width: 100%; height: 500px; border: none; background: white;"></iframe>' +
+                                    '<iframe id="widgetPreviewFrame" style="width:100%;height:500px;border:none;background:white;"></iframe>' +
                                 '</div>' +
                             '</div>';
                         document.body.appendChild(modal);
                     }
-                    
-                    const iframe = document.getElementById('widgetPreviewFrame');
+
+                    var iframe = document.getElementById('widgetPreviewFrame');
                     if (iframe) {
-                        iframe.srcdoc = fullHtml;
+                        var doc = iframe.contentDocument || iframe.contentWindow.document;
+                        doc.open();
+                        doc.write(wrapperStart + previewHtml + wrapperEnd);
+                        doc.close();
                     }
                     modal.classList.add('show');
                     console.log('✅ Widget preview modal shown');

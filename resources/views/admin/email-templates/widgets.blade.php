@@ -246,7 +246,7 @@
         <div class="page-header">
             <h2>Email Widgets</h2>
             <p class="page-subtitle">Reusable HTML components for building email templates.</p>
-            <a href="{{ route('admin.email-templates.index') }}" class="btn btn-outline-secondary">← Back to Templates</a>
+            <a href="{{ route('admin.email-templates.index') }}" class="btn btn-outline-secondary"><i class="fa fa-arrow-left"></i> Back to Templates</a>
         </div>
 
         @if(session('success'))
