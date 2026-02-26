@@ -91,17 +91,18 @@
     }
 
     .btn-primary:hover {
-        background: #25A29F;
+        background: #1a9a96;
+        color: var(--white);
     }
 
     .btn-outline-primary {
-        background: transparent;
-        color: var(--abodeology-teal);
-        border: 1px solid var(--abodeology-teal);
+        background: var(--abodeology-teal);
+        color: var(--white);
+        border: none;
     }
 
     .btn-outline-primary:hover {
-        background: var(--abodeology-teal);
+        background: #1a9a96;
         color: var(--white);
     }
 

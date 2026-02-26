@@ -121,8 +121,126 @@
         }
 
         .variables-section {
-            /* min-width: 320px; */
             max-width: 320px;
+            min-width: 0;
+            overflow: hidden;
+        }
+
+        .variable-insert-row {
+            display: flex;
+            gap: 8px;
+            align-items: stretch;
+            margin-bottom: 10px;
+            padding: 0 20px;
+        }
+
+        .variable-insert-row .variable-input-wrap {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .variables-section .variable-insert-row input.form-control,
+        .variables-section input.variable-search-input {
+            display: block;
+            width: 100%;
+            height: 38px;
+            padding: 8px 12px;
+            font-size: 14px;
+            line-height: 1.5;
+            color: #212529;
+            background-color: #ffffff;
+            border: 1.5px solid #e0e0e0;
+            border-radius: 6px;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .variables-section .variable-insert-row input.form-control:hover,
+        .variables-section input.variable-search-input:hover {
+            border-color: #c0c0c0;
+        }
+
+        .variables-section .variable-insert-row input.form-control:focus,
+        .variables-section input.variable-search-input:focus {
+            outline: none;
+            border-color: #2CB8B4;
+            box-shadow: 0 0 0 3px rgba(44, 184, 180, 0.15);
+        }
+
+        .variables-section .variable-insert-row input.form-control::placeholder,
+        .variables-section input.variable-search-input::placeholder {
+            color: #6c757d;
+        }
+
+        .variable-insert-row .variable-insert-btn {
+            flex-shrink: 0;
+            white-space: nowrap;
+            background: var(--abodeology-teal);
+            color: var(--white);
+            border: none;
+        }
+
+        .variable-insert-row .variable-insert-btn:hover {
+            background: #1a9a96;
+            color: var(--white);
+        }
+
+        .variable-helper-hint {
+            font-size: 12px;
+            margin-bottom: 10px;
+            padding: 0 20px;
+            color: #6c757d;
+        }
+
+        .variable-search-wrap {
+            padding: 0 20px 12px 20px;
+            min-width: 0;
+        }
+
+        .variable-search-wrap .variable-search-input {
+            display: block;
+            box-sizing: border-box;
+            width: 100%;
+            max-width: 100%;
+            margin: 0;
+            font-size: 14px;
+        }
+
+        .variable-list .variable-group {
+            margin-bottom: 15px;
+        }
+
+        .variable-list .variable-group-title {
+            display: block;
+            color: #2CB8B4;
+            font-size: 13px;
+            margin-bottom: 6px;
+        }
+
+        .variable-list .variable-group-list {
+            font-size: 12px;
+            padding-left: 20px;
+            margin: 0;
+            list-style: none;
+        }
+
+        .variable-list .variable-group-list .variable-item {
+            padding: 6px 8px;
+            margin: 2px 0;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+
+        .variable-list .variable-group-list .variable-item:hover {
+            background: rgba(44, 184, 180, 0.1);
+        }
+
+        .variable-list .variable-group-list .variable-item.hidden-by-search {
+            display: none;
+        }
+
+        .variable-list .variable-group.hidden-by-search {
+            display: none;
         }
 
         .variables-section .mb-2,
@@ -377,21 +495,23 @@
         }
 
         .close-properties {
-            background: none;
+            background: var(--abodeology-teal);
+            color: var(--white);
             border: none;
-            font-size: 24px;
+            font-size: 20px;
             cursor: pointer;
-            color: #666;
             padding: 0;
-            width: 30px;
-            height: 30px;
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
             display: flex;
             align-items: center;
             justify-content: center;
         }
 
         .close-properties:hover {
-            color: #000;
+            background: #1a9a96;
+            color: var(--white);
         }
 
         .properties-panel-body {
@@ -452,13 +572,13 @@
 
         .undo-redo-button {
             padding: 6px 12px;
-            background: #ffffff;
-            border: 1px solid #dee2e6;
+            background: var(--abodeology-teal);
+            color: var(--white);
+            border: none;
             border-radius: 4px;
             cursor: pointer;
             font-size: 12px;
             font-weight: 500;
-            color: #495057;
             transition: all 0.2s;
             display: flex;
             align-items: center;
@@ -466,9 +586,8 @@
         }
 
         .undo-redo-button:hover:not(:disabled) {
-            background: #007bff;
-            color: #ffffff;
-            border-color: #007bff;
+            background: #1a9a96;
+            color: var(--white);
         }
 
         .undo-redo-button:disabled {
@@ -478,13 +597,13 @@
 
         .block-button {
             padding: 8px 16px;
-            background: #ffffff;
-            border: 1px solid #dee2e6;
+            background: var(--abodeology-teal);
+            color: var(--white);
+            border: none;
             border-radius: 4px;
             cursor: pointer;
             font-size: 13px;
             font-weight: 500;
-            color: #495057;
             transition: all 0.2s;
             display: flex;
             align-items: center;
@@ -492,15 +611,13 @@
         }
 
         .block-button:hover {
-            background: #007bff;
-            color: #ffffff;
-            border-color: #007bff;
+            background: #1a9a96;
+            color: var(--white);
         }
 
         .block-button.active {
-            background: #007bff;
-            color: #ffffff;
-            border-color: #007bff;
+            background: #1a9a96;
+            color: var(--white);
         }
 
         .spacer-icon {
@@ -660,6 +777,28 @@
             padding: 5px 12px;
             border-radius: 4px;
             font-weight: 500;
+            background: var(--abodeology-teal);
+            color: var(--white);
+            border: none;
+        }
+
+        .btn-preview-widget:hover,
+        .btn-insert-widget:hover {
+            background: #1a9a96;
+            color: var(--white);
+        }
+
+        .widget-properties-panel .btn-danger,
+        .template-builder-grid .btn.btn-danger {
+            background: var(--abodeology-teal);
+            color: var(--white);
+            border: none;
+        }
+
+        .widget-properties-panel .btn-danger:hover,
+        .template-builder-grid .btn.btn-danger:hover {
+            background: #1a9a96;
+            color: var(--white);
         }
 
         .widget-category-section {
@@ -762,21 +901,23 @@
         }
 
         .widget-preview-close {
-            background: none;
+            background: var(--abodeology-teal);
+            color: var(--white);
             border: none;
-            font-size: 28px;
+            font-size: 24px;
             cursor: pointer;
-            color: #666;
             padding: 0;
-            width: 30px;
-            height: 30px;
+            width: 36px;
+            height: 36px;
+            border-radius: 6px;
             display: flex;
             align-items: center;
             justify-content: center;
         }
 
         .widget-preview-close:hover {
-            color: #000;
+            background: #1a9a96;
+            color: var(--white);
         }
 
         .widget-preview-modal-body {
