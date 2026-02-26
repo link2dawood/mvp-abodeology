@@ -171,14 +171,15 @@
     }
 
     .btn-primary {
-        background: linear-gradient(135deg, var(--abodeology-teal), #1a9a96);
+        background: var(--abodeology-teal);
         color: var(--white);
-        box-shadow: 0 4px 12px rgba(44, 184, 180, 0.3);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.08);
     }
 
     .btn-primary:hover {
-        background: linear-gradient(135deg, #1a9a96, var(--abodeology-teal));
-        box-shadow: 0 6px 16px rgba(44, 184, 180, 0.4);
+        background: #1a9a96;
+        color: var(--white);
+        box-shadow: 0 4px 8px rgba(44, 184, 180, 0.3);
         transform: translateY(-1px);
     }
 
@@ -197,17 +198,17 @@
     }
 
     .btn-outline-primary {
-        background: #ffffff;
-        color: var(--abodeology-teal);
-        border: 1.5px solid var(--abodeology-teal);
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        background: var(--abodeology-teal);
+        color: var(--white);
+        border: none;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.08);
     }
 
     .btn-outline-primary:hover {
-        background: rgba(44, 184, 180, 0.05);
-        border-color: var(--abodeology-teal);
+        background: #1a9a96;
+        color: var(--white);
         transform: translateY(-1px);
-        box-shadow: 0 4px 8px rgba(44, 184, 180, 0.15);
+        box-shadow: 0 4px 8px rgba(44, 184, 180, 0.3);
     }
 
     .action-buttons {

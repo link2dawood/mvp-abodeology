@@ -1,97 +1,101 @@
 <div class="variables-section">
     <label class="form-label">Variables Helper</label>
-    <div class="mb-2">
-        <input
-            type="text"
-            id="insert-variable-input"
-            class="form-control form-control-sm"
-            placeholder="e.g. property.address or buyer.name"
-            style="margin-bottom: 10px;"
-        >
-        <button id="insert-variable-button" class="btn btn-sm btn-outline-secondary" style="width: 100%;">
-            Insert
+    <div class="variable-insert-row">
+        <div class="variable-input-wrap">
+            <input
+                type="text"
+                id="insert-variable-input"
+                class="form-control form-control-sm"
+                placeholder="Search or type variable (e.g. property.address)"
+                autocomplete="off"
+            >
+        </div>
+        <button type="button" id="insert-variable-button" class="btn btn-sm btn-primary variable-insert-btn">
+            <i class="fa fa-plus"></i> Insert
         </button>
     </div>
-    <p class="text-muted" style="font-size: 12px; margin-bottom: 10px;">
-        Use variables in the template body with the syntax <code>{{ '{' }}{{ 'variable' }}{{ '}' }}</code>,
-        for example <code>{{ '{' }}{{ 'property.address' }}{{ '}' }}</code> or <code>{{ '{' }}{{ 'buyer.name' }}{{ '}' }}</code>.
+    <p class="text-muted variable-helper-hint">
+        Type a variable name and click Insert, or click a variable below to insert it.
     </p>
-    <div class="variable-list" style="max-height: calc(100vh - 250px); overflow-y: auto;">
-        <div style="margin-bottom: 15px;">
-            <strong style="color: #2CB8B4; font-size: 13px;">Property Variables</strong>
-            <ul class="mb-2" style="font-size: 12px; padding-left: 20px;">
-                <li><code>{{ '{' }}{{ 'property.address' }}{{ '}' }}</code> – Property Address</li>
-                <li><code>{{ '{' }}{{ 'property.postcode' }}{{ '}' }}</code> – Property Postcode</li>
-                <li><code>{{ '{' }}{{ 'property.asking_price' }}{{ '}' }}</code> – Asking Price</li>
+    <div class="variable-search-wrap">
+        <input type="text" id="variable-search-input" class="form-control form-control-sm variable-search-input" placeholder="Filter variables..." autocomplete="off">
+    </div>
+    <div class="variable-list" id="variable-list" style="max-height: calc(100vh - 250px); overflow-y: auto;">
+        <div class="variable-group" data-group="property">
+            <strong class="variable-group-title">Property Variables</strong>
+            <ul class="variable-group-list">
+                <li class="variable-item" data-variable="property.address"><code>{{ '{' }}{{ 'property.address' }}{{ '}' }}</code> – Property Address</li>
+                <li class="variable-item" data-variable="property.postcode"><code>{{ '{' }}{{ 'property.postcode' }}{{ '}' }}</code> – Property Postcode</li>
+                <li class="variable-item" data-variable="property.asking_price"><code>{{ '{' }}{{ 'property.asking_price' }}{{ '}' }}</code> – Asking Price</li>
             </ul>
         </div>
 
-        <div style="margin-bottom: 15px;">
-            <strong style="color: #2CB8B4; font-size: 13px;">Buyer Variables</strong>
-            <ul class="mb-2" style="font-size: 12px; padding-left: 20px;">
-                <li><code>{{ '{' }}{{ 'buyer.name' }}{{ '}' }}</code> – Buyer Name</li>
-                <li><code>{{ '{' }}{{ 'buyer.email' }}{{ '}' }}</code> – Buyer Email</li>
+        <div class="variable-group" data-group="buyer">
+            <strong class="variable-group-title">Buyer Variables</strong>
+            <ul class="variable-group-list">
+                <li class="variable-item" data-variable="buyer.name"><code>{{ '{' }}{{ 'buyer.name' }}{{ '}' }}</code> – Buyer Name</li>
+                <li class="variable-item" data-variable="buyer.email"><code>{{ '{' }}{{ 'buyer.email' }}{{ '}' }}</code> – Buyer Email</li>
             </ul>
         </div>
 
-        <div style="margin-bottom: 15px;">
-            <strong style="color: #2CB8B4; font-size: 13px;">Offer Variables</strong>
-            <ul class="mb-2" style="font-size: 12px; padding-left: 20px;">
-                <li><code>{{ '{' }}{{ 'offer.offer_amount' }}{{ '}' }}</code> – Offer Amount</li>
-                <li><code>{{ '{' }}{{ 'offer.created_at' }}{{ '}' }}</code> – Offer Created Date</li>
-                <li><code>{{ '{' }}{{ 'offer.funding_type' }}{{ '}' }}</code> – Funding Type</li>
+        <div class="variable-group" data-group="offer">
+            <strong class="variable-group-title">Offer Variables</strong>
+            <ul class="variable-group-list">
+                <li class="variable-item" data-variable="offer.offer_amount"><code>{{ '{' }}{{ 'offer.offer_amount' }}{{ '}' }}</code> – Offer Amount</li>
+                <li class="variable-item" data-variable="offer.created_at"><code>{{ '{' }}{{ 'offer.created_at' }}{{ '}' }}</code> – Offer Created Date</li>
+                <li class="variable-item" data-variable="offer.funding_type"><code>{{ '{' }}{{ 'offer.funding_type' }}{{ '}' }}</code> – Funding Type</li>
             </ul>
         </div>
 
-        <div style="margin-bottom: 15px;">
-            <strong style="color: #2CB8B4; font-size: 13px;">Viewing Variables</strong>
-            <ul class="mb-2" style="font-size: 12px; padding-left: 20px;">
-                <li><code>{{ '{' }}{{ 'viewing.viewing_date' }}{{ '}' }}</code> – Viewing Date</li>
-                <li><code>{{ '{' }}{{ 'viewing.viewing_time' }}{{ '}' }}</code> – Viewing Time</li>
-                <li><code>{{ '{' }}{{ 'viewing.status' }}{{ '}' }}</code> – Viewing Status</li>
+        <div class="variable-group" data-group="viewing">
+            <strong class="variable-group-title">Viewing Variables</strong>
+            <ul class="variable-group-list">
+                <li class="variable-item" data-variable="viewing.viewing_date"><code>{{ '{' }}{{ 'viewing.viewing_date' }}{{ '}' }}</code> – Viewing Date</li>
+                <li class="variable-item" data-variable="viewing.viewing_time"><code>{{ '{' }}{{ 'viewing.viewing_time' }}{{ '}' }}</code> – Viewing Time</li>
+                <li class="variable-item" data-variable="viewing.status"><code>{{ '{' }}{{ 'viewing.status' }}{{ '}' }}</code> – Viewing Status</li>
             </ul>
         </div>
 
-        <div style="margin-bottom: 15px;">
-            <strong style="color: #2CB8B4; font-size: 13px;">Valuation Variables</strong>
-            <ul class="mb-2" style="font-size: 12px; padding-left: 20px;">
-                <li><code>{{ '{' }}{{ 'valuation.property_address' }}{{ '}' }}</code> – Valuation Property Address</li>
-                <li><code>{{ '{' }}{{ 'valuation.postcode' }}{{ '}' }}</code> – Valuation Postcode</li>
-                <li><code>{{ '{' }}{{ 'valuation.valuation_date' }}{{ '}' }}</code> – Valuation Date</li>
+        <div class="variable-group" data-group="valuation">
+            <strong class="variable-group-title">Valuation Variables</strong>
+            <ul class="variable-group-list">
+                <li class="variable-item" data-variable="valuation.property_address"><code>{{ '{' }}{{ 'valuation.property_address' }}{{ '}' }}</code> – Valuation Property Address</li>
+                <li class="variable-item" data-variable="valuation.postcode"><code>{{ '{' }}{{ 'valuation.postcode' }}{{ '}' }}</code> – Valuation Postcode</li>
+                <li class="variable-item" data-variable="valuation.valuation_date"><code>{{ '{' }}{{ 'valuation.valuation_date' }}{{ '}' }}</code> – Valuation Date</li>
             </ul>
         </div>
 
-        <div style="margin-bottom: 15px;">
-            <strong style="color: #2CB8B4; font-size: 13px;">Instruction Variables</strong>
-            <ul class="mb-2" style="font-size: 12px; padding-left: 20px;">
-                <li><code>{{ '{' }}{{ 'instruction.signed_at' }}{{ '}' }}</code> – Instruction Signed Date</li>
-                <li><code>{{ '{' }}{{ 'instruction.fee_percentage' }}{{ '}' }}</code> – Fee Percentage</li>
-                <li><code>{{ '{' }}{{ 'instruction.status' }}{{ '}' }}</code> – Instruction Status</li>
+        <div class="variable-group" data-group="instruction">
+            <strong class="variable-group-title">Instruction Variables</strong>
+            <ul class="variable-group-list">
+                <li class="variable-item" data-variable="instruction.signed_at"><code>{{ '{' }}{{ 'instruction.signed_at' }}{{ '}' }}</code> – Instruction Signed Date</li>
+                <li class="variable-item" data-variable="instruction.fee_percentage"><code>{{ '{' }}{{ 'instruction.fee_percentage' }}{{ '}' }}</code> – Fee Percentage</li>
+                <li class="variable-item" data-variable="instruction.status"><code>{{ '{' }}{{ 'instruction.status' }}{{ '}' }}</code> – Instruction Status</li>
             </ul>
         </div>
 
-        <div style="margin-bottom: 15px;">
-            <strong style="color: #2CB8B4; font-size: 13px;">User & Recipient Variables</strong>
-            <ul class="mb-2" style="font-size: 12px; padding-left: 20px;">
-                <li><code>{{ '{' }}{{ 'recipient.name' }}{{ '}' }}</code> – Recipient Name</li>
-                <li><code>{{ '{' }}{{ 'user.email' }}{{ '}' }}</code> – User Email</li>
-                <li><code>{{ '{' }}{{ 'password' }}{{ '}' }}</code> – Password</li>
+        <div class="variable-group" data-group="recipient">
+            <strong class="variable-group-title">User & Recipient Variables</strong>
+            <ul class="variable-group-list">
+                <li class="variable-item" data-variable="recipient.name"><code>{{ '{' }}{{ 'recipient.name' }}{{ '}' }}</code> – Recipient Name</li>
+                <li class="variable-item" data-variable="user.email"><code>{{ '{' }}{{ 'user.email' }}{{ '}' }}</code> – User Email</li>
+                <li class="variable-item" data-variable="password"><code>{{ '{' }}{{ 'password' }}{{ '}' }}</code> – Password</li>
             </ul>
         </div>
 
-        <div style="margin-bottom: 15px;">
-            <strong style="color: #2CB8B4; font-size: 13px;">General & Widget Variables</strong>
-            <ul class="mb-2" style="font-size: 12px; padding-left: 20px;">
-                <li><code>{{ '{' }}{{ 'url' }}{{ '}' }}</code> – Link URL</li>
-                <li><code>{{ '{' }}{{ 'text' }}{{ '}' }}</code> – Text</li>
-                <li><code>{{ '{' }}{{ 'message' }}{{ '}' }}</code> – Message</li>
-                <li><code>{{ '{' }}{{ 'title' }}{{ '}' }}</code> – Title</li>
-                <li><code>{{ '{' }}{{ 'year' }}{{ '}' }}</code> – Year</li>
-                <li><code>{{ '{' }}{{ 'item1' }}{{ '}' }}</code> – Item 1</li>
-                <li><code>{{ '{' }}{{ 'item2' }}{{ '}' }}</code> – Item 2</li>
-                <li><code>{{ '{' }}{{ 'item3' }}{{ '}' }}</code> – Item 3</li>
-                <li><code>{{ '{' }}{{ 'content' }}{{ '}' }}</code> – Content</li>
-                <li><code>{{ '{' }}{{ 'logo_url' }}{{ '}' }}</code> – Logo URL</li>
+        <div class="variable-group" data-group="general">
+            <strong class="variable-group-title">General & Widget Variables</strong>
+            <ul class="variable-group-list">
+                <li class="variable-item" data-variable="url"><code>{{ '{' }}{{ 'url' }}{{ '}' }}</code> – Link URL</li>
+                <li class="variable-item" data-variable="text"><code>{{ '{' }}{{ 'text' }}{{ '}' }}</code> – Text</li>
+                <li class="variable-item" data-variable="message"><code>{{ '{' }}{{ 'message' }}{{ '}' }}</code> – Message</li>
+                <li class="variable-item" data-variable="title"><code>{{ '{' }}{{ 'title' }}{{ '}' }}</code> – Title</li>
+                <li class="variable-item" data-variable="year"><code>{{ '{' }}{{ 'year' }}{{ '}' }}</code> – Year</li>
+                <li class="variable-item" data-variable="item1"><code>{{ '{' }}{{ 'item1' }}{{ '}' }}</code> – Item 1</li>
+                <li class="variable-item" data-variable="item2"><code>{{ '{' }}{{ 'item2' }}{{ '}' }}</code> – Item 2</li>
+                <li class="variable-item" data-variable="item3"><code>{{ '{' }}{{ 'item3' }}{{ '}' }}</code> – Item 3</li>
+                <li class="variable-item" data-variable="content"><code>{{ '{' }}{{ 'content' }}{{ '}' }}</code> – Content</li>
+                <li class="variable-item" data-variable="logo_url"><code>{{ '{' }}{{ 'logo_url' }}{{ '}' }}</code> – Logo URL</li>
             </ul>
         </div>
     </div>

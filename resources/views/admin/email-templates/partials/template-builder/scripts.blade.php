@@ -246,21 +246,45 @@
                 visualHtml = visualHtml.replace(/\+\s*extractedVar\s*\+/gi, recipientNameVar);
                 visualHtml = visualHtml.replace(/\+\s*extractedVar\.trim\(\)\s*\+/gi, recipientNameVar);
                 
-                // Replace other variables with friendly placeholders
+                // Helper: true if the given index is inside an HTML attribute value (e.g. href or style).
+                // Putting a span placeholder inside an attribute breaks the tag and makes CTA buttons show as raw text.
+                function isVariableInsideAttribute(html, index) {
+                    const before = html.substring(0, index);
+                    const lastOpen = before.lastIndexOf('<');
+                    if (lastOpen === -1) return false;
+                    const afterLastOpen = before.substring(lastOpen);
+                    if (afterLastOpen.indexOf('>') !== -1) return false;
+                    let inAttr = false;
+                    let attrQuote = '';
+                    for (let i = 0; i < afterLastOpen.length; i++) {
+                        const c = afterLastOpen[i];
+                        if (inAttr) {
+                            if (c === attrQuote) inAttr = false;
+                        } else if ((c === '"' || c === "'") && afterLastOpen[i - 1] === '=') {
+                            inAttr = true;
+                            attrQuote = c;
+                        }
+                    }
+                    return inAttr;
+                }
+                // Replace variables with friendly placeholders. Variables inside attribute values (e.g. href)
+                // must be replaced with plain text only, otherwise we break the tag and CTA buttons render as raw text.
                 const variablePattern = /\{\{([^}]+)\}\}/g;
-                visualHtml = visualHtml.replace(variablePattern, function(match, variable) {
+                visualHtml = visualHtml.replace(variablePattern, function(match, variable, matchOffset) {
                     variable = variable.trim();
-                    // Skip logo variable as we already handled it (use logoText to avoid Blade constant parsing)
                     const logoVarName = 'logo' + '_' + 'url';
                     if (variable === logoVarName) {
-                        return match; // Keep original if not in img src
+                        return match;
                     }
                     const friendlyName = variableFriendlyNames[variable] || variable.replace(/\./g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-                    // Construct title with variable using string concatenation to avoid Blade parsing
                     const openBraceTitle = '{';
                     const closeBraceTitle = '}';
                     const titleVar = openBraceTitle + openBraceTitle + variable + closeBraceTitle + closeBraceTitle;
-                    return '<span class="variable-placeholder" title="Variable: ' + titleVar + '">' + friendlyName + '</span>';
+                    const spanPlaceholder = '<span class="variable-placeholder" title="Variable: ' + titleVar + '">' + friendlyName + '</span>';
+                    if (isVariableInsideAttribute(visualHtml, matchOffset)) {
+                        return match;
+                    }
+                    return spanPlaceholder;
                 });
 
                 // Wrap in email preview container
@@ -561,35 +585,27 @@
                         });
                         
                         // Extract variables from placeholders - use title attribute (most reliable)
-                        // Title format: "Variable: {variableName}" (with double braces)
+                        // Title format: "Variable: " + double-brace + variableName + double-brace (e.g. property.address)
+                        // Match variable-placeholder spans regardless of attribute order (browsers can serialize class/title in any order)
                         const openBrace = '{';
                         const closeBrace = '}';
-                        
-                        // Process all variable placeholders that have a title attribute
-                        // This should be all of them since we set title when creating placeholders
-                        const titlePattern = new RegExp('<span[^>]*class=["\']variable-placeholder["\'][^>]*title=["\']Variable:\\s*' + 
-                            openBrace + openBrace + '([^\\' + closeBrace + ']+)' + closeBrace + closeBrace + 
-                            '["\'][^>]*>([^<]+)<\\/span>', 'gi');
-                        
-                        // First, replace all placeholders with title attributes
-                        blockHtml = blockHtml.replace(titlePattern, function(match, varName, friendlyName) {
-                            const extractedVar = varName.trim();
-                            // Return the original variable format
-                            return '{{' + extractedVar + '}}';
-                        });
-                        
-                        // Fallback: Process any remaining placeholders that don't have title attribute
-                        // Check if placeholder still exists (wasn't replaced by title pattern)
-                        blockHtml = blockHtml.replace(/<span[^>]*class=["']variable-placeholder["'][^>]*>([^<]+)<\/span>/gi, function(match, friendlyName) {
-                            // This placeholder wasn't processed by title pattern, so it likely doesn't have a title
-                            const trimmedFriendly = friendlyName.trim();
-                            // Try to find variable by friendly name (exact match only)
+                        const placeholderSpanPattern = /<span[^>]*class=["']variable-placeholder["'][^>]*>([^<]*)<\/span>/gi;
+                        const titleVarPattern = new RegExp('title=["\']Variable:\\s*' + openBrace + openBrace + '([^' + closeBrace + ']+)' + closeBrace + closeBrace + '["\']', 'i');
+
+                        // First pass: replace every variable-placeholder span by reading the variable from its title (order-agnostic)
+                        blockHtml = blockHtml.replace(placeholderSpanPattern, function(spanMatch, content) {
+                            const titleMatch = spanMatch.match(titleVarPattern);
+                            if (titleMatch) {
+                                const varName = titleMatch[1].trim();
+                                return '{{' + varName + '}}';
+                            }
+                            // Fallback: no title or wrong format - resolve by friendly name (content)
+                            const trimmedFriendly = (content || '').trim();
                             for (let varName in variableFriendlyNames) {
                                 if (variableFriendlyNames[varName] === trimmedFriendly) {
                                     return '{{' + varName + '}}';
                                 }
                             }
-                            // Last resort: convert friendly name back to variable format
                             const varName = trimmedFriendly.toLowerCase().replace(/\s+/g, '.');
                             return '{{' + varName + '}}';
                         });
@@ -752,21 +768,72 @@
 
             window.insertBlock = insertBlock;
 
-            // Manual variable insertion from input field
-            const insertButton = document.getElementById('insert-variable-button');
-            const input = document.getElementById('insert-variable-input');
+            // Insert a variable into the template (syncs canvas first, appends variable, re-renders)
+            function insertVariable(varName) {
+                varName = (varName || '').trim().replace(/^\{\{\s*|\s*\}\}$/g, '');
+                if (!varName) return;
+                syncCanvasToTextarea(false);
+                const currentHtml = hiddenTextarea.value || '';
+                const spacing = currentHtml.trim().length > 0 ? '\n\n' : '';
+                const newHtml = currentHtml + spacing + '{{' + varName + '}}';
+                hiddenTextarea.value = newHtml;
+                renderVisualCanvas(newHtml);
+                saveToHistory();
+                updateUndoRedoButtons();
+            }
 
-            if (insertButton && input) {
+            const insertButton = document.getElementById('insert-variable-button');
+            const insertInput = document.getElementById('insert-variable-input');
+            const variableSearchInput = document.getElementById('variable-search-input');
+            const variableListEl = document.getElementById('variable-list');
+
+            if (insertButton && insertInput) {
                 insertButton.addEventListener('click', function (e) {
                     e.preventDefault();
-                    const variable = (input.value || '').trim();
-                    if (!variable) return;
-                    
-                    const currentHtml = hiddenTextarea.value || '';
-                    const newHtml = currentHtml + '{{' + variable + '}}';
-                    hiddenTextarea.value = newHtml;
-                    renderVisualCanvas(newHtml);
-                    input.value = '';
+                    insertVariable(insertInput.value);
+                    insertInput.value = '';
+                    insertInput.focus();
+                });
+                insertInput.addEventListener('keydown', function (e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        insertVariable(insertInput.value);
+                        insertInput.value = '';
+                    }
+                });
+            }
+
+            if (variableSearchInput && variableListEl) {
+                variableSearchInput.addEventListener('input', function () {
+                    const q = (this.value || '').trim().toLowerCase();
+                    const groups = variableListEl.querySelectorAll('.variable-group');
+                    const items = variableListEl.querySelectorAll('.variable-item');
+                    if (!q) {
+                        groups.forEach(function (g) { g.classList.remove('hidden-by-search'); });
+                        items.forEach(function (i) { i.classList.remove('hidden-by-search'); });
+                        return;
+                    }
+                    items.forEach(function (item) {
+                        const v = (item.getAttribute('data-variable') || '').toLowerCase();
+                        const text = (item.textContent || '').toLowerCase();
+                        const show = v.indexOf(q) !== -1 || text.indexOf(q) !== -1;
+                        item.classList.toggle('hidden-by-search', !show);
+                    });
+                    groups.forEach(function (group) {
+                        const visible = group.querySelectorAll('.variable-item:not(.hidden-by-search)').length > 0;
+                        group.classList.toggle('hidden-by-search', !visible);
+                    });
+                });
+            }
+
+            if (variableListEl) {
+                variableListEl.addEventListener('click', function (e) {
+                    const item = e.target.closest('.variable-item');
+                    if (item) {
+                        e.preventDefault();
+                        const varName = item.getAttribute('data-variable');
+                        if (varName) insertVariable(varName);
+                    }
                 });
             }
 

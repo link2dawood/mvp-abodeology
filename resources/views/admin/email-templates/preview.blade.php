@@ -6,6 +6,18 @@
     <style>
         .preview-device-toggle button {
             margin-right: 8px;
+            background: var(--abodeology-teal);
+            color: var(--white);
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .preview-device-toggle button:hover {
+            background: #1a9a96;
+            color: var(--white);
         }
 
         .preview-frame-desktop {
@@ -14,6 +26,17 @@
 
         .preview-frame-mobile {
             max-width: 420px;
+        }
+
+        .btn-outline-secondary {
+            background: var(--abodeology-teal);
+            color: var(--white);
+            border: none;
+        }
+
+        .btn-outline-secondary:hover {
+            background: #1a9a96;
+            color: var(--white);
         }
     </style>
 @endpush
