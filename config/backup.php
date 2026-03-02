@@ -86,7 +86,7 @@ return [
 
     'notifications' => [
         'enabled' => env('BACKUP_NOTIFICATIONS_ENABLED', true),
-        'email' => env('BACKUP_NOTIFICATION_EMAIL', 'admin@abodeology.co.uk'),
+        'email' => env('BACKUP_NOTIFICATION_EMAIL', 'info@abodeology.co.uk'),
         'on_success' => env('BACKUP_NOTIFY_ON_SUCCESS', false),
         'on_failure' => env('BACKUP_NOTIFY_ON_FAILURE', true),
     ],

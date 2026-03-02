@@ -57,7 +57,7 @@ return [
     */
 
     'alerts' => [
-        'email' => env('MONITORING_ALERT_EMAIL', 'admin@abodeology.co.uk'),
+        'email' => env('MONITORING_ALERT_EMAIL', 'info@abodeology.co.uk'),
         'slack' => env('MONITORING_SLACK_WEBHOOK'),
     ],
 
