@@ -174,7 +174,7 @@
             </form>
 
             @if ($dashboardUrl)
-                <a class="btn btn-secondary" href="{{ $dashboardUrl }}">Go to dashboard</a>
+                <a class="btn btn-secondary" href="{{ $dashboardUrl }}" target="_blank" rel="noopener noreferrer">Go to dashboard</a>
             @endif
 
             <div class="fineprint">
