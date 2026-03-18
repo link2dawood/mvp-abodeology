@@ -30,8 +30,8 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 35px 20px;
-            min-height: 100vh;
+            /* padding: 35px 20px;
+            min-height: 100vh; */
         }
 
         /* CARD */
