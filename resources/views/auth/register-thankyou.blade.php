@@ -120,8 +120,9 @@
 </head>
 <body>
     @php
-        $role = $role ?? null;
-        $dashboardUrl = match ($role) {
+        // Prefer the authenticated user's role, fallback to the role query param.
+        $resolvedRole = $role ?? (auth()->check() ? (auth()->user()->role ?? null) : null);
+        $dashboardUrl = match ($resolvedRole) {
             'admin' => route('admin.dashboard'),
             'agent' => route('admin.agent.dashboard'),
             'buyer' => route('buyer.dashboard'),
