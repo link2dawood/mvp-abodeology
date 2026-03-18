@@ -19,10 +19,13 @@
         /* GLOBAL STYLE */
         body {
             margin: 0;
-            background: var(--soft-grey);
+            /* background: var(--soft-grey); */
             font-family: 'Helvetica Neue', Arial, sans-serif;
             color: var(--dark-text);
             min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
 
         /* WRAPPER */
