@@ -30,7 +30,7 @@ Route::get('/', function () {
     return redirect()->route('login');
 });
 
-Auth::routes();
+Auth::routes(['verify' => true]);
 
 // Profile Routes (for all authenticated users)
 Route::middleware(['auth'])->prefix('profile')->name('profile.')->group(function () {
