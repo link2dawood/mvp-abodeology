@@ -72,14 +72,14 @@ class RegisterController extends Controller
                 return route('admin.agent.dashboard');
             
             case 'buyer':
-                return route('buyer.dashboard');
+                return route('register.thankyou');
             
             case 'seller':
-                return route('seller.dashboard');
+                return route('register.thankyou');
             
             case 'both':
                 // Users with both roles - redirect to combined dashboard
-                return route('combined.dashboard');
+                return route('register.thankyou');
             
             case 'pva':
                 return route('pva.dashboard');

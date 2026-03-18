@@ -32,6 +32,13 @@ Route::get('/', function () {
 
 Auth::routes(['verify' => true]);
 
+// Post-registration thank-you page
+Route::get('/register/thank-you', function (\Illuminate\Http\Request $request) {
+    return view('auth.register-thankyou', [
+        'role' => $request->query('role'),
+    ]);
+})->name('register.thankyou');
+
 // Profile Routes (for all authenticated users)
 Route::middleware(['auth'])->prefix('profile')->name('profile.')->group(function () {
     Route::get('/', [App\Http\Controllers\ProfileController::class, 'show'])->name('show');
