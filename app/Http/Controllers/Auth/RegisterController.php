@@ -102,6 +102,7 @@ class RegisterController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
             'phone' => ['required', 'string', 'max:20'],
+            'vendor_address' => ['required_if:role,seller,both', 'nullable', 'string', 'max:1000'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'role' => ['required', 'string', 'in:buyer,seller,both'],
         ]);
@@ -119,6 +120,7 @@ class RegisterController extends Controller
             'name' => $data['name'],
             'email' => $data['email'],
             'phone' => $data['phone'],
+            'vendor_address' => $data['vendor_address'] ?? null,
             'role' => $data['role'],
             'password' => Hash::make($data['password']),
         ]);

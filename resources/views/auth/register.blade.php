@@ -251,6 +251,26 @@
 
             <form action="{{ route('register') }}" method="POST">
                 @csrf
+
+                <!-- ACCOUNT ROLE SELECTION (FIRST STEP) -->
+                <div class="role-box {{ $errors->has('role') ? 'error' : '' }}" style="{{ $errors->has('role') ? 'border-color: #dc3545;' : '' }}">
+                    <div class="role-title">I am registering as:</div>
+                    <div class="role-option">
+                        <input type="radio" id="seller" name="role" value="seller" {{ old('role') == 'seller' ? 'checked' : '' }}>
+                        <label for="seller">Seller</label>
+                    </div>
+                    <div class="role-option">
+                        <input type="radio" id="buyer" name="role" value="buyer" {{ old('role') == 'buyer' ? 'checked' : '' }} required>
+                        <label for="buyer">Buyer</label>
+                    </div>
+                    <div class="role-option">
+                        <input type="radio" id="both" name="role" value="both" {{ old('role') == 'both' ? 'checked' : '' }}>
+                        <label for="both">Both Buyer & Seller</label>
+                    </div>
+                </div>
+                @error('role')
+                    <div class="error-message">{{ $message }}</div>
+                @enderror
                 
                 <input type="text" 
                        name="name" 
@@ -286,6 +306,19 @@
                     <div class="error-message">{{ $message }}</div>
                 @enderror
 
+                <div id="vendor_address_wrapper" style="{{ in_array(old('role'), ['seller', 'both']) ? '' : 'display:none;' }}">
+                    <input type="text"
+                           id="vendor_address"
+                           name="vendor_address"
+                           placeholder="Valuation address"
+                           value="{{ old('vendor_address') }}"
+                           class="{{ $errors->has('vendor_address') ? 'error' : '' }}"
+                           autocomplete="street-address">
+                    @error('vendor_address')
+                        <div class="error-message">{{ $message }}</div>
+                    @enderror
+                </div>
+
                 <input type="password" 
                        name="password" 
                        placeholder="Create password" 
@@ -302,26 +335,6 @@
                        required
                        autocomplete="new-password">
 
-                <!-- ACCOUNT ROLE SELECTION -->
-                <div class="role-box {{ $errors->has('role') ? 'error' : '' }}" style="{{ $errors->has('role') ? 'border-color: #dc3545;' : '' }}">
-                    <div class="role-title">I am registering as:</div>
-                    <div class="role-option">
-                        <input type="radio" id="seller" name="role" value="seller" {{ old('role') == 'seller' ? 'checked' : '' }}>
-                        <label for="seller">Seller</label>
-                    </div>
-                    <div class="role-option">
-                        <input type="radio" id="buyer" name="role" value="buyer" {{ old('role') == 'buyer' ? 'checked' : '' }} required>
-                        <label for="buyer">Buyer</label>
-                    </div>
-                    <div class="role-option">
-                        <input type="radio" id="both" name="role" value="both" {{ old('role') == 'both' ? 'checked' : '' }}>
-                        <label for="both">Both Buyer & Seller</label>
-                    </div>
-                </div>
-                @error('role')
-                    <div class="error-message">{{ $message }}</div>
-                @enderror
-
                 <button type="submit" class="btn">Create Account</button>
             </form>
 
@@ -330,5 +343,79 @@
             </div>
         </div>
     </div>
+
+    <script>
+        (function toggleValuationAddressByRole() {
+            const roleInputs = document.querySelectorAll('input[name="role"]');
+            const addressWrapper = document.getElementById('vendor_address_wrapper');
+            const addressInput = document.getElementById('vendor_address');
+
+            function syncAddressVisibility() {
+                const selectedRoleInput = document.querySelector('input[name="role"]:checked');
+                const selectedRole = selectedRoleInput ? selectedRoleInput.value : null;
+                const shouldShowAddress = selectedRole === 'seller' || selectedRole === 'both';
+
+                if (!addressWrapper || !addressInput) {
+                    return;
+                }
+
+                addressWrapper.style.display = shouldShowAddress ? '' : 'none';
+                addressInput.required = shouldShowAddress;
+            }
+
+            roleInputs.forEach(function (input) {
+                input.addEventListener('change', syncAddressVisibility);
+            });
+
+            syncAddressVisibility();
+        })();
+    </script>
+
+    @if(config('services.google.maps_api_key'))
+    <script src="https://maps.googleapis.com/maps/api/js?key={{ config('services.google.maps_api_key') }}&libraries=places" async defer></script>
+    <script>
+        (function initRegisterAddressAutocomplete() {
+            function setupAutocomplete() {
+                if (typeof google === 'undefined' || !google.maps || !google.maps.places) {
+                    return false;
+                }
+
+                const addressInput = document.getElementById('vendor_address');
+                if (!addressInput) {
+                    return true;
+                }
+
+                const autocomplete = new google.maps.places.Autocomplete(addressInput, {
+                    types: ['address'],
+                    componentRestrictions: { country: 'gb' },
+                    fields: ['formatted_address']
+                });
+
+                autocomplete.addListener('place_changed', function () {
+                    const place = autocomplete.getPlace();
+                    if (place && place.formatted_address) {
+                        addressInput.value = place.formatted_address
+                            .replace(/,\s*UK\s*$/i, '')
+                            .replace(/,\s*United Kingdom\s*$/i, '')
+                            .trim();
+                    }
+                });
+
+                return true;
+            }
+
+            if (!setupAutocomplete()) {
+                let retries = 0;
+                const maxRetries = 20;
+                const timer = setInterval(function () {
+                    retries++;
+                    if (setupAutocomplete() || retries >= maxRetries) {
+                        clearInterval(timer);
+                    }
+                }, 250);
+            }
+        })();
+    </script>
+    @endif
 </body>
 </html>
