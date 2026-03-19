@@ -380,25 +380,116 @@
                     return false;
                 }
 
-                const addressInput = document.getElementById('vendor_address');
-                if (!addressInput) {
+                const vendorAddressInput = document.getElementById('vendor_address');
+                if (!vendorAddressInput) {
                     return true;
                 }
 
-                const autocomplete = new google.maps.places.Autocomplete(addressInput, {
+                const vendorAddressAutocomplete = new google.maps.places.Autocomplete(vendorAddressInput, {
                     types: ['address'],
                     componentRestrictions: { country: 'gb' },
-                    fields: ['formatted_address']
+                    fields: ['address_components', 'formatted_address']
                 });
 
-                autocomplete.addListener('place_changed', function () {
-                    const place = autocomplete.getPlace();
-                    if (place && place.formatted_address) {
-                        addressInput.value = place.formatted_address
-                            .replace(/,\s*UK\s*$/i, '')
-                            .replace(/,\s*United Kingdom\s*$/i, '')
-                            .trim();
+                function cleanVendorAutocompleteDropdown() {
+                    setTimeout(function() {
+                        const pacContainer = document.querySelector('.pac-container');
+                        if (!pacContainer) return;
+
+                        const pacItems = pacContainer.querySelectorAll('.pac-item');
+                        pacItems.forEach(function(item) {
+                            const querySpan = item.querySelector('.pac-item-query');
+                            const matchedSpan = item.querySelector('.pac-matched');
+
+                            let fullText = (item.textContent || item.innerText || '')
+                                .replace(/,\s*UK\s*/gi, ', ')
+                                .replace(/,\s*United Kingdom\s*/gi, ', ')
+                                .replace(/,\s*,/g, ',')
+                                .replace(/,\s*$/g, '')
+                                .trim();
+
+                            if (querySpan && matchedSpan && fullText) {
+                                const parts = fullText
+                                    .split(',')
+                                    .map(function(part) { return part.trim(); })
+                                    .filter(function(part) { return part && !/^UK$/i.test(part) && !/^United Kingdom$/i.test(part); });
+
+                                if (parts.length > 0) {
+                                    querySpan.textContent = parts[0];
+                                    matchedSpan.textContent = parts.slice(1).join(', ');
+                                }
+                            }
+                        });
+                    }, 50);
+                }
+
+                let vendorPacObserver = null;
+                function setupVendorPacObserver() {
+                    if (vendorPacObserver) return;
+                    vendorPacObserver = new MutationObserver(function() {
+                        cleanVendorAutocompleteDropdown();
+                    });
+                    vendorPacObserver.observe(document.body, { childList: true, subtree: true });
+                }
+
+                let vendorDropdownCleanupInterval = null;
+                vendorAddressInput.addEventListener('focus', function() {
+                    setupVendorPacObserver();
+                    cleanVendorAutocompleteDropdown();
+                    if (!vendorDropdownCleanupInterval) {
+                        vendorDropdownCleanupInterval = setInterval(cleanVendorAutocompleteDropdown, 100);
                     }
+                });
+
+                vendorAddressInput.addEventListener('input', function() {
+                    setTimeout(cleanVendorAutocompleteDropdown, 50);
+                    const originalValue = this.value;
+                    let value = originalValue
+                        .replace(/,\s*UK\s*/gi, ', ')
+                        .replace(/,\s*United Kingdom\s*/gi, ', ')
+                        .replace(/,\s*,/g, ',')
+                        .replace(/,\s*$/g, '')
+                        .trim();
+
+                    if (value !== originalValue) {
+                        const cursorPos = this.selectionStart || value.length;
+                        this.value = value;
+                        const newCursorPos = Math.max(0, cursorPos - (originalValue.length - value.length));
+                        this.setSelectionRange(newCursorPos, newCursorPos);
+                    }
+                });
+
+                vendorAddressInput.addEventListener('blur', function() {
+                    this.value = this.value
+                        .replace(/,\s*UK\s*$/i, '')
+                        .replace(/,\s*United Kingdom\s*$/i, '')
+                        .trim();
+
+                    setTimeout(function() {
+                        if (vendorDropdownCleanupInterval) {
+                            clearInterval(vendorDropdownCleanupInterval);
+                            vendorDropdownCleanupInterval = null;
+                        }
+                    }, 300);
+
+                    setTimeout(function() {
+                        if (vendorPacObserver) {
+                            vendorPacObserver.disconnect();
+                            vendorPacObserver = null;
+                        }
+                    }, 500);
+                });
+
+                vendorAddressAutocomplete.addListener('place_changed', function () {
+                    const place = vendorAddressAutocomplete.getPlace();
+                    if (!place || !place.formatted_address) {
+                        return;
+                    }
+
+                    vendorAddressInput.value = place.formatted_address
+                        .replace(/,\s*UK\s*$/i, '')
+                        .replace(/,\s*United Kingdom\s*$/i, '')
+                        .trim();
                 });
 
                 return true;
