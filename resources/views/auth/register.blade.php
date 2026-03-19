@@ -306,12 +306,12 @@
                 <div class="role-box {{ $errors->has('role') ? 'error' : '' }}" style="{{ $errors->has('role') ? 'border-color: #dc3545;' : '' }}">
                     <div class="role-title">I am registering as:</div>
                     <div class="role-option">
-                        <input type="radio" id="buyer" name="role" value="buyer" {{ old('role') == 'buyer' ? 'checked' : '' }} required>
-                        <label for="buyer">Buyer</label>
-                    </div>
-                    <div class="role-option">
                         <input type="radio" id="seller" name="role" value="seller" {{ old('role') == 'seller' ? 'checked' : '' }}>
                         <label for="seller">Seller</label>
+                    </div>
+                    <div class="role-option">
+                        <input type="radio" id="buyer" name="role" value="buyer" {{ old('role') == 'buyer' ? 'checked' : '' }} required>
+                        <label for="buyer">Buyer</label>
                     </div>
                     <div class="role-option">
                         <input type="radio" id="both" name="role" value="both" {{ old('role') == 'both' ? 'checked' : '' }}>
