@@ -296,12 +296,16 @@
                 @enderror
 
                 <input type="tel" 
+                       id="phone"
                        name="phone" 
                        placeholder="Mobile number" 
                        value="{{ old('phone') }}"
                        required
                        class="{{ $errors->has('phone') ? 'error' : '' }}"
-                       autocomplete="tel">
+                       autocomplete="tel"
+                       inputmode="tel"
+                       pattern="[0-9+()\\-\\s]+"
+                       title="Use numbers and standard phone symbols only">
                 @error('phone')
                     <div class="error-message">{{ $message }}</div>
                 @enderror
@@ -369,6 +373,25 @@
 
             syncAddressVisibility();
         })();
+
+        (function restrictPhoneInput() {
+            const phoneInput = document.getElementById('phone');
+            if (!phoneInput) {
+                return;
+            }
+
+            phoneInput.addEventListener('input', function() {
+                const originalValue = this.value;
+                const sanitizedValue = originalValue.replace(/[^0-9+()\-\s]/g, '');
+
+                if (sanitizedValue !== originalValue) {
+                    const cursorPos = this.selectionStart || sanitizedValue.length;
+                    this.value = sanitizedValue;
+                    const newCursorPos = Math.max(0, cursorPos - (originalValue.length - sanitizedValue.length));
+                    this.setSelectionRange(newCursorPos, newCursorPos);
+                }
+            });
+        })();
     </script>
 
     @if(config('services.google.maps_api_key'))
@@ -391,6 +414,76 @@
                     fields: ['address_components', 'formatted_address']
                 });
 
+                function normalizeVendorAddress(value) {
+                    return value
+                        .replace(/,\s*UK\s*/gi, ', ')
+                        .replace(/,\s*United Kingdom\s*/gi, ', ')
+                        .replace(/,\s*,/g, ',')
+                        .replace(/,\s*$/g, '')
+                        .trim();
+                }
+
+                function buildVendorAddress(place) {
+                    if (!place || !place.address_components) {
+                        return normalizeVendorAddress(place && place.formatted_address ? place.formatted_address : '');
+                    }
+
+                    let streetNumber = '';
+                    let route = '';
+                    let locality = '';
+                    let administrativeArea = '';
+                    let postcode = '';
+
+                    place.address_components.forEach(function(component) {
+                        const componentType = component.types[0];
+
+                        if (component.types.includes('postal_code')) {
+                            postcode = component.long_name;
+                        }
+
+                        switch (componentType) {
+                            case 'street_number':
+                                streetNumber = component.long_name;
+                                break;
+                            case 'route':
+                                route = component.long_name;
+                                break;
+                            case 'postal_town':
+                            case 'locality':
+                                if (!locality) {
+                                    locality = component.long_name;
+                                }
+                                break;
+                            case 'administrative_area_level_1':
+                                administrativeArea = component.short_name;
+                                break;
+                        }
+                    });
+
+                    let formattedAddress = '';
+                    if (streetNumber && route) {
+                        formattedAddress = streetNumber + ' ' + route;
+                    } else if (route) {
+                        formattedAddress = route;
+                    } else {
+                        formattedAddress = place.formatted_address || '';
+                    }
+
+                    if (locality && !formattedAddress.includes(locality)) {
+                        formattedAddress += ', ' + locality;
+                    }
+
+                    if (administrativeArea && !formattedAddress.includes(administrativeArea)) {
+                        formattedAddress += ', ' + administrativeArea;
+                    }
+
+                    if (postcode && !formattedAddress.includes(postcode)) {
+                        formattedAddress += ', ' + postcode;
+                    }
+
+                    return normalizeVendorAddress(formattedAddress);
+                }
+
                 function cleanVendorAutocompleteDropdown() {
                     setTimeout(function() {
                         const pacContainer = document.querySelector('.pac-container');
@@ -398,25 +491,20 @@
 
                         const pacItems = pacContainer.querySelectorAll('.pac-item');
                         pacItems.forEach(function(item) {
-                            const querySpan = item.querySelector('.pac-item-query');
-                            const matchedSpan = item.querySelector('.pac-matched');
+                            const walker = document.createTreeWalker(item, NodeFilter.SHOW_TEXT, null, false);
+                            let node;
 
-                            let fullText = (item.textContent || item.innerText || '')
-                                .replace(/,\s*UK\s*/gi, ', ')
-                                .replace(/,\s*United Kingdom\s*/gi, ', ')
-                                .replace(/,\s*,/g, ',')
-                                .replace(/,\s*$/g, '')
-                                .trim();
+                            while (node = walker.nextNode()) {
+                                const originalText = node.textContent || '';
+                                const cleanedText = originalText
+                                    .replace(/,\s*UK\s*/gi, ', ')
+                                    .replace(/,\s*United Kingdom\s*/gi, ', ')
+                                    .replace(/,\s*,/g, ',')
+                                    .replace(/,\s*$/g, '')
+                                    .trim();
 
-                            if (querySpan && matchedSpan && fullText) {
-                                const parts = fullText
-                                    .split(',')
-                                    .map(function(part) { return part.trim(); })
-                                    .filter(function(part) { return part && !/^UK$/i.test(part) && !/^United Kingdom$/i.test(part); });
-
-                                if (parts.length > 0) {
-                                    querySpan.textContent = parts[0];
-                                    matchedSpan.textContent = parts.slice(1).join(', ');
+                                if (cleanedText !== originalText.trim()) {
+                                    node.textContent = cleanedText;
                                 }
                             }
                         });
@@ -443,27 +531,10 @@
 
                 vendorAddressInput.addEventListener('input', function() {
                     setTimeout(cleanVendorAutocompleteDropdown, 50);
-                    const originalValue = this.value;
-                    let value = originalValue
-                        .replace(/,\s*UK\s*/gi, ', ')
-                        .replace(/,\s*United Kingdom\s*/gi, ', ')
-                        .replace(/,\s*,/g, ',')
-                        .replace(/,\s*$/g, '')
-                        .trim();
-
-                    if (value !== originalValue) {
-                        const cursorPos = this.selectionStart || value.length;
-                        this.value = value;
-                        const newCursorPos = Math.max(0, cursorPos - (originalValue.length - value.length));
-                        this.setSelectionRange(newCursorPos, newCursorPos);
-                    }
                 });
 
                 vendorAddressInput.addEventListener('blur', function() {
-                    this.value = this.value
-                        .replace(/,\s*UK\s*$/i, '')
-                        .replace(/,\s*United Kingdom\s*$/i, '')
-                        .trim();
+                    this.value = normalizeVendorAddress(this.value);
 
                     setTimeout(function() {
                         if (vendorDropdownCleanupInterval) {
@@ -482,14 +553,11 @@
 
                 vendorAddressAutocomplete.addListener('place_changed', function () {
                     const place = vendorAddressAutocomplete.getPlace();
-                    if (!place || !place.formatted_address) {
+                    if (!place || (!place.formatted_address && !place.address_components)) {
                         return;
                     }
 
-                    vendorAddressInput.value = place.formatted_address
-                        .replace(/,\s*UK\s*$/i, '')
-                        .replace(/,\s*United Kingdom\s*$/i, '')
-                        .trim();
+                    vendorAddressInput.value = buildVendorAddress(place);
                 });
 
                 return true;
