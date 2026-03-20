@@ -318,6 +318,14 @@
                            value="{{ old('vendor_address') }}"
                            class="{{ $errors->has('vendor_address') ? 'error' : '' }}"
                            autocomplete="street-address">
+                    <input type="text"
+                           id="vendor_postcode"
+                           name="vendor_postcode"
+                           placeholder="Postcode"
+                           value=""
+                           autocomplete="postal-code"
+                           inputmode="text"
+                           style="text-transform: uppercase;">
                     @error('vendor_address')
                         <div class="error-message">{{ $message }}</div>
                     @enderror
@@ -353,6 +361,7 @@
             const roleInputs = document.querySelectorAll('input[name="role"]');
             const addressWrapper = document.getElementById('vendor_address_wrapper');
             const addressInput = document.getElementById('vendor_address');
+            const postcodeInput = document.getElementById('vendor_postcode');
 
             function syncAddressVisibility() {
                 const selectedRoleInput = document.querySelector('input[name="role"]:checked');
@@ -365,6 +374,9 @@
 
                 addressWrapper.style.display = shouldShowAddress ? '' : 'none';
                 addressInput.required = shouldShowAddress;
+                if (postcodeInput) {
+                    postcodeInput.required = shouldShowAddress;
+                }
             }
 
             roleInputs.forEach(function (input) {
@@ -372,6 +384,33 @@
             });
 
             syncAddressVisibility();
+        })();
+
+        (function syncVendorPostcodeBeforeSubmit() {
+            const form = document.querySelector('form[action="{{ route('register') }}"]');
+            const addressInput = document.getElementById('vendor_address');
+            const postcodeInput = document.getElementById('vendor_postcode');
+
+            if (!form || !addressInput || !postcodeInput) {
+                return;
+            }
+
+            postcodeInput.addEventListener('input', function() {
+                this.value = this.value.toUpperCase().replace(/[^A-Z0-9\s]/g, '');
+            });
+
+            form.addEventListener('submit', function() {
+                const postcode = postcodeInput.value.trim().toUpperCase();
+                const address = addressInput.value.trim();
+
+                if (postcode) {
+                    postcodeInput.value = postcode;
+                }
+
+                if (address && postcode && !address.toUpperCase().includes(postcode)) {
+                    addressInput.value = address.replace(/\s*,\s*$/, '') + ', ' + postcode;
+                }
+            });
         })();
 
         (function restrictPhoneInput() {
@@ -404,6 +443,7 @@
                 }
 
                 const vendorAddressInput = document.getElementById('vendor_address');
+                const vendorPostcodeInput = document.getElementById('vendor_postcode');
                 if (!vendorAddressInput) {
                     return true;
                 }
@@ -558,6 +598,16 @@
                     }
 
                     vendorAddressInput.value = buildVendorAddress(place);
+
+                    if (vendorPostcodeInput && place.address_components) {
+                        const postcodeComponent = place.address_components.find(function(component) {
+                            return component.types.includes('postal_code');
+                        });
+
+                        if (postcodeComponent) {
+                            vendorPostcodeInput.value = postcodeComponent.long_name.toUpperCase();
+                        }
+                    }
                 });
 
                 return true;
