@@ -631,7 +631,7 @@
                                 {{ $aml->created_at->format('M j, Y') }}
                             </td>
                             <td>
-                                <a href="{{ route('admin.aml-checks.verify', $aml->id) }}" class="btn" style="padding: 6px 12px; font-size: 13px; background: #ffc107; color: #000;">Verify</a>
+                                <a href="{{ route('admin.aml-checks.show', $aml->id) }}" class="btn" style="padding: 6px 12px; font-size: 13px; background: #ffc107; color: #000;">Verify</a>
                             </td>
                         </tr>
                     @endforeach
