@@ -324,8 +324,7 @@
                            placeholder="Postcode"
                            value=""
                            autocomplete="postal-code"
-                           inputmode="text"
-                           style="text-transform: uppercase;">
+                           inputmode="text">
                     @error('vendor_address')
                         <div class="error-message">{{ $message }}</div>
                     @enderror

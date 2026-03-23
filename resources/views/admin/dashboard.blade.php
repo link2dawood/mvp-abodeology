@@ -141,31 +141,36 @@
 
     /* TOP ROW: Compact Key Metrics + Reminders */
     .dashboard-top-row {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 12px;
-        margin-bottom: 20px;
-        align-items: flex-start;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 18px;
+        margin-bottom: 28px;
+        align-items: stretch;
     }
     .metrics-strip,
     .reminders-strip {
-        background: #2db8b4;
+        background:
+            radial-gradient(circle at top right, rgba(255,255,255,0.18), transparent 32%),
+            linear-gradient(135deg, #29beb9 0%, #22b3cc 100%);
         color: #fff;
-        border-radius: 6px;
-        padding: 8px 12px;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-        flex: 0 0 25%;
-        max-width: 25%; /* approx 3 of 12 columns */
+        border-radius: 12px;
+        padding: 20px 20px 18px;
+        box-shadow: 0 14px 30px rgba(29, 138, 154, 0.18);
+        border: 1px solid rgba(255,255,255,0.18);
+        min-height: 100%;
         cursor: move;
         position: relative;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
     }
 
     .metrics-strip::after,
     .reminders-strip::after {
         content: '⋮⋮';
         position: absolute;
-        top: 8px;
-        right: 12px;
+        top: 18px;
+        right: 18px;
         color: rgba(255, 255, 255, 0.6);
         font-size: 18px;
         line-height: 1;
@@ -174,34 +179,54 @@
         z-index: 1;
     }
 
+    .metrics-strip::before,
+    .reminders-strip::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(180deg, rgba(255,255,255,0.08), transparent 42%);
+        pointer-events: none;
+    }
+
     .metrics-strip:hover::after,
     .reminders-strip:hover::after {
         opacity: 1;
     }
     .metrics-strip h3,
     .reminders-strip h3 {
-        margin: 0 0 6px 0;
-        font-size: 13px;
+        position: relative;
+        z-index: 1;
+        margin: 0 0 14px 0;
+        font-size: 18px;
         font-weight: 700;
         color: #fff;
-        padding-bottom: 4px;
-        border-bottom: 1px solid rgba(255,255,255,0.25);
+        padding-bottom: 12px;
+        border-bottom: 1px solid rgba(255,255,255,0.28);
     }
     .metrics-strip .metric-rows,
     .reminders-strip .reminder-rows {
-        display: block; /* simple vertical list */
-        font-size: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        font-size: 15px;
+        position: relative;
+        z-index: 1;
+        flex: 1;
     }
     .metric-row,
     .reminder-row {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 2px 0;
+        gap: 16px;
+        padding: 0;
+        min-height: 30px;
     }
     .metric-row > span:first-child,
     .reminder-row > a {
         padding-right: 8px;
+        font-size: 15px;
+        line-height: 1.45;
     }
     .reminder-row > a {
         color: #fff;
@@ -214,19 +239,22 @@
     .metric-row .value,
     .reminder-row .value {
         font-weight: 800;
-        font-size: 1.25em;
+        font-size: 1.05rem;
         color: #fff;
         text-shadow: 0 1px 2px rgba(0,0,0,0.15);
         text-align: right;
         white-space: nowrap;
-        padding: 2px 0;
+        padding: 0;
     }
 
-    @media (max-width: 900px) {
+    @media (max-width: 1100px) {
         .metrics-strip,
         .reminders-strip {
-            flex: 1 1 100%;
-            max-width: 100%;
+            min-height: 0;
+        }
+
+        .dashboard-top-row {
+            grid-template-columns: 1fr;
         }
     }
 
@@ -469,7 +497,7 @@
 
         .metrics-strip,
         .reminders-strip {
-            padding: 10px;
+            padding: 14px;
         }
 
         .metric-row,
@@ -530,12 +558,12 @@
 
         .metrics-strip h3,
         .reminders-strip h3 {
-            font-size: 12px;
+            font-size: 16px;
         }
 
         .metric-row,
         .reminder-row {
-            font-size: 11px;
+            font-size: 13px;
         }
     }
 </style>
