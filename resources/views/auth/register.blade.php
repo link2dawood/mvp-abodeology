@@ -433,19 +433,157 @@
     </script>
 
     @if(config('services.google.maps_api_key'))
-    <script src="https://maps.googleapis.com/maps/api/js?key={{ config('services.google.maps_api_key') }}&libraries=places" async defer></script>
     <script>
         (function initRegisterAddressAutocomplete() {
-            function setupAutocomplete() {
-                if (typeof google === 'undefined' || !google.maps || !google.maps.places) {
-                    return false;
+            const vendorAddressInput = document.getElementById('vendor_address');
+            const vendorPostcodeInput = document.getElementById('vendor_postcode');
+            const roleInputs = document.querySelectorAll('input[name="role"]');
+            const mapsScriptId = 'register-google-maps-script';
+            let mapsLoader = null;
+
+            if (!vendorAddressInput) {
+                return;
+            }
+
+            function normalizeVendorAddress(value) {
+                return value
+                    .replace(/,\s*UK\s*/gi, ', ')
+                    .replace(/,\s*United Kingdom\s*/gi, ', ')
+                    .replace(/,\s*,/g, ',')
+                    .replace(/,\s*$/g, '')
+                    .trim();
+            }
+
+            function buildVendorAddress(place) {
+                if (!place || !place.address_components) {
+                    return normalizeVendorAddress(place && place.formatted_address ? place.formatted_address : '');
                 }
 
-                const vendorAddressInput = document.getElementById('vendor_address');
-                const vendorPostcodeInput = document.getElementById('vendor_postcode');
-                if (!vendorAddressInput) {
-                    return true;
+                let streetNumber = '';
+                let route = '';
+                let locality = '';
+                let administrativeArea = '';
+                let postcode = '';
+
+                place.address_components.forEach(function(component) {
+                    const componentType = component.types[0];
+
+                    if (component.types.includes('postal_code')) {
+                        postcode = component.long_name;
+                    }
+
+                    switch (componentType) {
+                        case 'street_number':
+                            streetNumber = component.long_name;
+                            break;
+                        case 'route':
+                            route = component.long_name;
+                            break;
+                        case 'postal_town':
+                        case 'locality':
+                            if (!locality) {
+                                locality = component.long_name;
+                            }
+                            break;
+                        case 'administrative_area_level_1':
+                            administrativeArea = component.short_name;
+                            break;
+                    }
+                });
+
+                let formattedAddress = '';
+                if (streetNumber && route) {
+                    formattedAddress = streetNumber + ' ' + route;
+                } else if (route) {
+                    formattedAddress = route;
+                } else {
+                    formattedAddress = place.formatted_address || '';
                 }
+
+                if (locality && !formattedAddress.includes(locality)) {
+                    formattedAddress += ', ' + locality;
+                }
+
+                if (administrativeArea && !formattedAddress.includes(administrativeArea)) {
+                    formattedAddress += ', ' + administrativeArea;
+                }
+
+                if (postcode && !formattedAddress.includes(postcode)) {
+                    formattedAddress += ', ' + postcode;
+                }
+
+                return normalizeVendorAddress(formattedAddress);
+            }
+
+            function cleanVendorAutocompleteDropdown() {
+                setTimeout(function() {
+                    const pacContainer = document.querySelector('.pac-container');
+                    if (!pacContainer) {
+                        return;
+                    }
+
+                    const pacItems = pacContainer.querySelectorAll('.pac-item');
+                    pacItems.forEach(function(item) {
+                        const walker = document.createTreeWalker(item, NodeFilter.SHOW_TEXT, null, false);
+                        let node;
+
+                        while (node = walker.nextNode()) {
+                            const originalText = node.textContent || '';
+                            const cleanedText = originalText
+                                .replace(/,\s*UK\s*/gi, ', ')
+                                .replace(/,\s*United Kingdom\s*/gi, ', ')
+                                .replace(/,\s*,/g, ',')
+                                .replace(/,\s*$/g, '')
+                                .trim();
+
+                            if (cleanedText !== originalText.trim()) {
+                                node.textContent = cleanedText;
+                            }
+                        }
+                    });
+                }, 50);
+            }
+
+            function ensureGoogleMapsPlacesLoaded() {
+                if (typeof google !== 'undefined' && google.maps && google.maps.places) {
+                    return Promise.resolve();
+                }
+
+                if (mapsLoader) {
+                    return mapsLoader;
+                }
+
+                mapsLoader = new Promise(function(resolve, reject) {
+                    const existingScript = document.getElementById(mapsScriptId);
+                    if (existingScript) {
+                        existingScript.addEventListener('load', resolve, { once: true });
+                        existingScript.addEventListener('error', reject, { once: true });
+                        return;
+                    }
+
+                    const script = document.createElement('script');
+                    script.id = mapsScriptId;
+                    script.src = 'https://maps.googleapis.com/maps/api/js?key={{ config('services.google.maps_api_key') }}&libraries=places';
+                    script.async = true;
+                    script.defer = true;
+                    script.onload = resolve;
+                    script.onerror = reject;
+                    document.head.appendChild(script);
+                });
+
+                return mapsLoader;
+            }
+
+            function setupAutocomplete() {
+                if (vendorAddressInput.dataset.autocompleteReady === 'true') {
+                    return;
+                }
+
+                if (typeof google === 'undefined' || !google.maps || !google.maps.places) {
+                    return;
+                }
+
+                vendorAddressInput.dataset.autocompleteReady = 'true';
 
                 const vendorAddressAutocomplete = new google.maps.places.Autocomplete(vendorAddressInput, {
                     types: ['address'],
@@ -453,106 +591,12 @@
                     fields: ['address_components', 'formatted_address']
                 });
 
-                function normalizeVendorAddress(value) {
-                    return value
-                        .replace(/,\s*UK\s*/gi, ', ')
-                        .replace(/,\s*United Kingdom\s*/gi, ', ')
-                        .replace(/,\s*,/g, ',')
-                        .replace(/,\s*$/g, '')
-                        .trim();
-                }
-
-                function buildVendorAddress(place) {
-                    if (!place || !place.address_components) {
-                        return normalizeVendorAddress(place && place.formatted_address ? place.formatted_address : '');
-                    }
-
-                    let streetNumber = '';
-                    let route = '';
-                    let locality = '';
-                    let administrativeArea = '';
-                    let postcode = '';
-
-                    place.address_components.forEach(function(component) {
-                        const componentType = component.types[0];
-
-                        if (component.types.includes('postal_code')) {
-                            postcode = component.long_name;
-                        }
-
-                        switch (componentType) {
-                            case 'street_number':
-                                streetNumber = component.long_name;
-                                break;
-                            case 'route':
-                                route = component.long_name;
-                                break;
-                            case 'postal_town':
-                            case 'locality':
-                                if (!locality) {
-                                    locality = component.long_name;
-                                }
-                                break;
-                            case 'administrative_area_level_1':
-                                administrativeArea = component.short_name;
-                                break;
-                        }
-                    });
-
-                    let formattedAddress = '';
-                    if (streetNumber && route) {
-                        formattedAddress = streetNumber + ' ' + route;
-                    } else if (route) {
-                        formattedAddress = route;
-                    } else {
-                        formattedAddress = place.formatted_address || '';
-                    }
-
-                    if (locality && !formattedAddress.includes(locality)) {
-                        formattedAddress += ', ' + locality;
-                    }
-
-                    if (administrativeArea && !formattedAddress.includes(administrativeArea)) {
-                        formattedAddress += ', ' + administrativeArea;
-                    }
-
-                    if (postcode && !formattedAddress.includes(postcode)) {
-                        formattedAddress += ', ' + postcode;
-                    }
-
-                    return normalizeVendorAddress(formattedAddress);
-                }
-
-                function cleanVendorAutocompleteDropdown() {
-                    setTimeout(function() {
-                        const pacContainer = document.querySelector('.pac-container');
-                        if (!pacContainer) return;
-
-                        const pacItems = pacContainer.querySelectorAll('.pac-item');
-                        pacItems.forEach(function(item) {
-                            const walker = document.createTreeWalker(item, NodeFilter.SHOW_TEXT, null, false);
-                            let node;
-
-                            while (node = walker.nextNode()) {
-                                const originalText = node.textContent || '';
-                                const cleanedText = originalText
-                                    .replace(/,\s*UK\s*/gi, ', ')
-                                    .replace(/,\s*United Kingdom\s*/gi, ', ')
-                                    .replace(/,\s*,/g, ',')
-                                    .replace(/,\s*$/g, '')
-                                    .trim();
-
-                                if (cleanedText !== originalText.trim()) {
-                                    node.textContent = cleanedText;
-                                }
-                            }
-                        });
-                    }, 50);
-                }
-
                 let vendorPacObserver = null;
                 function setupVendorPacObserver() {
-                    if (vendorPacObserver) return;
+                    if (vendorPacObserver) {
+                        return;
+                    }
+
                     vendorPacObserver = new MutationObserver(function() {
                         cleanVendorAutocompleteDropdown();
                     });
@@ -608,19 +652,40 @@
                         }
                     }
                 });
-
-                return true;
             }
 
-            if (!setupAutocomplete()) {
-                let retries = 0;
-                const maxRetries = 20;
-                const timer = setInterval(function () {
-                    retries++;
-                    if (setupAutocomplete() || retries >= maxRetries) {
-                        clearInterval(timer);
-                    }
-                }, 250);
+            function selectedRoleNeedsAddress() {
+                const selectedRoleInput = document.querySelector('input[name="role"]:checked');
+                if (!selectedRoleInput) {
+                    return false;
+                }
+
+                return selectedRoleInput.value === 'seller' || selectedRoleInput.value === 'both';
+            }
+
+            function warmAutocompleteIfNeeded() {
+                if (!selectedRoleNeedsAddress()) {
+                    return;
+                }
+
+                ensureGoogleMapsPlacesLoaded()
+                    .then(setupAutocomplete)
+                    .catch(function() {
+                        // Ignore third-party script failures and leave manual entry available.
+                    });
+            }
+
+            vendorAddressInput.addEventListener('focus', warmAutocompleteIfNeeded, { once: true });
+            vendorAddressInput.addEventListener('pointerdown', warmAutocompleteIfNeeded, { once: true });
+
+            roleInputs.forEach(function(input) {
+                input.addEventListener('change', warmAutocompleteIfNeeded);
+            });
+
+            if (selectedRoleNeedsAddress()) {
+                window.requestIdleCallback
+                    ? window.requestIdleCallback(warmAutocompleteIfNeeded, { timeout: 1200 })
+                    : setTimeout(warmAutocompleteIfNeeded, 400);
             }
         })();
     </script>
