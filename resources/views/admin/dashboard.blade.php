@@ -149,9 +149,7 @@
     }
     .metrics-strip,
     .reminders-strip {
-        background:
-            radial-gradient(circle at top right, rgba(255,255,255,0.18), transparent 32%),
-            linear-gradient(135deg, #29beb9 0%, #22b3cc 100%);
+        background: #2db8b4;
         color: #fff;
         border-radius: 12px;
         padding: 20px 20px 18px;
@@ -177,15 +175,6 @@
         opacity: 0.5;
         pointer-events: none;
         z-index: 1;
-    }
-
-    .metrics-strip::before,
-    .reminders-strip::before {
-        content: '';
-        position: absolute;
-        inset: 0;
-        background: linear-gradient(180deg, rgba(255,255,255,0.08), transparent 42%);
-        pointer-events: none;
     }
 
     .metrics-strip:hover::after,
