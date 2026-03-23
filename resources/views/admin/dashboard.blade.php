@@ -15,6 +15,13 @@
         margin-bottom: 18px;
     }
 
+    .dashboard-container {
+        max-width: none;
+        width: auto;
+        margin: 24px;
+        padding: 0 8px;
+    }
+
     /* GRID LAYOUT */
     .grid {
         display: grid;
@@ -413,6 +420,11 @@
             padding: 0 12px;
         }
 
+        .dashboard-container {
+            margin: 16px;
+            padding: 0;
+        }
+
         .page-subtitle {
             font-size: 14px;
             margin-bottom: 14px;
@@ -519,6 +531,10 @@
             padding: 0 10px;
         }
 
+        .dashboard-container {
+            margin: 12px;
+        }
+
         .grid {
             gap: 12px;
         }
@@ -559,7 +575,7 @@
 @endpush
 
 @section('content')
-<div class="container">
+<div class="container dashboard-container">
     <h2>Admin Dashboard</h2>
     <p class="page-subtitle">Complete visibility and control across the entire Abodeology platform.</p>
 
